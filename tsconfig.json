@@ -1,0 +1,25 @@
+{
+    "extends": "@vue/tsconfig/tsconfig.web.json",
+    "include": [
+        "env.d.ts",
+        "resources/js/*",
+        "resources/js/**/{*.js,*.ts,*.vue}"
+    ],
+    "compilerOptions": {
+        "noEmit": true,
+        "verbatimModuleSyntax": true,
+        "lib": ["ES2020", "DOM"],
+        "noImplicitAny": false,
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["./resources/js/*"]
+        },
+        "allowJs": true
+    },
+    "exclude": ["node_modules", "dist"],
+    "references": [
+        {
+            "path": "./tsconfig.config.json"
+        }
+    ]
+}

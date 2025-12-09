@@ -1,0 +1,68 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use App\Models\ChatMessage;
+
+class CallEvent extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'caller_id',
+        'callee_id',
+        'channel',
+        'status',
+        'duration',
+        'call_type',
+        'reason',
+    ];
+
+    public function chatMessage(): HasOne
+    {
+        return $this->hasOne(ChatMessage::class);
+    }
+
+    // Method untuk menerjemahkan status menjadi teks yang ramah pengguna
+    public function getCallMessageText(): string
+{
+    $text = $this->call_type === 'video' ? 'Panggilan Video' : 'Panggilan Suara';
+
+    switch ($this->status) {
+        case 'calling':   
+            $text .= ' • Memanggil'; 
+            break;
+        case 'cancelled': 
+            $text .= ' • Dibatalkan'; 
+            break;
+        case 'rejected':  
+            $text .= ' • Ditolak';
+            if ($this->reason && $this->reason !== 'Ditolak') {
+                $text .= ' - ' . $this->reason;
+            }
+            break;
+        case 'missed':    
+            $text .= ' • Tak terjawab'; 
+            break;
+        case 'accepted':  
+            $text .= ' • Diterima'; 
+            break;
+        case 'ended':
+            if ($this->duration > 0) {
+                $durationText = app(\App\Http\Controllers\AgoraCallController::class)
+                    ->formatDurationForPublic($this->duration);
+                $text .= ' • ' . $durationText;
+            } else {
+                $text .= ' • Selesai';
+            }
+            break;
+        default:
+            $text .= ' • Selesai';
+    }
+
+    return $text;
+}
+}
