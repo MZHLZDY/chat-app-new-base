@@ -1,14 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed, watch } from "vue";
+import { ref, onMounted, nextTick, computed, onUnmounted } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import axios from "@/libs/axios";
-import { getAssetPath } from "@/core/helpers/assets";
 import { toast } from "vue3-toastify";
 import { format, isToday, isYesterday } from 'date-fns';
-import { id as localeId } from 'date-fns/locale'; // Bahasa Indonesia
 
-// Import Form Kontak
-import ContactForm from "./Form.vue";
+// --- IMPORT FORM KONTAK ---
+import ContactForm from "./Form.vue"; 
+
+declare global {
+    interface Window {
+        Echo: any;
+    }
+}
 
 // --- STATE ---
 const authStore = useAuthStore();
@@ -19,279 +23,232 @@ const messages = ref<any[]>([]);
 const activeContact = ref<any>(null);
 const newMessage = ref("");
 const isLoadingContact = ref(false);
-const isLoadingMessage = ref(false);
 const chatBodyRef = ref<HTMLElement | null>(null);
-const fileInput = ref<HTMLInputElement | null>(null); // Ref untuk input file
+const fileInput = ref<HTMLInputElement | null>(null);
 
-// State Modal Tambah Kontak
+// --- STATE MODAL FORM ---
 const isAddContactOpen = ref(false);
+const contactIdToEdit = ref<string | number | undefined>(undefined)  
 
-// --- API ACTIONS ---
+// --- HELPER: CHANNEL NAMING ---
+const getChatChannel = (otherId: any) => {
+    if (!currentUser.value) return "";
+    const myId = parseInt(String(currentUser.value.id));
+    const friendId = parseInt(String(otherId));
+    const ids = [myId, friendId].sort((a, b) => a - b);
+    return `chat.${ids[0]}.${ids[1]}`;
+};
 
-// 1. Fetch Contacts (Dengan Last Message & Unread)
+// --- 1. FETCH CONTACTS ---
 const fetchContacts = async () => {
     isLoadingContact.value = true;
     try {
-        // Kita panggil endpoint yang sudah disesuaikan di ChatController
         const { data } = await axios.get("/chat/contacts"); 
         contacts.value = data.data ? data.data : data;
     } catch (err) {
-        console.error(err);
-        // Fallback jika endpoint chat/contacts belum siap
-        const { data } = await axios.get("/master/users");
-        const allUsers = data.data ? data.data : data;
-        contacts.value = allUsers.filter((u: any) => u.id !== currentUser.value.id);
+        console.error("Gagal load kontak:", err);
     } finally {
         isLoadingContact.value = false;
     }
 };
 
-// 2. Select Contact
+// --- 2. SELECT CONTACT ---
 const selectContact = async (contact: any) => {
-    activeContact.value = contact;
-    messages.value = [];
-    isLoadingMessage.value = true;
+    console.log("Membuka chat:", contact.name);
 
-    // Reset unread count di UI secara instan
+    if (activeContact.value && window.Echo) {
+        try {
+            const oldChannel = getChatChannel(activeContact.value.id);
+            window.Echo.leave(oldChannel);
+        } catch (e) { console.warn(e); }
+    }
+
+    activeContact.value = contact;
+    messages.value = []; 
     contact.unread_count = 0;
 
     try {
         const { data } = await axios.get(`/chat/messages/${contact.id}`);
-        messages.value = data;
+        messages.value = data.data ? data.data : data;
         scrollToBottom();
     } catch (err) {
         console.error(err);
-        toast.error("Gagal memuat pesan");
-    } finally {
-        isLoadingMessage.value = false;
+        toast.error("Gagal memuat pesan.");
     }
+
+    listenForActiveChat(contact);
 };
 
-// 3. Send Message (Text & File)
-const sendMessage = async () => {
-    if ((!newMessage.value.trim() && !selectedFile.value) || !activeContact.value) return;
+// --- 3. LISTENER REALTIME ---
+const listenForActiveChat = (contact: any) => {
+    if (!window.Echo) return;
+    const channelName = getChatChannel(contact.id);
 
-    // Cek apakah ini kirim file atau text biasa
-    if (selectedFile.value) {
-        await sendFileMessage();
+    // Pastikan channels.php return array, bukan boolean
+    window.Echo.join(channelName)
+        .listen('.MessageSent', (e: any) => {
+            messages.value.push(e.message);
+            scrollToBottom();
+        })
+        .listen('.FileMessageSent', (e: any) => {
+            messages.value.push(e.message);
+            scrollToBottom();
+        })
+        .listen('.message.deleted', (e: any) => {
+            messages.value = messages.value.filter((m: any) => m.id !== e.messageId);
+        });
+};
+
+const listenForGlobalNotifications = () => {
+    if (!window.Echo || !currentUser.value) return;
+
+    window.Echo.private(`notifications.${currentUser.value.id}`)
+        .listen('.MessageSent', (e: any) => handleSidebarUpdate(e.message))
+        .listen('.FileMessageSent', (e: any) => handleSidebarUpdate(e.message));
+};
+
+const handleSidebarUpdate = (message: any) => {
+    if (activeContact.value && activeContact.value.id === message.sender_id) return;
+
+    const index = contacts.value.findIndex(c => c.id === message.sender_id);
+    if (index !== -1) {
+        const sender = contacts.value[index];
+        sender.latest_message = message;
+        sender.unread_count = (sender.unread_count || 0) + 1;
+        contacts.value.splice(index, 1);
+        contacts.value.unshift(sender);
     } else {
-        await sendTextMessage();
+        fetchContacts();
     }
 };
 
-const sendTextMessage = async () => {
-    const payload = {
-        receiver_id: activeContact.value.id,
-        message: newMessage.value,
-    };
+// --- 4. SEND MESSAGE ---
+const sendMessage = async () => {
+    if ((!newMessage.value.trim() && !fileInput.value?.files?.length) || !activeContact.value) return;
 
-    // Optimistic UI
-    const tempMsg = {
-        id: Date.now(),
-        sender_id: currentUser.value.id,
-        message: newMessage.value,
-        type: 'text',
-        created_at: new Date().toISOString(),
-        is_sending: true
-    };
-    messages.value.push(tempMsg);
+    const formData = new FormData();
+    formData.append("receiver_id", activeContact.value.id);
+    if (newMessage.value.trim()) formData.append("text", newMessage.value);
+    if (fileInput.value?.files?.length) formData.append("file", fileInput.value.files[0]);
+
+    const tempId = Date.now();
+    if (!fileInput.value?.files?.length) {
+        messages.value.push({
+            id: tempId,
+            sender_id: currentUser.value.id,
+            text: newMessage.value,
+            created_at: new Date().toISOString(),
+            is_sending: true
+        });
+    }
+
     newMessage.value = "";
     scrollToBottom();
 
     try {
-        const { data } = await axios.post("/chat/send", payload);
-        // Update pesan asli dari server
-        const index = messages.value.findIndex(m => m.id === tempMsg.id);
-        if (index !== -1) messages.value[index] = data;
-        
-        // Refresh kontak agar 'last message' di sidebar berubah
-        fetchContacts(); 
-    } catch (err) {
-        console.error(err);
-        toast.error("Gagal mengirim pesan");
-    }
-};
-
-// Logic Upload File (Diambil dari Chat.vue lama)
-const selectedFile = ref<File | null>(null);
-
-const triggerFileUpload = () => {
-    fileInput.value?.click();
-};
-
-const handleFileSelect = (event: Event) => {
-    const target = event.target as HTMLInputElement;
-    if (target.files && target.files[0]) {
-        selectedFile.value = target.files[0];
-        // Langsung kirim saat file dipilih (seperti WA)
-        sendMessage();
-    }
-};
-
-const sendFileMessage = async () => {
-    if (!selectedFile.value) return;
-
-    const formData = new FormData();
-    formData.append('receiver_id', activeContact.value.id.toString());
-    formData.append('file', selectedFile.value);
-    if (newMessage.value) formData.append('text', newMessage.value);
-
-    // Optimistic UI (Loading placeholder)
-    const tempMsg = {
-        id: Date.now(),
-        sender_id: currentUser.value.id,
-        message: 'Mengirim file...',
-        type: 'text', // Placeholder
-        created_at: new Date().toISOString(),
-        is_sending: true
-    };
-    messages.value.push(tempMsg);
-    scrollToBottom();
-
-    try {
-        const { data } = await axios.post("/chat/send-file", formData, {
-            headers: { 'Content-Type': 'multipart/form-data' }
+        const { data } = await axios.post("/chat/send", formData, {
+            headers: { "Content-Type": "multipart/form-data" }
         });
-        
-        // Ganti placeholder dengan data asli (gambar/file)
-        const index = messages.value.findIndex(m => m.id === tempMsg.id);
-        if (index !== -1) messages.value[index] = data;
 
-        selectedFile.value = null; // Reset
-        newMessage.value = "";
-        if (fileInput.value) fileInput.value.value = ""; // Reset input file
-        
-        fetchContacts();
-    } catch (err: any) {
-        console.error(err);
-        toast.error(err.response?.data?.message || "Gagal mengirim file (Max 25MB)");
-        messages.value.pop(); // Hapus pesan gagal
-        selectedFile.value = null;
-    }
-};
-
-// 4. Delete Message
-const deleteMessage = async (messageId: number) => {
-    if (!confirm("Hapus pesan ini?")) return;
-
-    try {
-        await axios.delete(`/chat/delete/${messageId}`);
-        messages.value = messages.value.filter(m => m.id !== messageId);
-        toast.success("Pesan dihapus");
+        if (!fileInput.value?.files?.length) {
+            const idx = messages.value.findIndex((m: any) => m.id === tempId);
+            if (idx !== -1) messages.value[idx] = data;
+        } else {
+             messages.value.push(data);
+             if (fileInput.value) fileInput.value.value = "";
+             scrollToBottom();
+        }
     } catch (err) {
-        toast.error("Gagal menghapus pesan");
+        console.error(err);
+        toast.error("Gagal kirim pesan");
     }
 };
 
-// --- HELPER FUNCTIONS ---
+// --- UTILS ---
+const triggerFileUpload = () => fileInput.value?.click();
 
 const scrollToBottom = () => {
     nextTick(() => {
-        if (chatBodyRef.value) {
-            chatBodyRef.value.scrollTop = chatBodyRef.value.scrollHeight;
-        }
+        if (chatBodyRef.value) chatBodyRef.value.scrollTop = chatBodyRef.value.scrollHeight;
     });
 };
 
-const getAvatar = (user: any) => {
-    if (user.profile_photo_url) return user.profile_photo_url;
-    if (user.photo) return getAssetPath(user.photo);
-    return getAssetPath("media/avatars/300-3.jpg");
+const formatTime = (dateStr: string) => {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    if (isToday(date)) return format(date, "HH:mm");
+    return format(date, "dd/MM/yy");
 };
 
-// Format Tanggal Canggih (Hari ini, Kemarin, dll)
-const formatMessageTime = (dateString: string) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    
-    if (isToday(date)) {
-        return format(date, 'HH:mm');
-    } else if (isYesterday(date)) {
-        return 'Kemarin ' + format(date, 'HH:mm');
-    } else {
-        return format(date, 'd MMM HH:mm', { locale: localeId });
-    }
+// --- MODAL FUNCTIONS ---
+const openAddContactModal = () => {
+    contactIdToEdit.value = undefined; // Mode Tambah
+    isAddContactOpen.value = true;
 };
 
-// Helper untuk menampilkan gambar dari storage
-const getStorageUrl = (path: string) => {
-    return `/storage/${path}`;
-};
-
+// Lifecycle
 onMounted(() => {
     fetchContacts();
+    const checkEcho = setInterval(() => {
+        if (window.Echo) {
+            listenForGlobalNotifications();
+            clearInterval(checkEcho);
+        }
+    }, 500);
+});
+
+onUnmounted(() => {
+    if (window.Echo) {
+        window.Echo.leave(`notifications.${currentUser.value.id}`);
+        if (activeContact.value) {
+            try { window.Echo.leave(getChatChannel(activeContact.value.id)); } catch(e){}
+        }
+    }
 });
 </script>
 
 <template>
-    <div class="d-flex flex-column flex-lg-row position-relative" style="height: calc(100vh - 140px);">
+    <div class="d-flex flex-column flex-lg-row" style="height: calc(100vh - 110px);">
         
-        <input 
-            type="file" 
-            ref="fileInput" 
-            class="d-none" 
-            @change="handleFileSelect"
-            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip"
-        />
-
-        <div v-if="isAddContactOpen" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0,0,0,0.5); z-index: 9999;">
-            <div class="w-100 mw-600px bg-white rounded shadow-lg p-1">
-                <ContactForm @close="isAddContactOpen = false" @refresh="fetchContacts" />
-            </div>
-        </div>
-
-        <div class="flex-column flex-lg-row-auto w-100 w-lg-300px w-xl-400px mb-10 mb-lg-0 h-100">
+        <div class="flex-column flex-lg-row-auto w-100 w-lg-300px w-xl-400px mb-10 mb-lg-0">
             <div class="card card-flush h-100">
                 <div class="card-header pt-7">
                     <div class="d-flex align-items-center w-100">
                         <form class="w-100 position-relative me-3" autocomplete="off">
-                            <KTIcon icon-name="magnifier" icon-class="fs-2 text-gray-500 position-absolute top-50 ms-5 translate-middle-y" />
-                            <input type="text" class="form-control form-control-solid px-13" placeholder="Cari..." />
+                            <KTIcon icon-name="magnifier" icon-class="fs-2 text-lg-1 text-gray-500 position-absolute top-50 ms-5 translate-middle-y" />
+                            <input type="text" class="form-control form-control-solid px-15" placeholder="Cari kontak..." />
                         </form>
-                        <button class="btn btn-icon btn-primary w-40px h-40px" @click="isAddContactOpen = true">
-                            <KTIcon icon-name="message-add" icon-class="fs-2" />
+                        
+                        <button class="btn btn-icon btn-light-primary w-40px h-40px" @click="openAddContactModal" title="Tambah Kontak Baru">
+                            <KTIcon icon-name="plus" icon-class="fs-2" />
                         </button>
                     </div>
                 </div>
 
                 <div class="card-body pt-5">
-                    <div class="scroll-y me-n5 pe-5 h-100" style="max-height: 100%;">
-                        <template v-if="contacts.length > 0">
-                            <div 
-                                v-for="user in contacts" 
-                                :key="user.id" 
-                                class="d-flex flex-stack py-4 cursor-pointer border-bottom border-dashed border-gray-300"
-                                :class="{ 'bg-light-primary rounded px-2': activeContact?.id === user.id }"
-                                @click="selectContact(user)"
-                            >
-                                <div class="d-flex align-items-center">
-                                    <div class="symbol symbol-45px symbol-circle">
-                                        <img :src="getAvatar(user)" alt="" />
-                                    </div>
-                                    <div class="ms-5">
-                                        <div class="d-flex align-items-center">
-                                            <a href="#" class="fs-5 fw-bold text-gray-900 text-hover-primary mb-2 me-2">{{ user.name }}</a>
-                                            <span v-if="user.unread_count > 0" class="badge badge-circle badge-primary w-20px h-20px fs-9">
-                                                {{ user.unread_count }}
-                                            </span>
-                                        </div>
-                                        <div class="fw-semibold text-muted fs-7 text-truncate w-150px">
-                                            <span v-if="user.latest_message">
-                                                <i v-if="user.latest_message.type === 'image'" class="la la-image me-1"></i>
-                                                <i v-else-if="user.latest_message.type === 'file'" class="la la-file me-1"></i>
-                                                {{ user.latest_message.message || (user.latest_message.type === 'image' ? 'Foto' : 'File') }}
-                                            </span>
-                                            <span v-else>Belum ada pesan</span>
-                                        </div>
-                                    </div>
+                    <div class="scroll-y me-n5 pe-5 h-100">
+                        <div v-for="contact in contacts" :key="contact.id" 
+                             class="d-flex flex-stack py-4 cursor-pointer hover-effect px-2 rounded"
+                             :class="{ 'bg-light-primary': activeContact && activeContact.id === contact.id }"
+                             @click="selectContact(contact)">
+                            
+                            <div class="d-flex align-items-center">
+                                <div class="symbol symbol-45px symbol-circle">
+                                    <img :src="contact.photo || `https://ui-avatars.com/api/?name=${contact.name}`" alt="img" />
                                 </div>
-                                <div class="d-flex flex-column align-items-end" v-if="user.latest_message">
-                                    <span class="text-muted fs-9">{{ formatMessageTime(user.latest_message.created_at) }}</span>
+                                <div class="ms-5">
+                                    <span class="fs-5 fw-bold text-gray-900 text-hover-primary mb-2 d-block">{{ contact.name }}</span>
+                                    <div class="fw-semibold text-muted text-truncate w-150px">
+                                        {{ contact.latest_message ? (contact.latest_message.text || 'File Lampiran') : 'Belum ada pesan' }}
+                                    </div>
                                 </div>
                             </div>
-                        </template>
-                        <div v-else class="text-center text-muted mt-5">
-                            Belum ada kontak.
+                            <div class="d-flex flex-column align-items-end ms-2">
+                                <span class="text-muted fs-7 mb-1">{{ contact.latest_message ? formatTime(contact.latest_message.created_at) : '' }}</span>
+                                <span v-if="contact.unread_count > 0" class="badge badge-circle badge-success w-20px h-20px d-flex align-items-center justify-content-center text-white">
+                                    {{ contact.unread_count }}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -299,110 +256,94 @@ onMounted(() => {
         </div>
 
         <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10 h-100">
-            <div class="card h-100" id="kt_chat_messenger">
-                <div class="card-header" id="kt_chat_messenger_header">
+            <div class="card w-100 border-0 rounded-0 h-100 d-flex flex-column">
+                <div class="card-header pe-5 flex-shrink-0">
                     <div class="card-title">
                         <div class="d-flex justify-content-center flex-column me-3">
-                            <template v-if="activeContact">
-                                <a href="#" class="fs-4 fw-bold text-gray-900 text-hover-primary me-1 mb-2 lh-1">{{ activeContact.name }}</a>
-                                <div class="mb-0 lh-1">
-                                    <span class="badge badge-success badge-circle w-10px h-10px me-1"></span>
-                                    <span class="fs-7 fw-semibold text-muted">Online</span>
-                                </div>
-                            </template>
-                            <template v-else>
-                                <span class="fs-4 fw-bold text-gray-500">Pilih kontak untuk chat</span>
-                            </template>
+                            <span class="fs-4 fw-bold text-gray-900 text-hover-primary me-1 mb-2 lh-1">
+                                {{ activeContact ? activeContact.name : 'Pilih Kontak' }}
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                <div class="card-body" id="kt_chat_messenger_body">
-                    <div class="scroll-y me-n5 pe-5 h-100" ref="chatBodyRef" style="max-height: 100%;">
-                        <template v-if="activeContact">
-                            <template v-if="messages.length > 0">
-                                <div 
-                                    v-for="msg in messages" 
-                                    :key="msg.id" 
-                                    class="d-flex mb-10 position-relative group-chat-item"
-                                    :class="msg.sender_id === currentUser.id ? 'justify-content-end' : 'justify-content-start'"
-                                >
-                                    <div class="d-flex flex-column align-items-start" :class="msg.sender_id === currentUser.id ? 'align-items-end' : 'align-items-start'">
-                                        
-                                        <div class="d-flex align-items-center mb-2">
-                                            <span class="text-muted fs-7 mb-1">{{ formatMessageTime(msg.created_at) }}</span>
-                                            <span v-if="msg.sender_id === currentUser.id" @click="deleteMessage(msg.id)" class="ms-2 cursor-pointer text-hover-danger text-muted fs-8">
-                                                <i class="la la-trash"></i>
-                                            </span>
-                                        </div>
+                <div class="card-body flex-grow-1 overflow-hidden p-0">
+                    <div class="scroll-y me-n5 pe-5 h-100 p-5" ref="chatBodyRef">
+                        <div v-if="!activeContact" class="d-flex flex-column align-items-center justify-content-center h-100 text-gray-400">
+                            <p>Silakan pilih kontak untuk memulai chat.</p>
+                        </div>
 
-                                        <div 
-                                            class="p-5 rounded fw-semibold text-start shadow-sm" 
-                                            :class="msg.sender_id === currentUser.id ? 'bg-primary text-white' : 'bg-light text-dark'"
-                                            style="max-width: 400px;"
-                                        >
-                                            <div v-if="msg.type === 'image'">
-                                                <a :href="getStorageUrl(msg.file_path)" target="_blank">
-                                                    <img :src="getStorageUrl(msg.file_path)" class="rounded w-100 mb-2" style="max-height: 200px; object-fit: cover;" />
-                                                </a>
-                                                <div v-if="msg.message">{{ msg.message }}</div>
-                                            </div>
-
-                                            <div v-else-if="msg.type === 'file' || msg.type === 'video'" class="d-flex align-items-center">
-                                                <KTIcon icon-name="file" icon-class="fs-1 me-3" :class="msg.sender_id === currentUser.id ? 'text-white' : 'text-primary'" />
-                                                <div class="d-flex flex-column">
-                                                    <a :href="getStorageUrl(msg.file_path)" target="_blank" class="fw-bold text-hover-underline" :class="msg.sender_id === currentUser.id ? 'text-white' : 'text-gray-900'">
-                                                        {{ msg.file_name || 'Dokumen' }}
-                                                    </a>
-                                                    <span class="fs-8 opacity-75">{{ msg.file_size ? (msg.file_size / 1024).toFixed(1) + ' KB' : '' }}</span>
-                                                </div>
-                                            </div>
-
-                                            <span v-else>{{ msg.message }}</span>
-                                        </div>
-
+                        <div v-else v-for="msg in messages" :key="msg.id" 
+                             class="d-flex mb-10" 
+                             :class="msg.sender_id === currentUser.id ? 'justify-content-end' : 'justify-content-start'">
+                            
+                            <div class="d-flex flex-column align-items-start" :class="msg.sender_id === currentUser.id ? 'align-items-end' : 'align-items-start'">
+                                <div class="p-5 rounded" 
+                                     :class="msg.sender_id === currentUser.id ? 'bg-light-primary text-dark' : 'bg-light-info text-dark'">
+                                    
+                                    <div v-if="msg.file_path" class="mb-2">
+                                        <img v-if="['jpg','jpeg','png'].includes(msg.file_path.split('.').pop())" 
+                                             :src="`/storage/${msg.file_path}`" class="rounded w-200px d-block border">
+                                        <a v-else :href="`/storage/${msg.file_path}`" target="_blank" class="text-primary fw-bold">
+                                            Download File
+                                        </a>
                                     </div>
+                                    <p class="fw-semibold mb-0" style="max-width: 400px;">{{ msg.text || msg.message }}</p>
                                 </div>
-                            </template>
-                            <div v-else class="text-center mt-20 text-muted">
-                                <KTIcon icon-name="message-text-2" icon-class="fs-1 text-gray-300 mb-3" />
-                                <p>Belum ada pesan. Mulai obrolan!</p>
+                                <span class="text-muted fs-7 mt-1">{{ formatTime(msg.created_at) }}</span>
                             </div>
-                        </template>
-                        <div v-else class="d-flex flex-column align-items-center justify-content-center h-100">
-                            <div class="symbol symbol-100px mb-5">
-                                <div class="symbol-label fs-2 fw-semibold text-primary bg-light-primary">
-                                    <KTIcon icon-name="messages" icon-class="fs-1" />
-                                </div>
-                            </div>
-                            <h3 class="text-gray-900 fw-bold">Selamat Datang, {{ currentUser.name }}</h3>
-                            <p class="text-gray-400">Silakan pilih kontak di samping untuk memulai chat.</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="card-footer pt-4" v-if="activeContact">
-                    <textarea 
-                        class="form-control form-control-flush mb-3" 
-                        rows="1" 
-                        placeholder="Ketik pesan..."
-                        v-model="newMessage"
-                        @keydown.enter.prevent="sendMessage"
-                    ></textarea>
-                    
+                <div class="card-footer pt-4 flex-shrink-0" v-if="activeContact">
+                    <textarea class="form-control form-control-flush mb-3" rows="1" placeholder="Ketik pesan..." v-model="newMessage" @keydown.enter.prevent="sendMessage"></textarea>
                     <div class="d-flex flex-stack">
-                        <div class="d-flex align-items-center me-2">
-                            <button class="btn btn-sm btn-icon btn-active-light-primary me-1" type="button" @click="triggerFileUpload" title="Kirim File/Gambar">
-                                <KTIcon icon-name="paper-clip" icon-class="fs-3" />
-                            </button>
-                        </div>
-                        <button class="btn btn-primary" type="button" @click="sendMessage">
-                            Kirim
-                            <KTIcon icon-name="send" icon-class="fs-2 ms-2" />
+                        <button class="btn btn-sm btn-icon btn-active-light-primary me-1" @click="triggerFileUpload">
+                            <KTIcon icon-name="paper-clip" icon-class="fs-3" />
+                        </button>
+                        <input type="file" ref="fileInput" class="d-none" @change="sendMessage" />
+                        <button class="btn btn-primary" @click="sendMessage">
+                            Kirim <KTIcon icon-name="send" icon-class="fs-2 ms-2" />
                         </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <div v-if="isAddContactOpen" class="modal-overlay">
+        <div class="modal-content-wrapper">
+            <ContactForm 
+                :selected="contactIdToEdit" 
+                @close="isAddContactOpen = false" 
+                @refresh="fetchContacts" 
+            />
+        </div>
+    </div>
 </template>
+
+<style scoped>
+.scroll-y { overflow-y: auto; scrollbar-width: thin; }
+.hover-effect:hover { background-color: #f1faff; }
+
+/* CSS Modal */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.modal-content-wrapper {
+    background: white;
+    border-radius: 8px;
+    width: 100%;
+    max-width: 600px;
+    padding: 0;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+}
+</style>

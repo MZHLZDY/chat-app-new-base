@@ -2,7 +2,7 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
@@ -37,7 +37,8 @@ class MessageDeleted implements ShouldBroadcastNow
         $participants = [$this->message->sender_id, $this->message->receiver_id];
         sort($participants);
 
-        $channelName = 'chat.' . implode('.', $participants);
-        return [new PrivateChannel($channelName)];
+        return [
+            new PresenceChannel('chat.' . $participants[0] . '.' . $participants[1])
+        ];
     }
 }
