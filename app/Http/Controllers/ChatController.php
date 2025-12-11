@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\ChatMessage;
+use App\Models\Contact;
 use App\Events\MessageSent;
 use App\Events\MessageRead;
 use App\Events\MessageDeleted;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;             
+use Illuminate\Support\Facades\Hash;    
 
 class ChatController extends Controller
 {
@@ -23,20 +26,24 @@ class ChatController extends Controller
     {
         $authId = Auth::id();
 
-        $contacts = User::where('id', '!=', $authId)
-            ->get(['id', 'name', 'email', 'phone', 'photo', 'updated_at']);
+        $contacts = User::join('contacts', 'users.id', '=', 'contacts.friend_id')
+            ->where('contacts.user_id', $authId)
+            ->select('users.*', 'contacts.alias', 'contacts.created_at as contact_added_at')
+            ->get();
 
         foreach ($contacts as $contact) {
+            if ($contact->alias) {
+                $contact->name = $contact->alias;
+            }
+
             $lastMsg = ChatMessage::where(function ($q) use ($authId, $contact) {
                 $q->where('sender_id', $authId)->where('receiver_id', $contact->id);
             })->orWhere(function ($q) use ($authId, $contact) {
                 $q->where('sender_id', $contact->id)->where('receiver_id', $authId);
-            })
-            ->latest()
-            ->first();
+            })->latest()->first();
 
             $contact->latest_message = $lastMsg;
-
+            
             $contact->unread_count = ChatMessage::where('sender_id', $contact->id)
                 ->where('receiver_id', $authId)
                 ->whereNull('read_at')
@@ -44,14 +51,71 @@ class ChatController extends Controller
         }
 
         $sortedContacts = $contacts->sortByDesc(function ($contact) {
-            return $contact->latest_message ? $contact->latest_message->created_at : $contact->created_at;
+            return $contact->latest_message 
+                ? $contact->latest_message->created_at 
+                : $contact->contact_added_at;
         })->values();
 
         return response()->json(['data' => $sortedContacts]);
     }
 
     /**
-     * 2. GET MESSAGES
+     * 2. ADD CONTACT
+     */
+    public function addContact(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'phone' => 'required|string',
+            'name'  => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->errors()->first()], 422);
+        }
+
+        $myId = Auth::id();
+
+        $targetUser = User::where('phone', $request->phone)->first();
+        $isNewUser = false;
+
+        if (!$targetUser) {
+            $targetUser = User::create([
+                'name'     => $request->name, 
+                'phone'    => $request->phone,
+                'email'    => $request->phone . '@chat.com', 
+                'password' => Hash::make('12345678'), 
+                'uuid'     => (string) Str::uuid(),
+            ]);
+            $isNewUser = true;
+        }
+
+        if ($targetUser->id == $myId) {
+            return response()->json(['message' => 'Tidak bisa menyimpan nomor sendiri.'], 422);
+        }
+
+        $exists = Contact::where('user_id', $myId)
+                         ->where('friend_id', $targetUser->id)
+                         ->exists();
+
+        if ($exists) {
+            return response()->json(['message' => 'Kontak ini sudah ada di daftar Anda.'], 422);
+        }
+
+        Contact::create([
+            'user_id'   => $myId,
+            'friend_id' => $targetUser->id,
+            'alias'     => $request->name
+        ]);
+
+        $msg = $isNewUser 
+            ? 'User baru dibuat & ditambahkan! Password default: 12345678' 
+            : 'Kontak berhasil ditemukan & disimpan.';
+
+        return response()->json(['message' => $msg]);
+    }
+
+    /**
+     * 3. GET MESSAGES
      */
     public function getMessages($friendId)
     {
@@ -74,7 +138,7 @@ class ChatController extends Controller
     }
 
     /**
-     * 3. SEND TEXT MESSAGE
+     * 4. SEND MESSAGE
      */
     public function sendMessage(Request $request)
     {
@@ -128,7 +192,7 @@ class ChatController extends Controller
     }
 
     /**
-     * 4. DELETE MESSAGE
+     * 5. DELETE MESSAGE
      */
     public function deleteMessage($id)
     {

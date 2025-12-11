@@ -43,10 +43,16 @@ const getChatChannel = (otherId: any) => {
 const fetchContacts = async () => {
     isLoadingContact.value = true;
     try {
-        const { data } = await axios.get("/chat/contacts"); 
+        const { data } = await axios.get("/chat/contacts");
+        console.log("Data Kontak Diterima:", data);
         contacts.value = data.data ? data.data : data;
-    } catch (err) {
+    } catch (err: any) {
         console.error("Gagal load kontak:", err);
+        if (err.response) {
+            console.error("Status:", err.response.status);
+            console.error("Response:", err.response.data);
+            toast.error(`Gagal memuat kontak: ${err.response.status}`);
+        }
     } finally {
         isLoadingContact.value = false;
     }

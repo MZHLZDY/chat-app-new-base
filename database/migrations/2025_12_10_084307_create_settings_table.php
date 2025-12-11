@@ -9,25 +9,22 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
+    public function up()
     {
         Schema::create('settings', function (Blueprint $table) {
             $table->id();
-            $table->uuid()->unique();
-            $table->string('app');
-            $table->text('description');
-            $table->string('logo');
-            $table->string('banner');
-            $table->string('bg_auth');
-
-            $table->string('dinas');
-            $table->string('pemerintah');
-            $table->string('alamat');
-            $table->string('telepon');
-            $table->string('email');
-
+            $table->string('app_name')->default('Chat App');
+            $table->text('description')->nullable();
+            $table->string('logo')->nullable();
+            $table->string('favicon')->nullable();
             $table->timestamps();
         });
+
+        DB::table('settings')->insert([
+            'app_name' => 'My Chat App',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     /**
