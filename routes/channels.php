@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Broadcast;
+use App\Http\Controllers\UserController;
 
 /*
 |--------------------------------------------------------------------------

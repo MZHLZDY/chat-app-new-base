@@ -74,6 +74,7 @@
         "zustand": "^4.4.7"
     },
     "devDependencies": {
+        "@laravel/echo-vue": "^2.2.6",
         "@rushstack/eslint-patch": "^1.1.4",
         "@types/array-sort": "^1.0.0",
         "@types/bootstrap": "^5.2.6",
