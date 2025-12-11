@@ -352,4 +352,75 @@ onUnmounted(() => {
     padding: 0;
     box-shadow: 0 4px 15px rgba(0,0,0,0.2);
 }
+
+/* fix chat bubble untuk dark mode */
+[data-bs-theme="dark"] .bg-light-primary {
+    background-color: #1b5e9e !important;
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .bg-light-info {
+    background-color: #2d3748 !important;
+    color: #e2e8f0 !important;
+}
+
+[data-bs-theme="dark"] .bg-light-primary p,
+[data-bs-theme="dark"] .bg-light-info p {
+    color: inherit !important;
+}
+
+/* fix bug di sidebar contact list waktu dark mode */
+[data-bs-theme="dark"] .hover-effect:hover {
+    background-color: #1e3a5f !important;
+}
+
+[data-bs-theme="dark"] .bg-light-primary {
+    background-color: #1b4b7a !important;
+}
+
+/* nama teks kontak di dark mode */
+[data-bs-theme="dark"] .text-gray-900 {
+    color: #e2e8f0 !important;
+}
+
+/* preview pesan terbaru di dark mode */
+[data-bs-theme="dark"] .text-muted {
+    color: #a0aec0 !important;
+}
+
+/* modal untuk dark mode */
+[data-bs-theme="dark"] .modal-content-wrapper {
+    background: #1e1e2d;
+    color: #e2e8f0;
+}
+
+/* System Theme (prefers-color-scheme) Support */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-bs-theme="light"]) .bg-light-primary {
+        background-color: #1b5e9e !important;
+        color: #ffffff !important;
+    }
+
+    :root:not([data-bs-theme="light"]) .bg-light-info {
+        background-color: #2d3748 !important;
+        color: #e2e8f0 !important;
+    }
+
+    :root:not([data-bs-theme="light"]) .hover-effect:hover {
+        background-color: #1e3a5f !important;
+    }
+
+    :root:not([data-bs-theme="light"]) .text-gray-900 {
+        color: #e2e8f0 !important;
+    }
+
+    :root:not([data-bs-theme="light"]) .text-muted {
+        color: #a0aec0 !important;
+    }
+
+    :root:not([data-bs-theme="light"]) .modal-content-wrapper {
+        background: #1e1e2d;
+        color: #e2e8f0;
+    }
+}
 </style>
