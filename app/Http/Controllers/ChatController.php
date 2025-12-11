@@ -131,7 +131,6 @@ class ChatController extends Controller
      */
     public function sendMessage(Request $request)
     {
-        // log request untuk lihat apa yang dikirim
         \Log::info('Chat send request:', $request->all());
 
         $validator = Validator::make($request->all(), [
@@ -146,7 +145,6 @@ class ChatController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        // ambil message dari 'message' atau 'text'
         $messageText = $request->message ?? $request->text;
 
         if (!$messageText && !$request->hasFile('file')) {

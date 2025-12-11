@@ -18,6 +18,12 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Route::middleware(['auth:sanctum'])->group(function () {
+//     Route::post('/broadcasting/auth', function (\Illuminate\Http\Request $request) {
+//         return \Illuminate\Support\Facades\Broadcast::auth($request);
+//     });
+// });
+
 // Authentication Route
 Route::middleware(['auth', 'json'])->prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->withoutMiddleware('auth');
