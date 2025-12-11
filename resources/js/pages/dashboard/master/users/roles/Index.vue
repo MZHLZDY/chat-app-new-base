@@ -128,7 +128,7 @@ const sendMessage = async () => {
 
     const formData = new FormData();
     formData.append("receiver_id", activeContact.value.id);
-    if (newMessage.value.trim()) formData.append("text", newMessage.value);
+    if (newMessage.value.trim()) formData.append("message", newMessage.value);
     if (fileInput.value?.files?.length) formData.append("file", fileInput.value.files[0]);
 
     const tempId = Date.now();
@@ -136,7 +136,7 @@ const sendMessage = async () => {
         messages.value.push({
             id: tempId,
             sender_id: currentUser.value.id,
-            text: newMessage.value,
+            message: newMessage.value,
             created_at: new Date().toISOString(),
             is_sending: true
         });
@@ -239,7 +239,7 @@ onUnmounted(() => {
                                 <div class="ms-5">
                                     <span class="fs-5 fw-bold text-gray-900 text-hover-primary mb-2 d-block">{{ contact.name }}</span>
                                     <div class="fw-semibold text-muted text-truncate w-150px">
-                                        {{ contact.latest_message ? (contact.latest_message.text || 'File Lampiran') : 'Belum ada pesan' }}
+                                        {{ contact.latest_message ? (contact.latest_message.message || 'File Lampiran') : 'Belum ada pesan' }}
                                     </div>
                                 </div>
                             </div>
@@ -288,7 +288,7 @@ onUnmounted(() => {
                                             Download File
                                         </a>
                                     </div>
-                                    <p class="fw-semibold mb-0" style="max-width: 400px;">{{ msg.text || msg.message }}</p>
+                                    <p class="fw-semibold mb-0" style="max-width: 400px;">{{ msg.message }}</p>
                                 </div>
                                 <span class="text-muted fs-7 mt-1">{{ formatTime(msg.created_at) }}</span>
                             </div>

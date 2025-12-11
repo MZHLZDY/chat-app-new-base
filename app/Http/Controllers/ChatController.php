@@ -78,17 +78,25 @@ class ChatController extends Controller
      */
     public function sendMessage(Request $request)
     {
+        // log request untuk lihat apa yang dikirim
+        \Log::info('Chat send request:', $request->all());
+
         $validator = Validator::make($request->all(), [
             'receiver_id' => 'required|exists:users,id',
+            'message'     => 'nullable|string', 
             'text'        => 'nullable|string', 
             'file'        => 'nullable|file|max:10240',
         ]);
 
         if ($validator->fails()) {
+            \Log::error('Validation failed:', $validator->errors()->toArray());
             return response()->json($validator->errors(), 422);
         }
 
-        if (!$request->text && !$request->hasFile('file')) {
+        // ambil message dari 'message' atau 'text'
+        $messageText = $request->message ?? $request->text;
+
+        if (!$messageText && !$request->hasFile('file')) {
             return response()->json(['error' => 'Pesan atau file tidak boleh kosong.'], 422);
         }
 
@@ -96,7 +104,7 @@ class ChatController extends Controller
         $messageData = [
             'sender_id'   => $senderId,
             'receiver_id' => $request->receiver_id,
-            'message'     => $request->text,
+            'message'     => $messageText,
             'type'        => 'text',
         ];
 
