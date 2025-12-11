@@ -76,19 +76,12 @@ class ChatController extends Controller
         $myId = Auth::id();
 
         $targetUser = User::where('phone', $request->phone)->first();
-        $isNewUser = false;
 
         if (!$targetUser) {
-            $targetUser = User::create([
-                'name'     => $request->name, 
-                'phone'    => $request->phone,
-                'email'    => $request->phone . '@chat.com', 
-                'password' => Hash::make('12345678'), 
-                'uuid'     => (string) Str::uuid(),
-            ]);
-            $isNewUser = true;
+            return response()->json([
+                'message' => 'User dengan nomor ini belum terdaftar di aplikasi.'
+            ], 404);
         }
-
         if ($targetUser->id == $myId) {
             return response()->json(['message' => 'Tidak bisa menyimpan nomor sendiri.'], 422);
         }
@@ -107,11 +100,7 @@ class ChatController extends Controller
             'alias'     => $request->name
         ]);
 
-        $msg = $isNewUser 
-            ? 'User baru dibuat & ditambahkan! Password default: 12345678' 
-            : 'Kontak berhasil ditemukan & disimpan.';
-
-        return response()->json(['message' => $msg]);
+        return response()->json(['message' => 'Kontak berhasil ditemukan & disimpan.']);
     }
 
     /**
