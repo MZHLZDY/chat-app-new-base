@@ -68,6 +68,7 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::get('messages/{id}', [ChatController::class, 'getMessages']);
         Route::post('send', [ChatController::class, 'sendMessage']);
         Route::post('send-file', [ChatController::class, 'sendFile']);
+        Route::get('download/{id}', [ChatController::class, 'downloadFile']);
         Route::delete('delete/{id}', [ChatController::class, 'deleteMessage']);
     });
 });

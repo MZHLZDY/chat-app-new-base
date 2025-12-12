@@ -78,14 +78,13 @@ const submit = async () => {
         });
 
         toast.success("Kontak berhasil disimpan!");
-        emit("refresh"); // Refresh list chat di Index.vue
-        emit("close");   // Tutup Modal
+        emit("refresh");
+        emit("close");
     } catch (err: any) {
-        // Tangkap Error dari Controller
         if (err.response?.status === 404) {
             toast.error("Gagal: Nomor HP tersebut belum terdaftar di aplikasi.");
         } else if (err.response?.status === 422) {
-            toast.error(err.response.data.message); // Misal: duplikat / nomor sendiri
+            toast.error(err.response.data.message);
         } else {
             toast.error("Terjadi kesalahan sistem.");
         }

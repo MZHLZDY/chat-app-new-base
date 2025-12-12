@@ -179,6 +179,31 @@ const scrollToBottom = () => {
     });
 };
 
+const downloadAttachment = async (msg) => {
+    try {
+        const response = await axios.get(`/chat/download/${msg.id}`, {
+            responseType: 'blob' 
+        });
+
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        
+        const link = document.createElement('a');
+        link.href = url;
+        
+        link.setAttribute('download', msg.file_name); 
+        
+        document.body.appendChild(link);
+        link.click();
+        
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+        console.error("Gagal download:", error);
+        alert("Gagal mendownload file.");
+    }
+};
+
 const formatTime = (dateStr: string) => {
     if (!dateStr) return "";
     const date = new Date(dateStr);
@@ -287,12 +312,19 @@ onUnmounted(() => {
                                 <div class="p-5 rounded" 
                                      :class="msg.sender_id === currentUser.id ? 'bg-light-primary text-dark' : 'bg-light-info text-dark'">
                                     
-                                    <div v-if="msg.file_path" class="mb-2">
-                                        <img v-if="['jpg','jpeg','png'].includes(msg.file_path.split('.').pop())" 
-                                             :src="`/storage/${msg.file_path}`" class="rounded w-200px d-block border">
-                                        <a v-else :href="`/storage/${msg.file_path}`" target="_blank" class="text-primary fw-bold">
-                                            Download File
-                                        </a>
+                                    <div v-if="msg.type === 'file'" class="p-3 bg-light rounded mt-2">
+                                        <div class="d-flex align-items-center">
+                                            <KTIcon icon-name="file" icon-class="fs-1 me-3 text-primary" />
+                                            
+                                            <div class="d-flex flex-column flex-grow-1">
+                                                <span class="fw-bold text-gray-800 fs-6">{{ msg.file_name }}</span>
+                                                <span class="text-muted fs-7">{{ (msg.file_size / 1024).toFixed(1) }} KB</span>
+                                            </div>
+
+                                            <button @click="downloadAttachment(msg)" class="btn btn-sm btn-icon btn-light-primary">
+                                                <KTIcon icon-name="arrow-down" icon-class="fs-3" />
+                                            </button>
+                                        </div>
                                     </div>
                                     <p class="fw-semibold mb-0" style="max-width: 400px;">{{ msg.message }}</p>
                                 </div>

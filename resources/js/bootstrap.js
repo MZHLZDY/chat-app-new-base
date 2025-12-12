@@ -14,15 +14,14 @@ window.Echo = new Echo({
     forceTLS: (import.meta.env.VITE_PUSHER_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
 
-    // Gunakan authorizer manual agar lebih stabil
     authorizer: (channel, options) => {
         return {
             authorize: (socketId, callback) => {
-                axios.post('http://localhost:8000/broadcasting/auth', { // Perhatikan URL-nya (tanpa /api)
+                axios.post('http://localhost:8000/broadcasting/auth', { 
                     socket_id: socketId,
                     channel_name: channel.name
                 }, {
-                    withCredentials: true // Wajib true agar cookie terkirim
+                    withCredentials: true 
                 })
                 .then(response => {
                     callback(false, response.data);
