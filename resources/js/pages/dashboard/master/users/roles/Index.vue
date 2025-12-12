@@ -93,12 +93,22 @@ const listenForActiveChat = (contact: any) => {
     // Pastikan channels.php return array, bukan boolean
     window.Echo.join(channelName)
         .listen('.MessageSent', (e: any) => {
-            messages.value.push(e.message);
-            scrollToBottom();
+            if (e.message.sender_id !== currentUser.value?.id) {
+                const exists = messages.value.some((m: any) => m.id === e.message.id);
+                if (!exists) {
+                    messages.value.push(e.message);
+                    scrollToBottom();
+                }
+            }
         })
         .listen('.FileMessageSent', (e: any) => {
-            messages.value.push(e.message);
-            scrollToBottom();
+            if (e.message.sender_id !== currentUser.value?.id) {
+                const exists = messages.value.some((m: any) => m.id === e.message.id);
+                if (!exists) {
+                    messages.value.push(e.message);
+                    scrollToBottom();
+                }
+            }
         })
         .listen('.message.deleted', (e: any) => {
             messages.value = messages.value.filter((m: any) => m.id !== e.messageId);
@@ -137,36 +147,29 @@ const sendMessage = async () => {
     if (newMessage.value.trim()) formData.append("message", newMessage.value);
     if (fileInput.value?.files?.length) formData.append("file", fileInput.value.files[0]);
 
-    const tempId = Date.now();
-    if (!fileInput.value?.files?.length) {
-        messages.value.push({
-            id: tempId,
-            sender_id: currentUser.value.id,
-            message: newMessage.value,
-            created_at: new Date().toISOString(),
-            is_sending: true
-        });
-    }
-
+    // simpan message untuk restore jika gagal
+    const messageText = newMessage.value;
     newMessage.value = "";
-    scrollToBottom();
 
     try {
         const { data } = await axios.post("/chat/send", formData, {
             headers: { "Content-Type": "multipart/form-data" }
         });
 
-        if (!fileInput.value?.files?.length) {
-            const idx = messages.value.findIndex((m: any) => m.id === tempId);
-            if (idx !== -1) messages.value[idx] = data;
-        } else {
-             messages.value.push(data);
-             if (fileInput.value) fileInput.value.value = "";
-             scrollToBottom();
+        // Langsung push dari response API
+        const exists = messages.value.some((m: any) => m.id === data.id);
+        if (!exists) {
+            messages.value.push(data);
         }
+
+        if (fileInput.value) fileInput.value.value = "";
+        scrollToBottom();
+        
     } catch (err) {
         console.error(err);
         toast.error("Gagal kirim pesan");
+        // restore pesan jika gagal
+        newMessage.value = messageText;
     }
 };
 
