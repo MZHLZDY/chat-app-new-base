@@ -36,7 +36,7 @@
     </div>
     <!--end::Menu item-->
     <!--begin::Menu item-->
-    <div class="menu-item px-3 my-0">
+    <!-- <div class="menu-item px-3 my-0">
       <router-link
         :to="path"
         :class="{ active: themeMode === 'system' }"
@@ -48,7 +48,7 @@
         </span>
         <span class="menu-title">System</span>
       </router-link>
-    </div>
+    </div> -->
     <!--end::Menu item-->
   </div>
   <!--end::Menu-->
