@@ -232,12 +232,22 @@ const listenForActiveChat = (contact: any) => {
     // Pastikan channels.php return array, bukan boolean
     window.Echo.join(channelName)
         .listen('.MessageSent', (e: any) => {
-            messages.value.push(e.message);
-            scrollToBottom();
+            if (e.message.sender_id !== currentUser.value?.id) {
+                const exists = messages.value.some((m: any) => m.id === e.message.id);
+                if (!exists) {
+                messages.value.push(e.message);
+                scrollToBottom();
+                }
+            }
         })
         .listen('.FileMessageSent', (e: any) => {
-            messages.value.push(e.message);
-            scrollToBottom();
+             if (e.message.sender_id !== currentUser.value?.id) {
+                const exists = messages.value.some((m: any) => m.id === e.message.id);
+                if (!exists) {
+                messages.value.push(e.message);
+                scrollToBottom();
+                }
+            }
         })
         .listen('.message.deleted', (e: any) => {
             messages.value = messages.value.filter((m: any) => m.id !== e.messageId);
