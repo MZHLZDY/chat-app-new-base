@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AgoraCallController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SettingController;
@@ -70,5 +71,25 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::post('send-file', [ChatController::class, 'sendFile']);
         Route::get('download/{id}', [ChatController::class, 'downloadFile']);
         Route::delete('delete/{id}', [ChatController::class, 'deleteMessage']);
+    });
+
+    Route::prefix('call')->group(function () {
+        Route::post('/invite', [AgoraCallController::class, 'inviteCall']);
+        Route::post('/answer', [AgoraCallController::class, 'answerCall']);
+        Route::post('/end', [AgoraCallController::class, 'endCall']);
+        Route::post('/token', [AgoraCallController::class, 'generateToken']);
+        Route::post('/notification/mark-read', [AgoraCallController::class, 'markNotificationAsRead']);
+        Route::get('/notification/active', [AgoraCallController::class, 'getActiveCallNotifications']);
+    });
+
+    Route::prefix('group-call')->as('group-call.')->group(function () {
+      Route::post('/invite', [AgoraCallController::class, 'inviteGroupCall'])->name('invite');
+      Route::post('/answer', [AgoraCallController::class, 'answerGroupCall'])->name('answer');
+      Route::post('/end', [AgoraCallController::class, 'endGroupCall'])->name('end');
+      Route::post('/cancel', [AgoraCallController::class, 'cancelGroupCall'])->name('cancel'); // <-- PASTIKAN BARIS INI ADA
+      Route::post('/leave', [AgoraCallController::class, 'leaveGroupCall'])->name('leave');
+      Route::post('/recall', [AgoraCallController::class, 'recallParticipant'])->name('recall');
+      Route::post('/missed', [AgoraCallController::class, 'missedGroupCall'])->name('missed');
+      Route::post('/token', [AgoraCallController::class, 'generateGroupToken'])->name('token');
     });
 });
