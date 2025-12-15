@@ -3,12 +3,10 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from "@/stores/auth"; 
 import { themeMode } from "@/layouts/default-layout/config/helper"; 
 import { Phone, MessagesSquare } from 'lucide-vue-next';
+import ApiService from "@/core/services/ApiService";
 
-// 2. Gunakan themeMode sebagai Computed Property
 // Status tema akan otomatis mengikuti perubahan dari header/navbar
 const currentThemeMode = computed(() => themeMode.value);
-// END: Perubahan untuk Tema Dinamis
-// ===================================================================
 
 // Inisialisasi Store untuk mengambil data user yang login
 const authStore = useAuthStore();
@@ -23,6 +21,9 @@ onMounted(() => {
   timer = setInterval(() => {
     currentTime.value = new Date();
   }, 1000);
+  
+  // Load dashboard stats
+  loadDashboardStats();
 });
 
 onUnmounted(() => {
@@ -42,319 +43,425 @@ const formattedDate = computed(() => {
   return currentTime.value.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 });
 
-// Data Statis untuk Dashboard Chat (Bisa diganti dinamis nanti jika ada API-nya)
-const messageCount = ref(75);
-const onlineContacts = ref(40);
-const notifications = ref('90+');
+// Data Dinamis untuk Dashboard Chat
+const unreadMessages = ref(0); // Hijau - Pesan belum dibaca (personal + group)
+const totalContacts = ref(0);   // Biru - Total kontak/user personal
+const totalGroups = ref(0);     // Oranye - Total grup
 
+const isLoading = ref(false);
+
+// Fungsi untuk load data dari API
+const loadDashboardStats = async () => {
+  try {
+    isLoading.value = true;
+    
+    // Panggil API untuk mendapatkan statistik dashboard
+    const response = await ApiService.get('/dashboard/stats');
+    
+    if (response.data) {
+      unreadMessages.value = response.data.unread_messages || 0;
+      totalContacts.value = response.data.total_contacts || 0;
+      totalGroups.value = response.data.total_groups || 0;
+    }
+  } catch (error) {
+    console.error('Error loading dashboard stats:', error);
+    // Set default values jika error
+    unreadMessages.value = 0;
+    totalContacts.value = 0;
+    totalGroups.value = 0;
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// Format angka untuk display (jika lebih dari 99 tampilkan 99+)
+const formatCount = (count: number): string => {
+  return count > 99 ? '99+' : count.toString();
+};
 </script>
 
 <template>
-  <div class="welcome-container" :class="{ 'light-mode': currentThemeMode === 'light' }">
-  <div class="dashboard-content-wrapper">
-        <div class="glass-card welcome-card">
-        <div class="illustration-area chat-theme">
-            <div class="chat-illustration">
-                <MessagesSquare />
-            </div>
-            
-            <h2>HELLO {{ currentUser?.name?.toUpperCase() || 'USER' }}!</h2>
-            
-            <h4 class="text-blue-500 dark:text-blue-400 mt-1">
-              Selamat datang di pusat obrolan Anda!
-            </h4>
+  <div class="dashboard-container" :class="{ 'dark-mode': currentThemeMode === 'dark' }">
+    <div class="dashboard-grid">
+      
+      <!-- Bagian Kiri: Welcome Card -->
+      <div class="welcome-card">
+        <div class="welcome-content">
+          <div class="icon-wrapper">
+            <MessagesSquare />
+          </div>
+          
+          <h2 class="welcome-title">HELLO {{ currentUser?.name?.toUpperCase() || 'USER' }}!</h2>
+          
+          <h4 class="welcome-subtitle">
+            Selamat datang di pusat obrolan Anda!
+          </h4>
         </div>
 
-        <button class="explore-button chat-button">LIHAT OBROLAN</button>
+        <button class="btn-chat">LIHAT OBROLAN</button>
+      </div>
+
+      <!-- Bagian Kanan: Info Cards -->
+      <div class="info-section">
+        
+        <!-- Card Phone -->
+        <div class="info-card phone-card">
+          <p class="phone-text" :title="currentUser?.phone">
+            <Phone class="phone-icon"/> : {{ currentUser?.phone || 'xxxxxxx' }}
+          </p>
         </div>
 
-        <div class="side-panel">
-            <div class="glass-card profile-card">
-                <p class="number-text" :title="currentUser?.phone">
-                  <Phone class="w-2 h-2"/> : {{ currentUser?.phone || 'xxxxxxx' }}
-                </p>
-            </div>
-
-            <div class="glass-card time-card">
-                <h1>{{ formattedTime }}</h1>
-                <p>{{ formattedDate }}</p>
-            </div>
-
-            <div class="glass-card progress-card">
-                <div class="progress-item">
-                    <div class="circle" :style="{'--p': 75, '--c': '#4ADE80', '--b': 'var(--circle-bg)'}">
-                        <span>{{ messageCount }}</span>
-                    </div>
-                    <p>Pesan Baru</p>
-                </div>
-                <div class="progress-item">
-                    <div class="circle" :style="{'--p': 40, '--c': '#60A5FA', '--b': 'var(--circle-bg)'}">
-                        <span>{{ onlineContacts }}</span>
-                    </div>
-                    <p>Kontak Aktif</p>
-                </div>
-                <div class="progress-item">
-                    <div class="circle" :style="{'--p': 90, '--c': '#F97316', '--b': 'var(--circle-bg)'}">
-                        <span>{{ notifications }}</span>
-                    </div>
-                    <p>Notifikasi</p>
-                </div>
-            </div>
+        <!-- Card Time & Date -->
+        <div class="info-card time-card">
+          <h1 class="time-display">{{ formattedTime }}</h1>
+          <p class="date-display">{{ formattedDate }}</p>
         </div>
+
+        <!-- Card Statistics -->
+        <div class="info-card stats-card">
+          <div class="stat-item">
+            <div class="stat-circle stat-circle-green" :class="{ 'loading': isLoading }">
+              <span v-if="!isLoading">{{ formatCount(unreadMessages) }}</span>
+              <span v-else class="loading-spinner"></span>
+            </div>
+            <p class="stat-label">Pesan Belum Dibaca</p>
+          </div>
+          
+          <div class="stat-item">
+            <div class="stat-circle stat-circle-blue" :class="{ 'loading': isLoading }">
+              <span v-if="!isLoading">{{ formatCount(totalContacts) }}</span>
+              <span v-else class="loading-spinner"></span>
+            </div>
+            <p class="stat-label">Kontak Personal</p>
+          </div>
+          
+          <div class="stat-item">
+            <div class="stat-circle stat-circle-orange" :class="{ 'loading': isLoading }">
+              <span v-if="!isLoading">{{ formatCount(totalGroups) }}</span>
+              <span v-else class="loading-spinner"></span>
+            </div>
+            <p class="stat-label">Total Grup</p>
+          </div>
+        </div>
+        
+      </div>
+      
     </div>
   </div>
 </template>
 
 <style scoped>
-/* ================================================= */
-/* 1. DEFINISI VARIABEL WARNA GLOBAL (DEFAULT: DARK MODE) */
-/* ================================================= */
-/* Semua nilai ini akan menjadi default/Dark Mode */
-:root {
-    --chat-gradient-start: #1D4ED8; 
-    --chat-gradient-end: #0D9488; 
-    --main-accent-color: #60A5FA; 
-    
-    --bg-color: #2d3036; /* Latar Belakang Utama Dark Mode */
-    --text-color: #F9FAFB; /* Teks Utama Dark Mode (Putih/Terang) */
-    --text-muted: #9CA3AF;
-
-    --glass-bg-opacity: rgba(255, 255, 255, 0.15); /* Background Card Dark Mode - Lebih terang */
-    --glass-border-color: rgba(255, 255, 255, 0.2); /* Border Card Dark Mode - Lebih terlihat */
-    --circle-bg: #64748B; /* Warna Latar Belakang Lingkaran di Dark Mode - Lebih terang */
-    --icon-color: #60A5FA; /* Warna icon di Dark Mode */
-}
-
-/* ================================================= */
-/* 2. OVERRIDE LIGHT MODE */
-/* ================================================= */
-.welcome-container.light-mode {
-    --bg-color: #F8F9FA; /* Latar Belakang Utama Light Mode */
-    --text-color: #1E293B; /* Teks Utama Light Mode (Gelap) */
-    --text-muted: #64748B;
-    --glass-bg-opacity: rgba(255, 255, 255, 0.85); 
-    --glass-border-color: rgba(0, 0, 0, 0.05);
-    --circle-bg: #E2E8F0; /* Latar Belakang Lingkaran di Light Mode */
-    
-    color: var(--text-color); 
-}
-
-
-/* ================================================= */
-/* 3. PENGATURAN UMUM & DIMENSI */
-/* ================================================= */
-
-.welcome-container {
-  background: var(--bg-color); 
-  color: var(--text-color);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+/* Base Container */
+.dashboard-container {
   min-height: 100vh;
-  padding: 0;
-  
-  display: flex;
-  flex-direction: column; 
-  align-items: center; 
-  padding-top: 50px; 
-  transition: background 0.3s, color 0.3s; 
+  padding: 2rem;
+  background-color: #f5f5f5;
+  transition: background-color 0.3s ease;
 }
 
-.dashboard-content-wrapper {
-    display: flex;
-    gap: 30px; 
-    padding: 30px;
-    width: 90%; 
-    max-width: 1000px; 
-    box-sizing: border-box;
-    align-items: flex-start;
+/* Dark Mode Background */
+.dashboard-container.dark-mode {
+  background-color: #1e1e2d;
 }
 
-/* 4. Gaya Glassmorphism */
-.glass-card {
-  background: var(--glass-bg-opacity);
-  backdrop-filter: blur(10px); 
-  border: 1px solid var(--glass-border-color);
-  border-radius: 20px;
-  padding: 30px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
-  margin: 0; 
-  transition: all 0.3s ease-in-out;
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-/* 5. Gaya Area Utama Welcome */
+/* Welcome Card - Kiri */
 .welcome-card {
-  flex-grow: 1; 
-  max-width: 500px;
-  height: 500px; 
+  background: white;
+  border-radius: 1rem;
+  padding: 3rem;
   display: flex;
   flex-direction: column;
-  justify-content: space-around; 
-  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.dark-mode .welcome-card {
+  background: #2b2b40;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.welcome-content {
   text-align: center;
 }
 
-.number-text {
-    font-size: 0.95em;
-    font-weight: 500;
-    margin: 0;
-    white-space: nowrap;      /* Mencegah teks turun ke baris baru */
-    overflow: hidden;         /* Menyembunyikan teks yang kepanjangan */
-    text-overflow: ellipsis;  /* Menambahkan '...' jika teks terpotong */
-    max-width: 190px;         /* Batas lebar teks email */
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.icon-wrapper {
+  display: inline-flex;
+  padding: 1.5rem;
+  background: #f0f0f0;
+  border-radius: 50%;
+  margin-bottom: 2rem;
+  transition: background-color 0.3s ease;
 }
 
-.chat-illustration {
-    width: 100px;
-    height: 100px;
-    margin: 0 auto 30px;
-    font-weight: 800;
+.dark-mode .icon-wrapper {
+  background: #3a3a52;
 }
 
-.chat-illustration svg {
-    width: 100%;
-    height: 100%;
-    stroke: var(--text-color); 
-    stroke-width: 3;
-    fill: none;
-    filter: none; 
+.icon-wrapper svg {
+  width: 3rem;
+  height: 3rem;
+  color: #333;
+  transition: color 0.3s ease;
 }
 
-.welcome-card h2 {
-  font-size: 2.2em;
-  font-weight: 700;
-  margin-bottom: 5px;
-  color: var(--main-accent-color); 
+.dark-mode .icon-wrapper svg {
+  color: #a1a5b7;
 }
 
-.welcome-card p {
-  font-size: 1.1em;
-  color: var(--text-muted); 
+.welcome-title {
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 1rem;
+  color: #0959ee;
+  transition: color 0.3s ease;
 }
 
-/* Tombol Aksi */
-.explore-button {
-  background: none; 
-  border: 2px solid var(--main-accent-color); 
-  color: var(--main-accent-color); 
-  padding: 12px 30px;
-  border-radius: 50px;
+.dark-mode .welcome-title {
+  color: #10a4fa;
+}
+
+.welcome-subtitle {
+  font-size: 1.125rem;
+  color: #666;
+  margin-bottom: 2rem;
+  transition: color 0.3s ease;
+}
+
+.dark-mode .welcome-subtitle {
+  color: #a1a5b7;
+}
+
+.btn-chat {
+  padding: 1rem 2rem;
+  background: #333;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
   font-weight: 600;
   cursor: pointer;
-  letter-spacing: 1px;
-  transition: all 0.3s;
-  margin-top: 20px;
-}
-.welcome-container.light-mode .explore-button:hover {
-    background: var(--main-accent-color);
-    color: white;
-}
-.explore-button:hover { /* Hover di Dark Mode */
-    background: var(--main-accent-color);
-    color: white;
+  transition: all 0.3s ease;
 }
 
+.btn-chat:hover {
+  background: #555;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
 
-/* 6. Gaya Panel Samping */
-.side-panel {
+.dark-mode .btn-chat {
+  background: #4a4a68;
+}
+
+.dark-mode .btn-chat:hover {
+  background: #5a5a7a;
+}
+
+/* Info Section - Kanan */
+.info-section {
   display: flex;
   flex-direction: column;
-  width: 300px;
-  gap: 20px;
-  height: 500px; 
-  flex-shrink: 0; 
+  gap: 1.5rem;
 }
 
-.profile-card {
-  height: 70px;
-  flex-shrink: 0; 
+.info-card {
+  background: white;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.dark-mode .info-card {
+  background: #2b2b40;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Phone Card */
+.phone-card {
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
+.phone-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  color: #333;
+  transition: color 0.3s ease;
+}
+
+.dark-mode .phone-text {
+  color: #ffffff;
+}
+
+.phone-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Time Card */
 .time-card {
-  height: 120px;
-  flex-shrink: 0;
+  text-align: center;
 }
 
-.progress-card {
-    flex-grow: 1; 
-    display: flex;
-    flex-direction: row;
-    justify-content: space-around;
-    align-items: center;
+.time-display {
+  font-size: 2.5rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  color: #0959ee;
+  transition: color 0.3s ease;
 }
 
-/* Avatar sudah dihapus, style ini tidak lagi dipakai untuk avatar huruf inisial */
-.avatar {
-  display: none; 
+.dark-mode .time-display {
+  color: #10a4fa;
 }
 
-.time-card h1 {
-  font-size: 2.5em;
-  margin: 0;
-  color: var(--text-color);
+.date-display {
+  font-size: 1rem;
+  color: #666;
+  transition: color 0.3s ease;
 }
 
-.time-card p {
-  color: var(--text-muted);
-  margin-top: 5px;
+.dark-mode .date-display {
+  color: #a1a5b7;
 }
 
-/* 7. Gaya Progres Lingkaran */
-.progress-item p {
-    color: var(--text-muted);
+/* Stats Card */
+.stats-card {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap: 1rem;
 }
 
-.circle {
-  --p: 0; 
-  --c: #4ADE80; 
-  --b: var(--circle-bg); 
-  --w: 70px; 
-  
-  width: var(--w);
-  height: var(--w);
+.stat-item {
+  text-align: center;
+}
+
+.stat-circle {
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  background: 
-    radial-gradient(closest-side, var(--bg-color) 79%, transparent 80% 100%),
-    conic-gradient(var(--c) calc(var(--p) * 1%), var(--b) 0);
-  display: grid;
-  place-items: center;
-  font-size: 0.9em;
-  margin: 0 auto;
-  transition: background 0.3s; /* Tambahkan transisi halus */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 0.75rem;
+  font-size: 1.5rem;
+  font-weight: bold;
+  border: 4px solid;
+  transition: all 0.3s ease;
 }
 
-.circle span {
-    color: var(--text-color);
-    font-weight: 600;
+.stat-circle-green {
+  border-color: #4ade80;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.1);
 }
 
-/* Media Query */
-@media (max-width: 900px) {
-  .dashboard-content-wrapper {
-    flex-direction: column;
-    padding: 20px;
-    gap: 15px;
-    width: 100%;
-    max-width: none;
+.dark-mode .stat-circle-green {
+  background: rgba(74, 222, 128, 0.15);
+}
+
+.stat-circle-blue {
+  border-color: #60a5fa;
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.1);
+}
+
+.dark-mode .stat-circle-blue {
+  background: rgba(96, 165, 250, 0.15);
+}
+
+.stat-circle-orange {
+  border-color: #fb923c;
+  color: #fb923c;
+  background: rgba(251, 146, 60, 0.1);
+}
+
+.dark-mode .stat-circle-orange {
+  background: rgba(251, 146, 60, 0.15);
+}
+
+.stat-label {
+  font-size: 0.875rem;
+  color: #666;
+  transition: color 0.3s ease;
+}
+
+.dark-mode .stat-label {
+  color: #a1a5b7;
+}
+
+/* Loading State */
+.stat-circle.loading {
+  opacity: 0.6;
+}
+
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Hover Effects */
+.info-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.dark-mode .info-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.stat-circle:hover {
+  transform: scale(1.1);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
   }
-  .welcome-card, .side-panel {
-    width: 100%;
-    max-width: 100%;
-    height: auto;
-    flex-shrink: 1;
+}
+
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 1rem;
   }
+
   .welcome-card {
-      padding: 25px;
+    padding: 2rem;
   }
-  .side-panel {
-      gap: 15px;
+
+  .welcome-title {
+    font-size: 1.5rem;
   }
-  .progress-card {
-    flex-wrap: wrap;
-    justify-content: space-evenly;
+
+  .stats-card {
+    flex-direction: column;
+  }
+  
+  .stat-circle {
+    width: 100px;
+    height: 100px;
   }
 }
 </style>
