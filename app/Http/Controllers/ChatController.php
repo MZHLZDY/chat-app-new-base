@@ -18,6 +18,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;   
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver; 
+use Carbon\Carbon;
 
 class ChatController extends Controller
 {
@@ -27,6 +28,8 @@ class ChatController extends Controller
     public function getContacts()
     {
         $authId = Auth::id();
+        
+        // Update last_seen saya saat load kontak
         User::where('id', $authId)->update(['last_seen' => now()]);
 
         $contacts = User::join('contacts', 'users.id', '=', 'contacts.friend_id')
@@ -39,27 +42,51 @@ class ChatController extends Controller
                 $contact->name = $contact->alias;
             }
 
+            // Logic Last Message
             $lastMsg = ChatMessage::where(function ($q) use ($authId, $contact) {
                 $q->where('sender_id', $authId)->where('receiver_id', $contact->id);
             })->orWhere(function ($q) use ($authId, $contact) {
                 $q->where('sender_id', $contact->id)->where('receiver_id', $authId);
-            })->latest()->first();
+            })
+            ->orderBy('created_at', 'desc')
+            ->first();
 
-            $contact->latest_message = $lastMsg;
-            
-            $contact->unread_count = ChatMessage::where('sender_id', $contact->id)
+            $contact->last_message = $lastMsg ? $lastMsg->message : null;
+            $contact->last_message_time = $lastMsg ? $lastMsg->created_at : null;
+            $isOnline = false;
+            if ($contact->last_seen) {
+                $lastSeen = Carbon::parse($contact->last_seen);
+                if ($lastSeen->diffInMinutes(now()) < 2) {
+                    $isOnline = true;
+                }
+            }
+            $contact->is_online = $isOnline; 
+
+            $unreadCount = ChatMessage::where('sender_id', $contact->id)
                 ->where('receiver_id', $authId)
                 ->whereNull('read_at')
                 ->count();
+            
+            $contact->unread_count = $unreadCount;
         }
-
-        $sortedContacts = $contacts->sortByDesc(function ($contact) {
-            return $contact->latest_message 
-                ? $contact->latest_message->created_at 
-                : $contact->contact_added_at;
+        $contacts = $contacts->sortByDesc(function ($contact) {
+            if ($contact->unread_count > 0) return 2;
+            if ($contact->last_message_time) return 1;
+            return 0;
         })->values();
 
-        return response()->json(['data' => $sortedContacts]);
+        return response()->json($contacts);
+    }
+
+    /**
+     * HEARTBEAT (Update status online user setiap interval tertentu)
+     */
+    public function heartbeat()
+    {
+        if (Auth::check()) {
+            User::where('id', Auth::id())->update(['last_seen' => now()]);
+        }
+        return response()->json(['status' => 'online']);
     }
 
     /**

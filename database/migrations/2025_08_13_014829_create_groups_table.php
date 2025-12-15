@@ -25,10 +25,8 @@ return new class extends Migration {
             $table->timestamps();
         });
 
-        // 3. Update Tabel Chat Messages (Tambah kolom group_id)
         Schema::table('chat_messages', function (Blueprint $table) {
             $table->foreignId('group_id')->nullable()->after('receiver_id')->constrained()->onDelete('cascade');
-            // Ubah receiver_id jadi nullable karena kalau group chat, receiver-nya kosong
             $table->foreignId('receiver_id')->nullable()->change(); 
         });
     }
