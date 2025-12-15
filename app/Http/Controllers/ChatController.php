@@ -256,6 +256,7 @@ class ChatController extends Controller
             if ($message->file_path && Storage::disk('public')->exists($message->file_path)) {
                 Storage::disk('public')->delete($message->file_path);
             }
+
             $message->delete();
             
             broadcast(new MessageDeleted($message))->toOthers();

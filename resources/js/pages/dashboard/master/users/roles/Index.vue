@@ -7,7 +7,7 @@ import { format, isToday, isYesterday, isSameDay, formatDistanceToNow } from 'da
 import { id } from 'date-fns/locale'; 
 import { Phone, Video } from 'lucide-vue-next';
 
-// Component Form Kontak (Edit/Add)
+// Component Form Kontak
 import ContactForm from "./Form.vue";
 import EditForm from "./Edit.vue";
 
@@ -37,23 +37,20 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const isAddContactOpen = ref(false);
 const isEditContactOpen = ref(false);
 const contactIdToEdit = ref<string | number | undefined>(undefined);
-
-// State Modal Hapus
 const isDeleteModalOpen = ref(false);
 const messageToDelete = ref<any>(null);
-
-// State Lightbox
 const isLightboxOpen = ref(false);
 const activeLightboxUrl = ref("");
 
-// State Heartbeat Interval
 const heartbeatInterval = ref<any>(null);
+const onlineUsersSet = ref(new Set<string>()); 
 
 const getChatChannel = (otherId: any) => {
     if (!currentUser.value) return "";
-    return currentUser.value.id < otherId 
-        ? `chat.${currentUser.value.id}.${otherId}`
-        : `chat.${otherId}.${currentUser.value.id}`;
+    const myId = parseInt(String(currentUser.value.id));
+    const friendId = parseInt(String(otherId));
+    const ids = [myId, friendId].sort((a, b) => a - b);
+    return `chat.${ids[0]}.${ids[1]}`;
 };
 
 const scrollToBottom = () => {
@@ -87,11 +84,27 @@ const shouldShowDateDivider = (index: number) => {
     return !isSameDay(currentMsgDate, prevMsgDate);
 };
 
-// Get Status Kontak (Reactive)
+// GET STATUS KONTAK
 const getContactStatus = (contact: any) => {
+    if (!contact) return '';
+    if (onlineUsersSet.value.has(String(contact.id))) return 'Online';
     if (contact.is_online) return 'Online';
-    if (!contact.last_seen) return 'Offline';
-    return 'Terakhir dilihat ' + formatDistanceToNow(new Date(contact.last_seen), { addSuffix: true, locale: id });
+    if (contact.last_seen) {
+        return 'Terakhir dilihat ' + formatDistanceToNow(new Date(contact.last_seen), { 
+            addSuffix: true, 
+            locale: id 
+        });
+    }
+    return 'Offline';
+};
+
+const syncOnlineStatus = () => {
+    contacts.value.forEach(contact => {
+        const strId = String(contact.id);
+        if (onlineUsersSet.value.has(strId)) {
+            contact.is_online = true;
+        }
+    });
 };
 
 const fetchContacts = async () => {
@@ -99,17 +112,20 @@ const fetchContacts = async () => {
     try {
         const response = await axios.get("/chat/contacts");
         contacts.value = response.data;
-        
-        // Sync active contact if exists
+
+        syncOnlineStatus();
         if (activeContact.value) {
             const updatedActive = contacts.value.find(c => c.id === activeContact.value.id);
             if (updatedActive) {
-                activeContact.value.is_online = updatedActive.is_online;
-                activeContact.value.last_seen = updatedActive.last_seen;
-                activeContact.value.photo = updatedActive.photo;
                 activeContact.value.name = updatedActive.name;
+                activeContact.value.photo = updatedActive.photo;
+                activeContact.value.last_seen = updatedActive.last_seen; 
+                if (onlineUsersSet.value.has(String(updatedActive.id))) {
+                    activeContact.value.is_online = true;
+                }
             }
         }
+
     } catch (error) {
         console.error("Gagal memuat kontak", error);
     } finally {
@@ -118,7 +134,14 @@ const fetchContacts = async () => {
 };
 
 const selectContact = async (contact: any) => {
+    if (activeContact.value && window.Echo) {
+        try {
+            window.Echo.leave(getChatChannel(activeContact.value.id));
+        } catch (e) {}
+    }
+
     activeContact.value = contact;
+    messages.value = [];
     
     const contactIndex = contacts.value.findIndex(c => c.id === contact.id);
     if (contactIndex !== -1) {
@@ -126,6 +149,8 @@ const selectContact = async (contact: any) => {
     }
 
     await getMessages(contact.id);
+    
+    listenForActiveChat(contact);
 };
 
 const getMessages = async (friendId: any) => {
@@ -165,6 +190,8 @@ const sendMessage = async () => {
     newMessage.value = "";
     scrollToBottom();
 
+    refreshContactOrder(activeContact.value.id);
+
     try {
         await axios.post("/chat/send", {
             receiver_id: activeContact.value.id,
@@ -196,6 +223,7 @@ const uploadFile = async () => {
         });
         messages.value.push(response.data);
         scrollToBottom();
+        refreshContactOrder(activeContact.value.id);
     } catch (error) {
         console.error(error);
         toast.error("Gagal mengirim file");
@@ -218,6 +246,14 @@ const downloadAttachment = async (msg: any) => {
     }
 };
 
+const refreshContactOrder = (contactId: any) => {
+    const idx = contacts.value.findIndex(c => c.id === contactId);
+    if (idx !== -1) {
+        const contact = contacts.value.splice(idx, 1)[0];
+        contacts.value.unshift(contact);
+    }
+};
+
 const openDeleteModal = (msg: any) => {
     messageToDelete.value = msg;
     isDeleteModalOpen.value = true;
@@ -230,17 +266,13 @@ const closeDeleteModal = () => {
 
 const confirmDelete = async (type: 'me' | 'everyone') => {
     if (!messageToDelete.value) return;
-    
     try {
-        await axios.delete(`/chat/messages/${messageToDelete.value.id}`, {
-            data: { type }
-        });
+        await axios.delete(`/chat/delete/${messageToDelete.value.id}`, { data: { type } });
         messages.value = messages.value.filter(m => m.id !== messageToDelete.value.id);
         toast.success(type === 'everyone' ? "Pesan dihapus untuk semua" : "Pesan dihapus untuk saya");
         closeDeleteModal();
     } catch (error: any) {
-        console.error(error);
-        toast.error(error.response?.data?.error || "Gagal menghapus pesan");
+        toast.error("Gagal menghapus pesan");
     }
 };
 
@@ -254,12 +286,72 @@ const closeLightbox = () => {
 };
 
 const openAddContactModal = () => {
+    contactIdToEdit.value = undefined;
     isAddContactOpen.value = true;
 };
-
 const openEditContactModal = (contact: any) => {
     contactIdToEdit.value = contact.id;
     isEditContactOpen.value = true;
+};
+
+const listenForActiveChat = (contact: any) => {
+    if (!window.Echo) return;
+    const channelName = getChatChannel(contact.id);
+
+    window.Echo.join(channelName)
+        .listen('.MessageSent', (e: any) => {
+            if (e.message.sender_id !== currentUser.value?.id) {
+                const exists = messages.value.some((m: any) => m.id === e.message.id);
+                if (!exists) {
+                    messages.value.push(e.message);
+                    scrollToBottom();
+                }
+            }
+        })
+        .listen('.FileMessageSent', (e: any) => {
+             if (e.message.sender_id !== currentUser.value?.id) {
+                const exists = messages.value.some((m: any) => m.id === e.message.id);
+                if (!exists) {
+                    messages.value.push(e.message);
+                    scrollToBottom();
+                }
+            }
+        })
+        .listen('.message.deleted', (e: any) => {
+            messages.value = messages.value.filter((m: any) => m.id !== e.messageId);
+        });
+};
+
+const listenGlobalNotifications = () => {
+    if (!currentUser.value) return;
+    
+    window.Echo.private(`notifications.${currentUser.value.id}`)
+        .listen('.MessageSent', (e: any) => {
+            if (!activeContact.value || activeContact.value.id !== e.message.sender_id) {
+                const idx = contacts.value.findIndex(c => c.id === e.message.sender_id);
+                if (idx !== -1) {
+                    contacts.value[idx].unread_count += 1;
+                    const contact = contacts.value.splice(idx, 1)[0];
+                    contacts.value.unshift(contact);
+                }
+            }
+        });
+};
+
+const updateContactStatus = (userId: any, isOnline: boolean) => {
+    const strUserId = String(userId);
+    const contact = contacts.value.find(c => String(c.id) === strUserId);
+    
+    if (contact) {
+        contact.is_online = isOnline;
+        if (!isOnline) {
+            contact.last_seen = new Date().toISOString();
+        }
+        if (activeContact.value && String(activeContact.value.id) === strUserId) {
+            activeContact.value.is_online = isOnline;
+            if (!isOnline) activeContact.value.last_seen = contact.last_seen;
+        }
+    }
 };
 
 watch(messages, () => {
@@ -277,57 +369,28 @@ watch(activeContact, (newVal, oldVal) => {
 onMounted(() => {
     fetchContacts();
 
-    if (currentUser.value) {
-        // A. PRIVATE CHANNEL (Pesan Masuk)
-        window.Echo.private(`chat.${currentUser.value.id}`)
-            .listen("MessageSent", (e: any) => {
-                if (activeContact.value && activeContact.value.id === e.message.sender_id) {
-                    messages.value.push(e.message);
-                    axios.post(`/chat/read/${e.message.id}`);
-                } else {
-                    const sender = contacts.value.find(c => c.id === e.message.sender_id);
-                    if (sender) {
-                        sender.unread_count = (sender.unread_count || 0) + 1;
-                    }
-                }
-                fetchContacts(); 
-            })
-            .listen("MessageDeleted", (e: any) => {
-                messages.value = messages.value.filter(m => m.id !== e.message_id);
-            });
-
+    if (currentUser.value && window.Echo) {
+        listenGlobalNotifications();
         window.Echo.join('online')
             .here((users: any[]) => {
-                users.forEach(onlineUser => {
-                    const contact = contacts.value.find(c => c.id === onlineUser.id);
-                    if (contact) {
-                        contact.is_online = true;
-                    }
-                });
+                onlineUsersSet.value.clear();
+                users.forEach(u => onlineUsersSet.value.add(String(u.id)));
+                syncOnlineStatus();
             })
             .joining((user: any) => {
-                const contact = contacts.value.find(c => c.id === user.id);
-                if (contact) {
-                    contact.is_online = true;
-                    if (activeContact.value && activeContact.value.id === contact.id) {
-                        activeContact.value.is_online = true;
-                    }
-                }
+                onlineUsersSet.value.add(String(user.id));
+                updateContactStatus(user.id, true);
             })
             .leaving((user: any) => {
-                // Teman offline
-                const contact = contacts.value.find(c => c.id === user.id);
-                if (contact) {
-                    contact.is_online = false;
-                    contact.last_seen = new Date().toISOString(); // Update last seen realtime
-                    
-                    if (activeContact.value && activeContact.value.id === contact.id) {
-                        activeContact.value.is_online = false;
-                        activeContact.value.last_seen = contact.last_seen;
-                    }
-                }
+                const strUserId = String(user.id);
+                onlineUsersSet.value.delete(strUserId);
+                updateContactStatus(user.id, false);
+            })
+            .error((error: any) => {
+                console.error('Echo Online Error:', error);
             });
 
+        axios.post('/chat/heartbeat').catch(() => {});
         heartbeatInterval.value = setInterval(() => {
             axios.post('/chat/heartbeat').catch(() => {});
         }, 60000); 
@@ -335,9 +398,14 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-    if (currentUser.value) {
-        window.Echo.leave(`chat.${currentUser.value.id}`);
-        window.Echo.leave('online');
+    if (window.Echo) {
+        if (currentUser.value) {
+            window.Echo.leave(`notifications.${currentUser.value.id}`);
+            window.Echo.leave('online');
+        }
+        if (activeContact.value) {
+            window.Echo.leave(getChatChannel(activeContact.value.id));
+        }
     }
     if (heartbeatInterval.value) {
         clearInterval(heartbeatInterval.value);
@@ -347,7 +415,7 @@ onUnmounted(() => {
 
 <template>
     <div class="d-flex flex-column flex-lg-row h-100">
-        <!-- SIDEBAR KONTAK -->
+        <!-- SIDEBAR -->
         <div class="flex-column flex-lg-row-auto w-100 w-lg-350px w-xl-400px mb-10 mb-lg-0">
             <div class="card card-flush h-100">
                 <div class="card-header pt-7" id="kt_chat_contacts_header">
@@ -375,8 +443,8 @@ onUnmounted(() => {
                             <div class="d-flex align-items-center">
                                 <div class="symbol symbol-45px symbol-circle">
                                     <img :src="contact.photo ? `/storage/${contact.photo}` : '/media/avatars/blank.png'" alt="pic" />
-                                    <!-- INDIKATOR ONLINE (REALTIME) -->
-                                    <div v-if="contact.is_online" class="symbol-badge bg-success start-100 top-100 border-4 h-8px w-8px ms-n2 mt-n2"></div>
+                                    <!-- INDICATOR ONLINE -->
+                                    <div v-if="onlineUsersSet.has(String(contact.id)) || contact.is_online" class="symbol-badge bg-success start-100 top-100 border-4 h-8px w-8px ms-n2 mt-n2"></div>
                                 </div>
                                 <div class="ms-5">
                                     <span class="fs-5 fw-bold text-gray-900 mb-2 d-block">{{ contact.name }}</span>
@@ -408,7 +476,8 @@ onUnmounted(() => {
                     <div class="card-header d-flex align-items-center p-3 border-bottom sticky-top" style="min-height: 70px;">
                         <div class="symbol symbol-45px symbol-circle me-3">
                             <img :src="activeContact.photo ? `/storage/${activeContact.photo}` : '/media/avatars/blank.png'" alt="image" />
-                            <div v-if="activeContact.is_online" class="symbol-badge bg-success start-100 top-100 border-4 h-10px w-10px ms-n2 mt-n2"></div>
+                            <!-- STATUS ICON DI HEADER -->
+                            <div v-if="onlineUsersSet.has(String(activeContact.id)) || activeContact.is_online" class="symbol-badge bg-success start-100 top-100 border-4 h-10px w-10px ms-n2 mt-n2"></div>
                         </div>
 
                         <div class="d-flex flex-column flex-grow-1">
@@ -418,18 +487,18 @@ onUnmounted(() => {
                                     <i class="fas fa-pen fs-9"></i>
                                 </button>
                             </div>
-                            <!-- STATUS TEXT REALTIME -->
-                            <span class="fs-8" :class="activeContact.is_online ? 'text-success fw-bold' : 'text-muted'">
+                            <!-- STATUS TEXT -->
+                            <span class="fs-8" :class="(onlineUsersSet.has(String(activeContact.id)) || activeContact.is_online) ? 'text-success fw-bold' : 'text-muted'">
                                 {{ getContactStatus(activeContact) }}
                             </span>
                         </div>
                         
-                        <!-- Video Call Buttons (Opsional) -->
-                        <div class="d-flex">
-                            <button>
+                        <!-- Video Call Buttons -->
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-icon btn-sm btn-light-primary">
                                 <Video class="w-5 h-5 text-gray-700 dark:text-gray-300"/>
                             </button>
-                            <button>
+                            <button class="btn btn-icon btn-sm btn-light-primary">
                                 <Phone class="w-5 h-5 text-gray-700 dark:text-gray-300"/>
                             </button>
                         </div>
@@ -519,22 +588,110 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.scroll-y { overflow-y: auto; scrollbar-width: thin; scrollbar-color: #d1d5db transparent; }
-.hover-effect { transition: background-color 0.2s; }
-.hover-effect:hover { background-color: #f1faff; }
-.modal-overlay, .lightbox-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: rgba(0, 0, 0, 0.5); z-index: 9999; display: flex; justify-content: center; align-items: center; backdrop-filter: blur(2px); animation: fadeIn 0.2s ease-out; }
-.lightbox-overlay { background-color: rgba(0, 0, 0, 0.9); z-index: 10000; }
-.delete-btn-wrapper { opacity: 0; transition: opacity 0.2s; }
-.group-hover:hover .delete-btn-wrapper { opacity: 1; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.chat-body-custom { height: calc(100vh - 265px); overflow-y: auto; background-color: #f9f9f9; scroll-behavior: smooth; }
-.receiver-bubble { background-color: #ffffff; color: #3f4254; }
-[data-bs-theme="dark"] .chat-body-custom { background-color: #151521 !important; }
-[data-bs-theme="dark"] .card-header, [data-bs-theme="dark"] .card-footer { background-color: #1e1e2d !important; border-bottom: 1px solid #2b2b40 !important; border-top: 1px solid #2b2b40 !important; }
-[data-bs-theme="dark"] .receiver-bubble { background-color: #2b2b40 !important; color: #ffffff !important; }
-[data-bs-theme="dark"] .form-control-solid { background-color: #1b1b29 !important; border-color: #2b2b40 !important; color: #ffffff !important; }
-[data-bs-theme="dark"] .bg-white { background-color: #1e1e2d !important; color: #fff !important; }
-[data-bs-theme="dark"] .text-gray-900 { color: #fff !important; }
-[data-bs-theme="dark"] .text-muted { color: #7e8299 !important; }
-[data-bs-theme="dark"] .hover-effect:hover { background-color: #2b2b40 !important; }
+/* Scrollbar Customization */
+.scroll-y {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+}
+
+/* Hover Effects */
+.hover-effect {
+    transition: background-color 0.2s ease;
+}
+
+.hover-effect:hover {
+    background-color: #f1faff;
+}
+
+/* Modal & Lightbox Overlays */
+.modal-overlay,
+.lightbox-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.lightbox-overlay {
+    background-color: rgba(0, 0, 0, 0.9);
+    z-index: 10000;
+}
+
+/* Delete Button Visibility */
+.delete-btn-wrapper {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.group-hover:hover .delete-btn-wrapper {
+    opacity: 1;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Chat Body Layout */
+.chat-body-custom {
+    height: calc(100vh - 265px);
+    overflow-y: auto;
+    background-color: #f9f9f9; /* Default Light Mode */
+    scroll-behavior: smooth;
+}
+
+/* Message Bubble Colors */
+.receiver-bubble {
+    background-color: #ffffff;
+    color: #3f4254; /* Text Dark */
+}
+/* Dark Mode Styles */
+[data-bs-theme="dark"] .chat-body-custom {
+    background-color: #151521 !important; /* Background Gelap */
+}
+
+[data-bs-theme="dark"] .card-header,
+[data-bs-theme="dark"] .card-footer {
+    background-color: #1e1e2d !important;
+    border-bottom: 1px solid #2b2b40 !important;
+    border-top: 1px solid #2b2b40 !important;
+}
+
+[data-bs-theme="dark"] .receiver-bubble {
+    background-color: #2b2b40 !important;
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .form-control-solid {
+    background-color: #1b1b29 !important;
+    border-color: #2b2b40 !important;
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .bg-white {
+    background-color: #1e1e2d !important;
+    color: #fff !important;
+}
+
+[data-bs-theme="dark"] .text-gray-900 {
+    color: #fff !important;
+}
+
+[data-bs-theme="dark"] .text-muted {
+    color: #7e8299 !important;
+}
+
+[data-bs-theme="dark"] .hover-effect:hover {
+    background-color: #2b2b40 !important;
+}
 </style>
