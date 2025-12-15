@@ -66,6 +66,8 @@ Route::middleware(['auth', 'json'])->group(function () {
     Route::prefix('chat')->group(function () {
         Route::get('contacts', [ChatController::class, 'getContacts']);
         Route::post('add-contact', [ChatController::class, 'addContact']);
+        Route::get('contacts/{id}', [ChatController::class, 'showContact']);
+        Route::put('contacts/{id}', [ChatController::class, 'updateContact']); 
         Route::get('messages/{id}', [ChatController::class, 'getMessages']);
         Route::post('send', [ChatController::class, 'sendMessage']);
         Route::post('send-file', [ChatController::class, 'sendFile']);

@@ -7,7 +7,8 @@ import { format, isToday, isYesterday, isSameDay, formatDistanceToNow } from 'da
 import { id } from 'date-fns/locale'; // Pastikan install: npm install date-fns
 
 // Component Form Kontak (Edit/Add)
-import ContactForm from "./Form.vue"; 
+import ContactForm from "./Form.vue";
+import EditForm from "./Edit.vue";
 
 // Definisi Global Echo
 declare global {
@@ -33,6 +34,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 
 // --- STATE MODAL ---
 const isAddContactOpen = ref(false);
+const isEditContactOpen = ref(false);
 const contactIdToEdit = ref<string | number | undefined>(undefined);
 
 // State Modal Hapus
@@ -155,13 +157,8 @@ const selectContact = async (contact: any) => {
         isLoadingMessages.value = false;
     }
 
-    // 4. Listen Realtime
     listenForActiveChat(contact);
 };
-
-// =========================================================================
-// 3. LOGIKA KIRIM & DOWNLOAD
-// =========================================================================
 
 const sendMessage = async () => {
     const file = fileInput.value?.files?.[0];
@@ -173,22 +170,18 @@ const sendMessage = async () => {
     
     if (file) {
         formData.append("file", file);
-        // Reset input file visual
         if (fileInput.value) fileInput.value.value = "";
     }
 
     try {
-        // Optimistic UI (opsional): Bisa push dulu ke messages.value biar cepet
         const { data } = await axios.post("/chat/send", formData, {
             headers: { "Content-Type": "multipart/form-data" }
         });
 
-        // Tambahkan ke list (jika tidak pakai echo listener u/ diri sendiri)
         messages.value.push(data);
         newMessage.value = "";
         scrollToBottom();
 
-        // Pindahkan kontak ke paling atas
         refreshContactOrder(activeContact.value.id, data.message);
 
     } catch (error: any) {
@@ -220,10 +213,6 @@ const downloadAttachment = async (msg: any) => {
         toast.error("Gagal mendownload file.");
     }
 };
-
-// =========================================================================
-// 4. LOGIKA REALTIME (ECHO)
-// =========================================================================
 
 const listenForActiveChat = (contact: any) => {
     if (!window.Echo) return;
@@ -274,7 +263,6 @@ const refreshContactOrder = (contactId: any, lastMsg: string) => {
     const idx = contacts.value.findIndex(c => c.id === contactId);
     if (idx !== -1) {
         const contact = contacts.value[idx];
-        // contact.last_message = lastMsg; // jika ada field ini
         contacts.value.splice(idx, 1);
         contacts.value.unshift(contact);
     }
@@ -320,8 +308,8 @@ const openAddContactModal = () => {
     isAddContactOpen.value = true;
 };
 const openEditContactModal = (contact: any) => {
-    contactIdToEdit.value = contact.id;
-    isAddContactOpen.value = true;
+    contactIdToEdit.value = contact.id; 
+    isEditContactOpen.value = true;     
 };
 
 // LIFECYCLE
@@ -344,10 +332,16 @@ onUnmounted(() => {
         <div class="flex-column flex-lg-row-auto w-100 w-lg-350px w-xl-400px mb-10 mb-lg-0">
             <div class="card card-flush h-100">
                 <div class="card-header pt-7" id="kt_chat_contacts_header">
-                    <form class="w-100 position-relative" autocomplete="off">
-                        <KTIcon icon-name="magnifier" icon-class="fs-2 text-lg-1 text-gray-500 position-absolute top-50 ms-5 translate-middle-y" />
-                        <input type="text" class="form-control form-control-solid px-15" placeholder="Cari kontak..." />
-                    </form>
+                    <div class="d-flex align-items-center w-100">
+                        <form class="w-100 position-relative me-3" autocomplete="off">
+                            <KTIcon icon-name="magnifier" icon-class="fs-2 text-lg-1 text-gray-500 position-absolute top-50 ms-5 translate-middle-y" />
+                            <input type="text" class="form-control form-control-solid px-15" placeholder="Cari kontak..." />
+                        </form>
+                        <button class="btn btn-icon btn-primary w-40px h-40px" @click="openAddContactModal">
+                            <KTIcon icon-name="plus" icon-class="fs-2" />
+                        </button>
+                        
+                    </div>
                 </div>
                 
                 <div class="card-body pt-5" id="kt_chat_contacts_body">
@@ -382,15 +376,11 @@ onUnmounted(() => {
                         </div>
 
                     </div>
-                    
-                    <button class="btn btn-primary w-100 mt-4" @click="openAddContactModal">
-                        <KTIcon icon-name="plus" icon-class="fs-2" /> Tambah Kontak
-                    </button>
                 </div>
             </div>
         </div>
 
-<div class="flex-lg-row-fluid ms-lg-7 ms-xl-10">
+        <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10">
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
                 
                 <div v-if="!activeContact" class="card-body d-flex flex-column justify-content-center align-items-center h-100">
@@ -525,6 +515,16 @@ onUnmounted(() => {
             <ContactForm 
                 :selected="contactIdToEdit" 
                 @close="isAddContactOpen = false" 
+                @refresh="fetchContacts" 
+            />
+        </div>
+    </div>
+
+    <div v-if="isEditContactOpen" class="modal-overlay">
+        <div class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden" style="max-width: 500px; width: 100%;">
+            <EditForm 
+                :selected="contactIdToEdit" 
+                @close="isEditContactOpen = false" 
                 @refresh="fetchContacts" 
             />
         </div>

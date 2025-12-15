@@ -215,35 +215,98 @@ class ChatController extends Controller
     /**
      * 5. DELETE MESSAGE
      */
-    public function deleteMessage($id)
+    public function deleteMessage(Request $request, $id)
     {
         $user = Auth::user();
-        $message = ChatMessage::find($id);
-
+        $message = ChatMessage::findOrFail($id);
         $type = $request->input('type', 'me');
 
         if ($type === 'everyone') {
-        if ($message->sender_id !== $user->id) {
-            return response()->json(['error' => 'Hanya pengirim yang bisa menghapus untuk semua'], 403);
-        }
+            if ($message->sender_id !== $user->id) {
+                return response()->json(['error' => 'Hanya pengirim yang bisa menghapus untuk semua'], 403);
+            }
 
-        if ($message->file_path && Storage::disk('public')->exists($message->file_path)) {
-            Storage::disk('public')->delete($message->file_path);
-        }
+            if ($message->file_path && Storage::disk('public')->exists($message->file_path)) {
+                Storage::disk('public')->delete($message->file_path);
+            }
+            $message->delete();
+            
+            broadcast(new MessageDeleted($message))->toOthers();
 
-        $message->delete();
-        
-        broadcast(new MessageDeleted($message))->toOthers();
+            return response()->json(['message' => 'Pesan dihapus untuk semua orang']);
 
         } else {
-        $deletedBy = $message->deleted_by_users ?? [];
-        
-        if (!in_array($user->id, $deletedBy)) {
-            $deletedBy[] = $user->id;
-            $message->deleted_by_users = $deletedBy;
-            $message->save();
+            $deletedBy = $message->deleted_by_users ?? [];
+            
+            if (!in_array($user->id, $deletedBy)) {
+                $deletedBy[] = $user->id;
+                $message->deleted_by_users = $deletedBy;
+                $message->save();
+            }
+
+            return response()->json(['message' => 'Pesan dihapus untuk saya']);
         }
     }
-        return response()->json(['message' => 'Pesan berhasil dihapus']);
+    
+    /**
+     * 6. SHOW CONTACT (Untuk mengisi Form saat Edit)
+     */
+    public function showContact($friendId)
+    {
+        $myId = Auth::id();
+
+        $friend = User::findOrFail($friendId);
+        $contact = Contact::where('user_id', $myId)
+            ->where('friend_id', $friendId)
+            ->first();
+
+        return response()->json([
+            'id' => $friend->id,
+            'name' => $friend->name,       
+            'alias' => $contact ? $contact->alias : null,
+            'email' => $friend->email,
+            'phone' => $friend->phone,     
+            'photo' => $friend->photo,
+        ]);
+    }
+
+    /**
+     * 7. UPDATE CONTACT (Simpan Perubahan Alias)
+     */
+    public function updateContact(Request $request, $friendId)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->errors()->first()], 422);
+        }
+
+        $myId = Auth::id();
+
+        User::findOrFail($friendId);
+        Contact::updateOrCreate(
+            [
+                'user_id' => $myId,
+                'friend_id' => $friendId
+            ],
+            [
+                'alias' => $request->name, 
+                'updated_at' => now()
+            ]
+        );
+
+        return response()->json([
+            'message' => 'Kontak berhasil diperbarui',
+        ]);
+    }
+    public function markAsRead($id) 
+    {
+        $msg = ChatMessage::find($id);
+        if($msg && !$msg->read_at) {
+            $msg->update(['read_at' => now()]);
+        }
+        return response()->json(['success' => true]);
     }
 }

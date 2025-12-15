@@ -15,7 +15,7 @@
             <div class="row">
                 <div class="col-md-12">
                     <div class="fv-row mb-7">
-                        <label class="form-label fw-bold fs-6 required">Nama Kontak (Alias)</label>
+                        <label class="form-label fw-bold fs-6 required">Nama Kontak</label>
                         <Field 
                             class="form-control form-control-lg form-control-solid" 
                             name="name" 

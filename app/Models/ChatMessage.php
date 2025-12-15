@@ -26,6 +26,7 @@ class ChatMessage extends Model
         'read_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'deleted_by_users' => 'array',
     ];
 
     public function sender()
