@@ -56,10 +56,6 @@ const getChatChannel = (otherId: any) => {
         : `chat.${otherId}.${currentUser.value.id}`;
 };
 
-// =========================================================================
-// 1. HELPERS & UTILS
-// =========================================================================
-
 const scrollToBottom = () => {
     nextTick(() => {
         if (chatBodyRef.value) {
@@ -222,10 +218,6 @@ const downloadAttachment = async (msg: any) => {
     }
 };
 
-// =========================================================================
-// 3. FITUR TAMBAHAN
-// =========================================================================
-
 const openDeleteModal = (msg: any) => {
     messageToDelete.value = msg;
     isDeleteModalOpen.value = true;
@@ -270,10 +262,6 @@ const openEditContactModal = (contact: any) => {
     isEditContactOpen.value = true;
 };
 
-// =========================================================================
-// 4. LIFECYCLE & REALTIME
-// =========================================================================
-
 watch(messages, () => {
     scrollToBottom();
 }, { deep: true });
@@ -308,12 +296,8 @@ onMounted(() => {
                 messages.value = messages.value.filter(m => m.id !== e.message_id);
             });
 
-        // B. PRESENCE CHANNEL 'online' (Status Online/Offline Realtime)
-        // Pastikan 'channels.php' Anda sudah memiliki Broadcast::channel('online', ...)
         window.Echo.join('online')
             .here((users: any[]) => {
-                // Saat connect, loop semua user yg sedang online
-                // Update list kontak kita
                 users.forEach(onlineUser => {
                     const contact = contacts.value.find(c => c.id === onlineUser.id);
                     if (contact) {
@@ -322,11 +306,9 @@ onMounted(() => {
                 });
             })
             .joining((user: any) => {
-                // Teman baru saja online
                 const contact = contacts.value.find(c => c.id === user.id);
                 if (contact) {
                     contact.is_online = true;
-                    // Jika sedang membuka chat dengan dia, update activeContact juga
                     if (activeContact.value && activeContact.value.id === contact.id) {
                         activeContact.value.is_online = true;
                     }
@@ -346,11 +328,9 @@ onMounted(() => {
                 }
             });
 
-        // C. HEARTBEAT (Kirim sinyal 'saya masih aktif' tiap 1 menit)
-        // Agar database last_seen tetap update walau kita diam saja membaca chat
         heartbeatInterval.value = setInterval(() => {
             axios.post('/chat/heartbeat').catch(() => {});
-        }, 60000); // 1 menit
+        }, 60000); 
     }
 });
 
@@ -446,7 +426,12 @@ onUnmounted(() => {
                         
                         <!-- Video Call Buttons (Opsional) -->
                         <div class="d-flex">
-                             <!-- Tambahkan tombol call di sini jika perlu -->
+                            <button>
+                                <Video class="w-5 h-5 text-gray-700 dark:text-gray-300"/>
+                            </button>
+                            <button>
+                                <Phone class="w-5 h-5 text-gray-700 dark:text-gray-300"/>
+                            </button>
                         </div>
                     </div>
 
