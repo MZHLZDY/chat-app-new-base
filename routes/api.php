@@ -71,7 +71,7 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::put('contacts/{id}', [ChatController::class, 'updateContact']); 
         Route::get('messages/{id}', [ChatController::class, 'getMessages']);
         Route::post('send', [ChatController::class, 'sendMessage']);
-        Route::post('send-file', [ChatController::class, 'sendFile']);
+        Route::post('send-file', [ChatController::class, 'sendMessage']);
         Route::get('download/{id}', [ChatController::class, 'downloadFile']);
         Route::delete('delete/{id}', [ChatController::class, 'deleteMessage']);
     });
