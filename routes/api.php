@@ -6,6 +6,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -19,11 +20,18 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-// Route::middleware(['auth:sanctum'])->group(function () {
-//     Route::post('/broadcasting/auth', function (\Illuminate\Http\Request $request) {
-//         return \Illuminate\Support\Facades\Broadcast::auth($request);
-//     });
-// });
+Route::middleware('auth:sanctum')->group(function () {
+    
+    // Dashboard Statistics
+    Route::prefix('dashboard')->group(function () {
+        // Get basic stats (untuk dashboard)
+        Route::get('/stats', [DashboardController::class, 'getStats']);
+        
+        // Get detailed stats (optional - untuk keperluan analytics)
+        Route::get('/stats/detailed', [DashboardController::class, 'getDetailedStats']);
+    });
+    
+});
 
 // Authentication Route
 Route::middleware(['auth', 'json'])->prefix('auth')->group(function () {
