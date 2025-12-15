@@ -5,6 +5,7 @@ import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
 import { format, isToday, isYesterday, isSameDay, formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale'; // Pastikan install: npm install date-fns
+import { Phone, Video } from 'lucide-vue-next';
 
 // Component Form Kontak (Edit/Add)
 import ContactForm from "./Form.vue";
@@ -410,6 +411,12 @@ onUnmounted(() => {
                                 {{ getContactStatus(activeContact) }}
                             </span>
                         </div>
+                        <button>
+                            <Video class="w-5 h-5 text-gray-700 dark:text-gray-300"/>
+                        </button>
+                        <button>
+                            <Phone class="w-5 h-5 text-gray-700 dark:text-gray-300"/>
+                        </button>
                     </div>
 
                     <div class="card-body p-4 chat-body-custom" ref="chatBodyRef">

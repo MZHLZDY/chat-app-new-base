@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useAuthStore } from "@/stores/auth"; // 1. Import Store Auth
-import { Phone } from 'lucide-vue-next';
+import { useAuthStore } from "@/stores/auth"; 
+import { themeMode } from "@/layouts/default-layout/config/helper"; 
+import { Phone, MessagesSquare } from 'lucide-vue-next';
 
-// 2. Inisialisasi Store untuk mengambil data user yang login
+// 2. Gunakan themeMode sebagai Computed Property
+// Status tema akan otomatis mengikuti perubahan dari header/navbar
+const currentThemeMode = computed(() => themeMode.value);
+// END: Perubahan untuk Tema Dinamis
+// ===================================================================
+
+// Inisialisasi Store untuk mengambil data user yang login
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
-// 3. Logika untuk Waktu Dinamis
+// Logika untuk Waktu Dinamis
 const currentTime = ref(new Date());
 let timer: number | undefined;
 
@@ -35,10 +42,7 @@ const formattedDate = computed(() => {
   return currentTime.value.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 });
 
-// 4. Logika untuk Mode (Default ke Light Mode sesuai screenshot)
-const isLightMode = ref(true); // Default mode terang
-
-// 5. Data Statis untuk Dashboard Chat (Bisa diganti dinamis nanti jika ada API-nya)
+// Data Statis untuk Dashboard Chat (Bisa diganti dinamis nanti jika ada API-nya)
 const messageCount = ref(75);
 const onlineContacts = ref(40);
 const notifications = ref('90+');
@@ -46,15 +50,12 @@ const notifications = ref('90+');
 </script>
 
 <template>
-  <div class="welcome-container" :class="{ 'light-mode': isLightMode }">
-    
-    <div class="dashboard-content-wrapper">
+  <div class="welcome-container" :class="{ 'light-mode': currentThemeMode === 'light' }">
+  <div class="dashboard-content-wrapper">
         <div class="glass-card welcome-card">
         <div class="illustration-area chat-theme">
             <div class="chat-illustration">
-                <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-message-square">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                </svg>
+                <MessagesSquare />
             </div>
             
             <h2>HELLO {{ currentUser?.name?.toUpperCase() || 'USER' }}!</h2>
@@ -69,11 +70,9 @@ const notifications = ref('90+');
 
         <div class="side-panel">
             <div class="glass-card profile-card">
-                <center>
-                  <p class="number-text" :title="currentUser?.phone">
-                    <Phone class="w-2 h-2"/> : {{ currentUser?.phone || 'xxxxxxx' }}
-                  </p>
-                </center>
+                <p class="number-text" :title="currentUser?.phone">
+                  <Phone class="w-2 h-2"/> : {{ currentUser?.phone || 'xxxxxxx' }}
+                </p>
             </div>
 
             <div class="glass-card time-card">
@@ -110,28 +109,34 @@ const notifications = ref('90+');
 /* ================================================= */
 /* 1. DEFINISI VARIABEL WARNA GLOBAL (DEFAULT: DARK MODE) */
 /* ================================================= */
+/* Semua nilai ini akan menjadi default/Dark Mode */
 :root {
     --chat-gradient-start: #1D4ED8; 
     --chat-gradient-end: #0D9488; 
     --main-accent-color: #60A5FA; 
     
-    --glass-bg-opacity: rgba(255, 255, 255, 0.08);
-    --glass-border-color: rgba(255, 255, 255, 0.1);
-    --circle-bg: #202940; 
+    --bg-color: #2d3036; /* Latar Belakang Utama Dark Mode */
+    --text-color: #F9FAFB; /* Teks Utama Dark Mode (Putih/Terang) */
+    --text-muted: #9CA3AF;
+
+    --glass-bg-opacity: rgba(255, 255, 255, 0.15); /* Background Card Dark Mode - Lebih terang */
+    --glass-border-color: rgba(255, 255, 255, 0.2); /* Border Card Dark Mode - Lebih terlihat */
+    --circle-bg: #64748B; /* Warna Latar Belakang Lingkaran di Dark Mode - Lebih terang */
+    --icon-color: #60A5FA; /* Warna icon di Dark Mode */
 }
 
 /* ================================================= */
-/* 2. OVERRIDE LIGHT MODE (Sesuai Screenshot) */
+/* 2. OVERRIDE LIGHT MODE */
 /* ================================================= */
 .welcome-container.light-mode {
-    --bg-color: #F8F9FA; 
-    --text-color: #1E293B;
+    --bg-color: #F8F9FA; /* Latar Belakang Utama Light Mode */
+    --text-color: #1E293B; /* Teks Utama Light Mode (Gelap) */
     --text-muted: #64748B;
     --glass-bg-opacity: rgba(255, 255, 255, 0.85); 
     --glass-border-color: rgba(0, 0, 0, 0.05);
-    --circle-bg: #E2E8F0; 
+    --circle-bg: #E2E8F0; /* Latar Belakang Lingkaran di Light Mode */
     
-    color: #22201f; 
+    color: var(--text-color); 
 }
 
 
@@ -150,6 +155,7 @@ const notifications = ref('90+');
   flex-direction: column; 
   align-items: center; 
   padding-top: 50px; 
+  transition: background 0.3s, color 0.3s; 
 }
 
 .dashboard-content-wrapper {
@@ -194,6 +200,9 @@ const notifications = ref('90+');
     overflow: hidden;         /* Menyembunyikan teks yang kepanjangan */
     text-overflow: ellipsis;  /* Menambahkan '...' jika teks terpotong */
     max-width: 190px;         /* Batas lebar teks email */
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .chat-illustration {
@@ -241,6 +250,11 @@ const notifications = ref('90+');
     background: var(--main-accent-color);
     color: white;
 }
+.explore-button:hover { /* Hover di Dark Mode */
+    background: var(--main-accent-color);
+    color: white;
+}
+
 
 /* 6. Gaya Panel Samping */
 .side-panel {
@@ -272,21 +286,9 @@ const notifications = ref('90+');
     align-items: center;
 }
 
+/* Avatar sudah dihapus, style ini tidak lagi dipakai untuk avatar huruf inisial */
 .avatar {
-  width: 40px;
-  height: 40px;
-  background-color: var(--main-accent-color); 
-  color: var(--text-color); 
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-weight: bold;
-  font-size: 1.2em;
-  margin-right: 15px;
-}
-.welcome-container.light-mode .avatar {
-    color: white; 
+  display: none; 
 }
 
 .time-card h1 {
@@ -321,15 +323,12 @@ const notifications = ref('90+');
   place-items: center;
   font-size: 0.9em;
   margin: 0 auto;
+  transition: background 0.3s; /* Tambahkan transisi halus */
 }
 
 .circle span {
     color: var(--text-color);
     font-weight: 600;
-}
-
-.welcome-container.light-mode .circle span {
-    color: var(--text-color);
 }
 
 /* Media Query */
