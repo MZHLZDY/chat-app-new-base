@@ -34,8 +34,12 @@ onUnmounted(() => {
 });
 
 const formattedTime = computed(() => {
-  // Menggunakan 'en-US' untuk format AM/PM
-  return currentTime.value.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  // Menggunakan format 24 jam (tanpa AM/PM)
+  return currentTime.value.toLocaleTimeString('id-ID', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false 
+  });
 });
 
 const formattedDate = computed(() => {
@@ -55,22 +59,50 @@ const loadDashboardStats = async () => {
   try {
     isLoading.value = true;
     
+    console.log('🔄 Loading dashboard stats...');
+    
     // Panggil API untuk mendapatkan statistik dashboard
     const response = await ApiService.get('/dashboard/stats');
     
-    if (response.data) {
+    console.log('📡 API Response:', response);
+    console.log('📊 Response Data:', response.data);
+    
+    // PERBAIKAN: Cek struktur response
+    // Laravel Anda return: { success: true, data: { unread_messages: 1, ... } }
+    if (response.data && response.data.success && response.data.data) {
+      console.log('✅ Data ditemukan:', response.data.data);
+      
+      unreadMessages.value = response.data.data.unread_messages || 0;
+      totalContacts.value = response.data.data.total_contacts || 0;
+      totalGroups.value = response.data.data.total_groups || 0;
+      
+      console.log('📈 Updated Values:', {
+        unreadMessages: unreadMessages.value,
+        totalContacts: totalContacts.value,
+        totalGroups: totalGroups.value
+      });
+    } else if (response.data) {
+      // Fallback jika struktur berbeda
+      console.log('⚠️ Struktur response berbeda, mencoba alternatif...');
+      
       unreadMessages.value = response.data.unread_messages || 0;
       totalContacts.value = response.data.total_contacts || 0;
       totalGroups.value = response.data.total_groups || 0;
+    } else {
+      console.error('❌ Response data tidak valid:', response);
     }
-  } catch (error) {
-    console.error('Error loading dashboard stats:', error);
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: any } };
+    console.error('❌ Error loading dashboard stats:', error);
+    console.error('Error details:', err.response?.data);
+    
     // Set default values jika error
     unreadMessages.value = 0;
     totalContacts.value = 0;
     totalGroups.value = 0;
   } finally {
     isLoading.value = false;
+    console.log('✅ Loading selesai');
   }
 };
 
@@ -249,9 +281,9 @@ const formatCount = (count: number): string => {
 
 .button-wrapper {
   display: flex;
-  gap: 1rem; /* Jarak antar tombol */
+  gap: 1rem;
   width: 100%;
-  margin-top: auto; /* Memastikan tombol ada di bagian bawah card */
+  margin-top: auto;
 }
 
 .btn-chat-private {
@@ -294,14 +326,6 @@ const formatCount = (count: number): string => {
   background: #167908;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.dark-mode .btn-chat {
-  background: #4a4a68;
-}
-
-.dark-mode .btn-chat:hover {
-  background: #5a5a7a;
 }
 
 /* Info Section - Kanan */

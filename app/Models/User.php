@@ -9,6 +9,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Notifications\Notifiable;
 use App\Models\ChatMessage;
+use App\Models\Group;
+use App\Models\GroupMessage;
 use Laravel\Sanctum\HasApiTokens;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
@@ -76,7 +78,40 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
             : 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=7F9CF5&background=EBF4FF';
     }
 
-    // --- CHAT ---
-    public function sentMessages() { return $this->hasMany(ChatMessage::class, 'sender_id'); }
-    public function receivedMessages() { return $this->hasMany(ChatMessage::class, 'receiver_id'); }
+    // --- CHAT RELATIONS ---
+    public function sentMessages() 
+    { 
+        return $this->hasMany(ChatMessage::class, 'sender_id'); 
+    }
+    
+    public function receivedMessages() 
+    { 
+        return $this->hasMany(ChatMessage::class, 'receiver_id'); 
+    }
+
+    // --- GROUP RELATIONS ---
+    /**
+     * Groups yang user ikuti sebagai member
+     */
+    public function groups()
+    {
+        return $this->belongsToMany(Group::class, 'group_user')
+            ->withTimestamps();
+    }
+
+    /**
+     * Groups yang user miliki/buat (sebagai owner)
+     */
+    public function ownedGroups()
+    {
+        return $this->hasMany(Group::class, 'owner_id');
+    }
+
+    /**
+     * Group messages yang dikirim user
+     */
+    public function groupMessages()
+    {
+        return $this->hasMany(GroupMessage::class, 'sender_id');
+    }
 }
