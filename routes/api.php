@@ -88,6 +88,7 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::post('send-file', [ChatController::class, 'sendMessage']);
         Route::get('download/{id}', [ChatController::class, 'downloadFile']);
         Route::delete('delete/{id}', [ChatController::class, 'deleteMessage']);
+        Route::put('message/{id}/read', [ChatController::class, 'markAsRead']);
     });
 
     Route::prefix('call')->group(function () {
