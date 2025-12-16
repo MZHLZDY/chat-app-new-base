@@ -329,12 +329,17 @@ class ChatController extends Controller
             'message' => 'Kontak berhasil diperbarui',
         ]);
     }
+    /**
+     * 8. MARK MESSAGE AS READ
+     */
     public function markAsRead($id) 
     {
         $msg = ChatMessage::find($id);
         if($msg && !$msg->read_at) {
             $msg->update(['read_at' => now()]);
+            broadcast(new MessageRead(Auth::id(), $msg->sender_id))->toOthers();
         }
+        
         return response()->json(['success' => true]);
     }
 }

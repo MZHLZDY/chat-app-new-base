@@ -184,8 +184,9 @@ const sendMessage = async () => {
         return;
     }
 
+    const tempId = Date.now();
     const tempMessage = {
-        id: Date.now(),
+        id: tempId,
         sender_id: currentUser.value?.id,
         receiver_id: activeContact.value.id,
         message: newMessage.value,
@@ -198,18 +199,26 @@ const sendMessage = async () => {
     const msgToSend = newMessage.value;
     newMessage.value = "";
     scrollToBottom();
-
     refreshContactOrder(activeContact.value.id);
 
     try {
-        await axios.post("/chat/send", {
+       const response = await axios.post("/chat/send", {
             receiver_id: activeContact.value.id,
             message: msgToSend
         });
+        const realMessage = response.data.data ? response.data.data : response.data;
+        const index = messages.value.findIndex(m => m.id === tempId);
+            if (index !== -1) {
+                messages.value[index] = realMessage;
+            }
     } catch (error) {
         console.error("Gagal kirim pesan", error);
         toast.error("Gagal mengirim pesan");
     }
+};
+
+const isTempId = (id: any) => {
+    return typeof id === 'number' && id > 1000000000000;
 };
 
 const triggerFileUpload = () => {
@@ -314,6 +323,7 @@ const listenForActiveChat = (contact: any) => {
                 if (!exists) {
                     messages.value.push(e.message);
                     scrollToBottom();
+                    axios.put(`/chat/message/${e.message.id}/read`);
                 }
             }
         })
@@ -328,6 +338,15 @@ const listenForActiveChat = (contact: any) => {
         })
         .listen('.message.deleted', (e: any) => {
             messages.value = messages.value.filter((m: any) => m.id !== e.messageId);
+        })
+        .listen('.MessageRead', (e: any) => {
+            if (e.readerId === activeContact.value.id) {
+                messages.value.forEach((msg) => {
+                    if (msg.sender_id === currentUser.value.id && !msg.read_at) {
+                        msg.read_at = new Date().toISOString();
+                    }
+                });
+            };
         });
 };
 
@@ -343,6 +362,16 @@ const listenGlobalNotifications = () => {
                     const contact = contacts.value.splice(idx, 1)[0];
                     contacts.value.unshift(contact);
                 }
+            }
+        })
+        .listen('.MessageRead', (e: any) => {
+            console.log("Event Read Diterima:", e);
+            if (activeContact.value && e.readerId === activeContact.value.id) {
+                messages.value.forEach((msg) => {
+                    if (msg.sender_id === currentUser.value.id && !msg.read_at) {
+                        msg.read_at = new Date().toISOString();
+                    }
+                });
             }
         });
 };
@@ -433,7 +462,7 @@ onUnmounted(() => {
                             <KTIcon icon-name="magnifier" icon-class="fs-2 text-lg-1 text-gray-500 position-absolute top-50 ms-5 translate-middle-y" />
                             <input type="text" class="form-control form-control-solid px-15" placeholder="Cari kontak..." />
                         </form>
-                        <button class="btn btn-icon btn-primary w-40px h-40px" @click="openAddContactModal">
+                        <button class="btn btn-sm btn-light-primary fw-bold" @click="openAddContactModal">
                             <KTIcon icon-name="plus" icon-class="fs-2" />
                         </button>
                     </div>
@@ -535,20 +564,40 @@ onUnmounted(() => {
                                             <img :src="`/storage/${msg.file_path}`" class="rounded w-100 cursor-pointer border" @click="openLightbox(msg.file_path)" style="max-height: 250px; object-fit: cover;">
                                         </div>
                                         <div v-else-if="msg.type === 'file'" class="d-flex align-items-center p-2 rounded mb-2" :class="msg.sender_id === currentUser?.id ? 'bg-white bg-opacity-20' : 'bg-light'">
-                                            <div class="symbol symbol-35px me-2"><span class="symbol-label fw-bold text-primary bg-white">FILE</span></div>
+                                            <div class="symbol symbol-35px me-2"
+                                            ><span class="symbol-label fw-bold text-primary bg-white">FILE</span>
+                                        </div>
                                             <div class="text-truncate" style="max-width: 150px;">
                                                 <a href="#" @click.prevent="downloadAttachment(msg)" class="fw-bold fs-7 d-block text-truncate" :class="msg.sender_id === currentUser?.id ? 'text-white' : 'text-gray-800'">{{ msg.file_name }}</a>
                                                 <div class="fs-8" :class="msg.sender_id === currentUser?.id ? 'text-white text-opacity-75' : 'text-muted'">{{ (msg.file_size / 1024).toFixed(0) }} KB</div>
                                             </div>
-                                            <button @click="downloadAttachment(msg)" class="btn btn-sm btn-icon ms-auto" :class="msg.sender_id === currentUser?.id ? 'btn-white text-primary' : 'btn-light text-gray-600'"><i class="fas fa-download fs-7"></i></button>
+                                            <button @click="downloadAttachment(msg)" class="btn btn-sm btn-icon ms-auto" :class="msg.sender_id === currentUser?.id ? 'btn-white text-primary' : 'btn-light text-gray-600'">
+                                                <i class="fas fa-download fs-7"></i>
+                                            </button>
                                         </div>
-                                        <div v-if="msg.message" class="fs-6 px-1 text-break">{{ msg.message }}</div>
+                                        <div v-if="msg.message" class="fs-6 px-1 text-break">
+                                            {{ msg.message }}
+                                        </div>
                                         <div class="d-flex justify-content-end align-items-center mt-1">
-                                            <span class="fs-9 me-1" :class="msg.sender_id === currentUser?.id ? 'text-white text-opacity-75' : 'text-muted'">{{ formatTime(msg.created_at) }}</span>
-                                            <div v-if="msg.sender_id === currentUser?.id"><i class="fas fa-check-double fs-9" :class="msg.read_at ? 'text-white' : 'text-white text-opacity-50'"></i></div>
+                                            <span class="fs-9 me-1" :class="msg.sender_id === currentUser?.id ? 'text-white text-opacity-75' : 'text-muted'">
+                                                {{ formatTime(msg.created_at) }}
+                                            </span>
+                                            <div v-if="msg.sender_id === currentUser?.id" class="ms-1">
+                                                <span v-if="isTempId(msg.id)" title="Mengirim...">
+                                                    <i class="fas fa-check text-white text-opacity-50 fs-9"></i>
+                                                </span>
+                                                <span v-else-if="msg.read_at" title="Dibaca">
+                                                    <i class="fas fa-check-double tick-read fs-9"></i> 
+                                                </span>
+                                                <span v-else title="Terkirim">
+                                                    <i class="fas fa-check-double text-white text-opacity-50 fs-9"></i>
+                                                </span>
+                                            </div>
                                         </div>
                                         <div class="position-absolute top-0 end-0 mt-n2 me-n2 delete-btn-wrapper">
-                                            <button @click="openDeleteModal(msg)" class="btn btn-sm btn-icon btn-circle btn-white shadow w-20px h-20px"><i class="fas fa-trash fs-9 text-danger"></i></button>
+                                            <button @click="openDeleteModal(msg)" class="btn btn-sm btn-icon btn-circle btn-white shadow w-20px h-20px">
+                                                <i class="fas fa-trash fs-9 text-danger"></i>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -580,10 +629,14 @@ onUnmounted(() => {
 
     <!-- MODALS -->
     <div v-if="isAddContactOpen" class="modal-overlay">
-        <div class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden" style="max-width: 500px; width: 100%;"><ContactForm @close="isAddContactOpen = false" @refresh="fetchContacts" /></div>
+        <div class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden" style="max-width: 500px; width: 100%;">
+            <ContactForm @close="isAddContactOpen = false" @refresh="fetchContacts" />
+        </div>
     </div>
     <div v-if="isEditContactOpen" class="modal-overlay">
-        <div class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden" style="max-width: 500px; width: 100%;"><EditForm :selected="contactIdToEdit" @close="isEditContactOpen = false" @refresh="fetchContacts" /></div>
+        <div class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden" style="max-width: 500px; width: 100%;">
+            <EditForm :selected="contactIdToEdit" @close="isEditContactOpen = false" @refresh="fetchContacts" />
+        </div>
     </div>
     <div v-if="isLightboxOpen" class="lightbox-overlay" @click.self="closeLightbox">
         <div class="lightbox-content position-relative text-center">
@@ -593,7 +646,7 @@ onUnmounted(() => {
     </div>
     <div v-if="isDeleteModalOpen" class="modal-overlay">
         <div class="modal-content bg-white rounded shadow p-5 text-center" style="width: 350px;">
-            <div class="symbol symbol-50px symbol-circle bg-light-danger mb-4"><i class="fas fa-trash fs-2 text-danger p-3"></i></div>
+            <div class="bg-light-danger mb-4"><i class="fas fa-trash fs-2 text-danger p-3"></i></div>
             <h3 class="fw-bold text-gray-800 mb-1">Hapus Pesan?</h3>
             <p class="text-muted fs-7 mb-4">Pesan yang dihapus tidak dapat dikembalikan.</p>
             <div class="d-grid gap-2">
@@ -621,6 +674,16 @@ onUnmounted(() => {
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
+}
+
+/* Warna Centang Read */
+.tick-read {
+    color: #69f0ae !important;
+    animation: fadeIn 0.3s ease;
+}
+
+.fa-check, .fa-check-double {
+    transition: all 0.2s ease;
 }
 
 /* Hover Effects */
