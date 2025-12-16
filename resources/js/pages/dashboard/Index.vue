@@ -97,8 +97,15 @@ const formatCount = (count: number): string => {
             Selamat datang di pusat obrolan Anda!
           </h4>
         </div>
-
-        <button class="btn-chat">LIHAT OBROLAN</button>
+        <div class="button-wrapper">
+          <router-link :to="{ name: 'dashboard.private-chat' }" class="btn-chat-private text-decoration-none d-flex align-items-center justify-content-center">
+            LIHAT CHAT PRIBADI
+          </router-link>
+          
+          <router-link :to="{ name: 'dashboard.group-chat' }" class="btn-chat-group text-decoration-none d-flex align-items-center justify-content-center">
+            LIHAT CHAT GRUP
+          </router-link>
+        </div>
       </div>
 
       <!-- Bagian Kanan: Info Cards -->
@@ -240,19 +247,51 @@ const formatCount = (count: number): string => {
   color: #a1a5b7;
 }
 
-.btn-chat {
-  padding: 1rem 2rem;
-  background: #333;
+.button-wrapper {
+  display: flex;
+  gap: 1rem; /* Jarak antar tombol */
+  width: 100%;
+  margin-top: auto; /* Memastikan tombol ada di bagian bawah card */
+}
+
+.btn-chat-private {
+  flex: 1; 
+  background: #fa930c;
+  padding: 1rem 1rem;
   color: white;
   border: none;
   border-radius: 0.5rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  display: flex;
+  text-align: center;
+  white-space: nowrap;
 }
 
-.btn-chat:hover {
-  background: #555;
+.btn-chat-private:hover {
+  background: #bd3f05;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-chat-group {
+  flex: 1; 
+  background: #1ca509;
+  padding: 1rem 1rem;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.btn-chat-group:hover {
+  background: #167908;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
@@ -462,6 +501,16 @@ const formatCount = (count: number): string => {
   .stat-circle {
     width: 100px;
     height: 100px;
+  }
+
+  .btn-chat-private {
+    padding: 1rem;
+    border-radius: 0.5rem;
+  }
+
+  .btn-chat-group {
+    padding: 1rem;
+    border-radius: 0.5rem;
   }
 }
 </style>
