@@ -719,7 +719,63 @@ onUnmounted(() => {
     color: #7e8299 !important;
 }
 
-[data-bs-theme="dark"] .hover-effect:hover {
-    background-color: #2b2b40 !important;
+/* fix button video / voice call agar transparan */
+/* Target button di card-header yang wrap Video & Phone icon */
+.card-header .d-flex button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 8px 10px !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer;
+}
+
+.card-header .d-flex button:hover {
+    background: rgba(0, 0, 0, 0.05) !important;
+    transform: scale(1.1);
+}
+
+.card-header .d-flex button:active {
+    transform: scale(0.95);
+}
+
+/* Icon color */
+.card-header .d-flex button svg {
+    width: 20px !important;
+    height: 20px !important;
+    color: #7e8299 !important;
+    transition: color 0.2s ease !important;
+}
+
+/* Video icon hover - hijau */
+.card-header .d-flex button:first-child:hover svg {
+    color: #10b981 !important;
+}
+
+/* Phone icon hover - biru */
+.card-header .d-flex button:last-child:hover svg {
+    color: #3b82f6 !important;
+}
+
+/* Dark mode */
+[data-bs-theme="dark"] .card-header .d-flex button {
+    background: transparent !important;
+}
+
+[data-bs-theme="dark"] .card-header .d-flex button:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-bs-theme="dark"] .card-header .d-flex button svg {
+    color: #a1a5b7 !important;
+}
+
+[data-bs-theme="dark"] .card-header .d-flex button:first-child:hover svg {
+    color: #34d399 !important;
+}
+
+[data-bs-theme="dark"] .card-header .d-flex button:last-child:hover svg {
+    color: #60a5fa !important;
 }
 </style>
