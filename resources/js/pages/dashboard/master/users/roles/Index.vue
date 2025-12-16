@@ -41,9 +41,9 @@ const isDeleteModalOpen = ref(false);
 const messageToDelete = ref<any>(null);
 const isLightboxOpen = ref(false);
 const activeLightboxUrl = ref("");
-
 const heartbeatInterval = ref<any>(null);
 const onlineUsersSet = ref(new Set<string>()); 
+const showScrollButton = ref(false);
 
 const getChatChannel = (otherId: any) => {
     if (!currentUser.value) return "";
@@ -62,6 +62,15 @@ const scrollToBottom = () => {
             });
         }
     });
+};
+
+const handleScroll = () => {
+    if (chatBodyRef.value) {
+        const { scrollTop, scrollHeight, clientHeight } = chatBodyRef.value;
+        // Tampilkan tombol jika jarak dari bawah lebih dari 300px
+        const distanceToBottom = scrollHeight - (scrollTop + clientHeight);
+        showScrollButton.value = distanceToBottom > 300;
+    }
 };
 
 const formatTime = (dateStr: string) => {
@@ -462,7 +471,7 @@ onUnmounted(() => {
         </div>
 
         <!-- CHAT AREA -->
-        <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10">
+        <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10" style="min-width: 0;">
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
                 <div v-if="!activeContact" class="card-body d-flex flex-column justify-content-center align-items-center h-100">
                     <div class="symbol symbol-100px mb-5">
@@ -473,7 +482,7 @@ onUnmounted(() => {
                 </div>
 
                 <div v-else class="d-flex flex-column h-100">
-                    <div class="card-header d-flex align-items-center p-3 border-bottom sticky-top" style="min-height: 70px;">
+                    <div class="card-header d-flex align-items-center p-3 border-bottom" style="min-height: 70px;">
                         <div class="symbol symbol-45px symbol-circle me-3">
                             <img :src="activeContact.photo ? `/storage/${activeContact.photo}` : '/media/avatars/blank.png'" alt="image" />
                             <!-- STATUS ICON DI HEADER -->
@@ -504,7 +513,7 @@ onUnmounted(() => {
                         </div>
                     </div>
 
-                    <div class="card-body p-4 chat-body-custom" ref="chatBodyRef">
+                    <div class="card-body p-4 chat-body-custom" ref="chatBodyRef" @scroll="handleScroll">
                         <div v-if="isLoadingMessages" class="d-flex justify-content-center align-items-center h-100">
                             <span class="spinner-border text-primary"></span>
                         </div>
@@ -546,7 +555,16 @@ onUnmounted(() => {
                             </div>
                         </div>
                     </div>
-
+                    <transition name="fade">
+                        <button 
+                            v-if="showScrollButton" 
+                            @click="scrollToBottom" 
+                            class="btn btn-primary btn-icon shadow-sm rounded-circle position-absolute"
+                            style="bottom: 100px; right: 30px; z-index: 10; width: 30px; height: 30px;"
+                        >
+                            <i class="fas fa-arrow-down fs-4"></i>
+                        </button>
+                    </transition>
                     <div class="card-footer pt-4 pb-4" style="min-height: 80px;">
                         <div class="d-flex align-items-center">
                             <button class="btn btn-sm btn-icon btn-active-light-primary me-2" @click="triggerFileUpload"><KTIcon icon-name="paper-clip" icon-class="fs-3" /></button>
@@ -593,6 +611,16 @@ onUnmounted(() => {
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: #d1d5db transparent;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
 }
 
 /* Hover Effects */
