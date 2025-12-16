@@ -22,73 +22,106 @@ class DashboardController extends Controller
         try {
             $userId = Auth::id();
             
+            // Debug log
+            \Log::info('Dashboard Stats - User ID: ' . $userId);
+            
             // 1. Hitung total pesan belum dibaca (Personal Chat + Group Chat)
+            
+            // Personal messages yang belum dibaca
             $unreadPersonalMessages = ChatMessage::where('receiver_id', $userId)
                 ->whereNull('read_at')
                 ->whereNull('deleted_at')
                 ->count();
             
-            // Untuk group messages, kita perlu cek grup yang user ikuti
-            // dan hitung pesan yang belum dibaca
+            \Log::info('Unread Personal Messages: ' . $unreadPersonalMessages);
+            
+            // Group messages belum dibaca
+            // Ambil semua grup yang user ikuti
             $userGroupIds = DB::table('group_user')
                 ->where('user_id', $userId)
                 ->pluck('group_id');
             
-            // Hitung total pesan grup sejak user terakhir membaca
-            // Untuk simplifikasi, kita ambil semua pesan grup yang belum dibaca
-            // (Anda bisa membuat tabel read_status untuk tracking per user per message)
+            \Log::info('User Group IDs: ' . $userGroupIds->toJson());
+            
+            // Hitung pesan grup yang belum dibaca (exclude pesan sendiri)
             $unreadGroupMessages = GroupMessage::whereIn('group_id', $userGroupIds)
-                ->where('sender_id', '!=', $userId) // Tidak hitung pesan sendiri
-                ->where('created_at', '>', DB::raw('(
-                    SELECT COALESCE(MAX(created_at), "1970-01-01")
-                    FROM group_messages 
-                    WHERE sender_id = ' . $userId . ' 
-                    AND group_id = group_messages.group_id
-                )'))
+                ->where('sender_id', '!=', $userId)
+                ->whereNull('deleted_at')
                 ->count();
+            
+            \Log::info('Unread Group Messages: ' . $unreadGroupMessages);
             
             $totalUnreadMessages = $unreadPersonalMessages + $unreadGroupMessages;
             
-            // 2. Hitung total kontak personal (user yang pernah chat dengan kita)
-            $totalContacts = User::where('id', '!=', $userId)
-                ->where(function($query) use ($userId) {
-                    // User yang pernah mengirim pesan ke kita
-                    $query->whereExists(function($subQuery) use ($userId) {
-                        $subQuery->select(DB::raw(1))
-                            ->from('chat_messages')
-                            ->whereColumn('chat_messages.sender_id', 'users.id')
-                            ->where('chat_messages.receiver_id', $userId)
-                            ->whereNull('chat_messages.deleted_at');
-                    })
-                    // Atau user yang pernah kita kirimi pesan
-                    ->orWhereExists(function($subQuery) use ($userId) {
-                        $subQuery->select(DB::raw(1))
-                            ->from('chat_messages')
-                            ->whereColumn('chat_messages.receiver_id', 'users.id')
-                            ->where('chat_messages.sender_id', $userId)
-                            ->whereNull('chat_messages.deleted_at');
-                    });
-                })
-                ->count();
+            // 2. Hitung total kontak personal
+            // PERBAIKAN: Gunakan contacts table atau user relationship jika ada
+            
+            // Cek apakah ada tabel contacts atau user_contacts
+            $totalContacts = 0;
+            
+            // OPTION 1: Jika menggunakan tabel contacts/user_contacts
+            if (DB::getSchemaBuilder()->hasTable('contacts')) {
+                $totalContacts = DB::table('contacts')
+                    ->where('user_id', $userId)
+                    ->count();
+                    
+                \Log::info('Total Contacts from contacts table: ' . $totalContacts);
+            } 
+            // OPTION 2: Jika menggunakan user_contacts pivot table
+            elseif (DB::getSchemaBuilder()->hasTable('user_contacts')) {
+                $totalContacts = DB::table('user_contacts')
+                    ->where('user_id', $userId)
+                    ->count();
+                    
+                \Log::info('Total Contacts from user_contacts table: ' . $totalContacts);
+            }
+            // OPTION 3: Fallback ke perhitungan dari chat messages
+            else {
+                $contactIds = collect();
+                
+                // User yang pernah mengirim pesan ke kita
+                $sendersToMe = ChatMessage::where('receiver_id', $userId)
+                    ->whereNull('deleted_at')
+                    ->distinct()
+                    ->pluck('sender_id');
+                
+                // User yang pernah kita kirimi pesan
+                $receiversFromMe = ChatMessage::where('sender_id', $userId)
+                    ->whereNull('deleted_at')
+                    ->distinct()
+                    ->pluck('receiver_id');
+                
+                // Gabungkan dan unique
+                $contactIds = $sendersToMe->merge($receiversFromMe)->unique();
+                
+                $totalContacts = $contactIds->count();
+                
+                \Log::info('Total Contacts from chat messages: ' . $totalContacts);
+                \Log::info('Contact IDs: ' . $contactIds->toJson());
+            }
             
             // 3. Hitung total grup yang user ikuti
-            $totalGroups = Group::whereExists(function($query) use ($userId) {
-                $query->select(DB::raw(1))
-                    ->from('group_user')
-                    ->whereColumn('group_user.group_id', 'groups.id')
-                    ->where('group_user.user_id', $userId);
-            })->count();
+            $totalGroups = $userGroupIds->count();
             
-            return response()->json([
+            \Log::info('Total Groups: ' . $totalGroups);
+            
+            $result = [
                 'success' => true,
                 'data' => [
                     'unread_messages' => $totalUnreadMessages,
                     'total_contacts' => $totalContacts,
                     'total_groups' => $totalGroups,
                 ]
-            ]);
+            ];
+            
+            \Log::info('Dashboard Stats Result: ' . json_encode($result));
+            
+            return response()->json($result);
             
         } catch (\Exception $e) {
+            \Log::error('Dashboard Stats Error: ' . $e->getMessage());
+            \Log::error($e->getTraceAsString());
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load dashboard statistics',
@@ -98,7 +131,7 @@ class DashboardController extends Controller
     }
     
     /**
-     * Alternative: Get detailed stats with breakdown
+     * Get detailed stats with breakdown
      * 
      * @return \Illuminate\Http\JsonResponse
      */
@@ -128,44 +161,48 @@ class DashboardController extends Controller
             
             $groupStats = [
                 'total_groups' => $userGroupIds->count(),
-                'admin_groups' => Group::where('admin_id', $userId)->count(),
-                'total_messages' => GroupMessage::whereIn('group_id', $userGroupIds)->count(),
+                'owned_groups' => Group::where('owner_id', $userId)->count(),
+                'total_messages' => GroupMessage::whereIn('group_id', $userGroupIds)
+                    ->whereNull('deleted_at')
+                    ->count(),
+                'unread_messages' => GroupMessage::whereIn('group_id', $userGroupIds)
+                    ->where('sender_id', '!=', $userId)
+                    ->whereNull('deleted_at')
+                    ->count(),
             ];
             
             // Contacts
-            $contacts = User::where('id', '!=', $userId)
-                ->whereExists(function($query) use ($userId) {
-                    $query->select(DB::raw(1))
-                        ->from('chat_messages')
-                        ->where(function($q) use ($userId) {
-                            $q->where(function($subQ) use ($userId) {
-                                $subQ->whereColumn('chat_messages.sender_id', 'users.id')
-                                    ->where('chat_messages.receiver_id', $userId);
-                            })
-                            ->orWhere(function($subQ) use ($userId) {
-                                $subQ->whereColumn('chat_messages.receiver_id', 'users.id')
-                                    ->where('chat_messages.sender_id', $userId);
-                            });
-                        })
-                        ->whereNull('chat_messages.deleted_at');
-                })
-                ->count();
+            $contactIds = collect();
+            
+            $sendersToMe = ChatMessage::where('receiver_id', $userId)
+                ->whereNull('deleted_at')
+                ->distinct()
+                ->pluck('sender_id');
+            
+            $receiversFromMe = ChatMessage::where('sender_id', $userId)
+                ->whereNull('deleted_at')
+                ->distinct()
+                ->pluck('receiver_id');
+            
+            $contactIds = $sendersToMe->merge($receiversFromMe)->unique();
             
             return response()->json([
                 'success' => true,
                 'data' => [
                     'personal' => $personalStats,
                     'groups' => $groupStats,
-                    'contacts' => $contacts,
+                    'contacts' => $contactIds->count(),
                     'summary' => [
-                        'unread_messages' => $personalStats['unread'],
-                        'total_contacts' => $contacts,
+                        'unread_messages' => $personalStats['unread'] + $groupStats['unread_messages'],
+                        'total_contacts' => $contactIds->count(),
                         'total_groups' => $groupStats['total_groups'],
                     ]
                 ]
             ]);
             
         } catch (\Exception $e) {
+            \Log::error('Dashboard Detailed Stats Error: ' . $e->getMessage());
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to load detailed statistics',

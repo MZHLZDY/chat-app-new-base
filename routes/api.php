@@ -8,6 +8,7 @@ use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,18 +27,18 @@ use Illuminate\Support\Facades\Route;
 //     });
 // });
 
-Route::middleware('auth:sanctum')->group(function () {
+// Route::middleware('auth:sanctum')->group(function () {
     
-    // Dashboard Statistics
-    Route::prefix('dashboard')->group(function () {
-        // Get basic stats (untuk dashboard)
-        Route::get('/stats', [DashboardController::class, 'getStats']);
+//     // Dashboard Statistics
+//     Route::prefix('dashboard')->group(function () {
+//         // Get basic stats (untuk dashboard)
+//         Route::get('/stats', [DashboardController::class, 'getStats']);
         
-        // Get detailed stats (optional - untuk keperluan analytics)
-        Route::get('/stats/detailed', [DashboardController::class, 'getDetailedStats']);
-    });
+//         // Get detailed stats (optional - untuk keperluan analytics)
+//         Route::get('/stats/detailed', [DashboardController::class, 'getDetailedStats']);
+//     });
     
-});
+// });
 
 // Authentication Route
 Route::middleware(['auth', 'json'])->prefix('auth')->group(function () {
@@ -55,6 +56,11 @@ Route::prefix('setting')->group(function () {
 // 3. Protected Routes (Harus Login & Verified)
 Route::middleware(['auth', 'json'])->group(function () {
 
+    Route::prefix('dashboard')->group(function () {
+        Route::get('/stats', [DashboardController::class, 'getStats']);
+        Route::get('/stats/detailed', [DashboardController::class, 'getDetailedStats']);
+    });
+    
     // Setting Update
     Route::prefix('setting')->group(function () {
         Route::post('', [SettingController::class, 'update']);
