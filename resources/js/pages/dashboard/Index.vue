@@ -98,7 +98,8 @@ const formatCount = (count: number): string => {
           </h4>
         </div>
 
-        <button class="btn-chat">LIHAT OBROLAN</button>
+        <button href="@/roles/Index.vue" class="btn-chat-private">LIHAT CHAT PRIBADI</button>
+        <button href="" class="btn-chat-group">LIHAT CHAT GRUP</button>
       </div>
 
       <!-- Bagian Kanan: Info Cards -->
@@ -240,19 +241,38 @@ const formatCount = (count: number): string => {
   color: #a1a5b7;
 }
 
-.btn-chat {
+.btn-chat-private {
   padding: 1rem 2rem;
-  background: #333;
+  background: #fa930c;
   color: white;
   border: none;
   border-radius: 0.5rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  justify-content: center;
 }
 
-.btn-chat:hover {
-  background: #555;
+.btn-chat-private:hover {
+  background: #bd3f05;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-chat-group {
+  padding: 1rem 2rem;
+  background: #16b407;
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  justify-content: center;
+}
+
+.btn-chat-group:hover {
+  background: #167908;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }

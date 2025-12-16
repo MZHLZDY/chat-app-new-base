@@ -152,7 +152,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <div class="d-flex flex-column flex-lg-row position-relative" style="height: calc(100vh - 140px);">
+    <div class="d-flex flex-column flex-lg-row position-relative" style="height: calc(100vh - 120px);">
         
         <div v-if="isCreateModalOpen" class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0,0,0,0.5); z-index: 9999;">
             <div class="card w-100 mw-500px shadow-lg animate__animated animate__fadeInDown">
