@@ -1,4 +1,3 @@
-// Ini file index.vue untuk halaman dashboard
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useAuthStore } from "@/stores/auth"; 
