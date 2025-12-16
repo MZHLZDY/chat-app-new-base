@@ -1,3 +1,4 @@
+// Ini file index.vue untuk halaman group chat
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed } from "vue";
 import { useAuthStore } from "@/stores/auth";

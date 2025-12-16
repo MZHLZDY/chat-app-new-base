@@ -1,3 +1,4 @@
+// Ini file index.vue untuk halaman private chat
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, onUnmounted, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
