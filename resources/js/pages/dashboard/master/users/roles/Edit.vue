@@ -4,11 +4,9 @@ import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
 
 const props = defineProps({
-    selected: {
-        type: [String, Number],
-        default: null
-    }
-});
+    contactId: { type: [String, Number], default: null },
+    title: { type: String, default: 'Edit Kontak' }
+    });
 
 const emit = defineEmits(['close', 'refresh']);
 
@@ -20,18 +18,18 @@ const form = ref({
     phone: "",
 });
 
-const isEditMode = computed(() => !!props.selected);
+const isEditMode = computed(() => !!props.contactId);
 
 // Judul Modal
 const modalTitle = computed(() => isEditMode.value ? "Edit Kontak" : "Tambah Kontak Baru");
 
 // Fetch Data jika Edit Mode
 const fetchContactData = async () => {
-    if (!props.selected) return;
+    if (!props.contactId) return;
     
     isFetching.value = true;
     try {
-        const response = await axios.get(`/chat/contacts/${props.selected}`);
+        const response = await axios.get(`/chat/contacts/${props.contactId}`);
         const data = response.data.data || response.data;
         
         form.value.name = data.alias || data.name;
@@ -55,10 +53,14 @@ const submit = async () => {
     isLoading.value = true;
     try {
         if (isEditMode.value) {
-            await axios.put(`/chat/contacts/${props.selected}`, {
+            await axios.put(`/chat/contacts/${props.contactId}`, {
                 name: form.value.name
             });
-            toast.success("Kontak berhasil diperbarui.");
+            const msg = props.title.includes('Simpan') 
+                ? "Kontak berhasil disimpan." 
+                : "Kontak berhasil diperbarui.";
+            toast.success(msg);
+
         } else {
             await axios.post("/chat/contacts", {
                 phone: form.value.phone,
@@ -70,7 +72,7 @@ const submit = async () => {
         emit('refresh'); // Refresh list di Index.vue
         emit('close');   
     } catch (error: any) {
-        console.error(error);
+        console.error("Error submit:", error);
         if (error.response?.data?.message) {
             toast.error(error.response.data.message);
         } else {

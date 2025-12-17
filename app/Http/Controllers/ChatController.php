@@ -32,48 +32,62 @@ class ChatController extends Controller
         // Update last_seen saya saat load kontak
         User::where('id', $authId)->update(['last_seen' => now()]);
 
-        $contacts = User::join('contacts', 'users.id', '=', 'contacts.friend_id')
-            ->where('contacts.user_id', $authId)
-            ->select('users.*', 'contacts.alias', 'contacts.created_at as contact_added_at', 'users.last_seen')
-            ->get();
+        $contacts = User::leftJoin('contacts', function($join) use ($authId) {
+            $join->on('users.id', '=', 'contacts.friend_id')
+                 ->where('contacts.user_id', '=', $authId); 
+        })
+        ->where(function($query) use ($authId) {
+            $query->whereNotNull('contacts.id') 
+            ->orWhereIn('users.id', function($sub) use ($authId) {
+                $sub->select('sender_id')->from('chat_messages')->where('receiver_id', $authId);
+            })
+            ->orWhereIn('users.id', function($sub) use ($authId) {
+                $sub->select('receiver_id')->from('chat_messages')->where('sender_id', $authId);
+            });
+        })
+        ->where('users.id', '!=', $authId) 
+        ->select(
+            'users.*', 
+            'contacts.alias', 
+            'contacts.created_at as contact_added_at'
+        )
+        ->get();
 
         foreach ($contacts as $contact) {
+            // Jika ada alias, pakai alias. Jika tidak, tandai sebagai unknown
             if ($contact->alias) {
-                $contact->name = $contact->alias;
+                $contact->display_name = $contact->alias;
+                $contact->is_saved = true;
+            } else {
+                // Tampilkan Nomor Tidak Dikenal (atau nomor HP aslinya)
+                $contact->display_name = $contact->phone ? $contact->phone : "(Nomor Tidak Dikenal)";
+                $contact->is_saved = false;
             }
-
-            // Logic Last Message
             $lastMsg = ChatMessage::where(function ($q) use ($authId, $contact) {
                 $q->where('sender_id', $authId)->where('receiver_id', $contact->id);
             })->orWhere(function ($q) use ($authId, $contact) {
                 $q->where('sender_id', $contact->id)->where('receiver_id', $authId);
-            })
-            ->orderBy('created_at', 'desc')
-            ->first();
+            })->orderBy('created_at', 'desc')->first();
 
-            $contact->last_message = $lastMsg ? $lastMsg->message : null;
-            $contact->last_message_time = $lastMsg ? $lastMsg->created_at : null;
-            $isOnline = false;
-            if ($contact->last_seen) {
-                $lastSeen = Carbon::parse($contact->last_seen);
-                if ($lastSeen->diffInMinutes(now()) < 2) {
-                    $isOnline = true;
+            if ($lastMsg) {
+                $contact->last_message = $lastMsg->message;
+                $contact->last_message_time = $lastMsg->created_at;
+                // Logic Unread Count
+                if ($lastMsg->sender_id !== $authId && !$lastMsg->read_at) {
+                    $contact->unread_count = ChatMessage::where('sender_id', $contact->id)
+                        ->where('receiver_id', $authId)
+                        ->whereNull('read_at')
+                        ->count();
+                } else {
+                    $contact->unread_count = 0;
                 }
+            } else {
+                $contact->last_message = null;
+                $contact->last_message_time = null;
+                $contact->unread_count = 0;
             }
-            $contact->is_online = $isOnline; 
-
-            $unreadCount = ChatMessage::where('sender_id', $contact->id)
-                ->where('receiver_id', $authId)
-                ->whereNull('read_at')
-                ->count();
-            
-            $contact->unread_count = $unreadCount;
         }
-        $contacts = $contacts->sortByDesc(function ($contact) {
-            if ($contact->unread_count > 0) return 2;
-            if ($contact->last_message_time) return 1;
-            return 0;
-        })->values();
+        $contacts = $contacts->sortByDesc('last_message_time')->values();
 
         return response()->json($contacts);
     }
@@ -293,7 +307,7 @@ class ChatController extends Controller
             'name' => $friend->name,       
             'alias' => $contact ? $contact->alias : null,
             'email' => $friend->email,
-            'phone' => $friend->phone,     
+            'phone' => $friend->phone,
             'photo' => $friend->photo,
         ]);
     }

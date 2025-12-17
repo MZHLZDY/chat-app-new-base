@@ -37,6 +37,7 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const isAddContactOpen = ref(false);
 const isEditContactOpen = ref(false);
 const contactIdToEdit = ref<string | number | undefined>(undefined);
+const editModalTitle = ref("Edit Kontak");
 const isDeleteModalOpen = ref(false);
 const messageToDelete = ref<any>(null);
 const isLightboxOpen = ref(false);
@@ -93,19 +94,6 @@ const shouldShowDateDivider = (index: number) => {
     return !isSameDay(currentMsgDate, prevMsgDate);
 };
 
-// GET STATUS KONTAK
-const getContactStatus = (contact: any) => {
-    if (!contact) return '';
-    if (onlineUsersSet.value.has(String(contact.id))) return 'Online';
-    if (contact.is_online) return 'Online';
-    if (contact.last_seen) {
-        return 'Terakhir dilihat ' + formatDistanceToNow(new Date(contact.last_seen), { 
-            addSuffix: true, 
-            locale: id 
-        });
-    }
-    return 'Offline';
-};
 
 const syncOnlineStatus = () => {
     contacts.value.forEach(contact => {
@@ -307,9 +295,27 @@ const openAddContactModal = () => {
     contactIdToEdit.value = undefined;
     isAddContactOpen.value = true;
 };
-const openEditContactModal = (contact: any) => {
+
+const openSaveContactModal = (contact: any) => {
     contactIdToEdit.value = contact.id;
+    if (!contact.is_saved) {
+        editModalTitle.value = "Simpan Kontak";
+    } else {
+        editModalTitle.value = "Ubah Nama Kontak";
+    }
     isEditContactOpen.value = true;
+};
+
+const handleContactUpdated = async () => {
+    isEditContactOpen.value = false;
+    await fetchContacts(); // Refresh list agar status 'Unknown' hilang
+    if (activeContact.value && contactIdToEdit.value === activeContact.value.id) {
+        const updatedContact = contacts.value.find(c => c.id === activeContact.value.id);
+        if (updatedContact) {
+            activeContact.value = updatedContact;
+        }
+    }
+    toast.success("Kontak berhasil disimpan!");
 };
 
 const listenForActiveChat = (contact: any) => {
@@ -354,14 +360,27 @@ const listenGlobalNotifications = () => {
     if (!currentUser.value) return;
     
     window.Echo.private(`notifications.${currentUser.value.id}`)
-        .listen('.MessageSent', (e: any) => {
-            if (!activeContact.value || activeContact.value.id !== e.message.sender_id) {
-                const idx = contacts.value.findIndex(c => c.id === e.message.sender_id);
-                if (idx !== -1) {
-                    contacts.value[idx].unread_count += 1;
-                    const contact = contacts.value.splice(idx, 1)[0];
-                    contacts.value.unshift(contact);
+        .listen('.MessageSent', async (e: any) => {
+            const incomingMsg = e.message;
+            if (incomingMsg.sender_id === currentUser.value.id) return;
+            const contactIndex = contacts.value.findIndex(c => c.id === incomingMsg.sender_id);
+
+            if (contactIndex !== -1) {
+                const contact = contacts.value[contactIndex];
+                contact.last_message = incomingMsg.message;
+                contact.last_message_time = incomingMsg.created_at;
+                if (!activeContact.value || activeContact.value.id !== contact.id) {
+                    contact.unread_count = (contact.unread_count || 0) + 1;
                 }
+                contacts.value.splice(contactIndex, 1);
+                contacts.value.unshift(contact);
+
+            } else {
+                console.log("Pesan dari orang baru! Merefresh kontak...");
+                await fetchContacts(); 
+                
+                // Opsional: Mainkan suara notifikasi
+                // playNotificationSound();
             }
         })
         .listen('.MessageRead', (e: any) => {
@@ -473,25 +492,42 @@ onUnmounted(() => {
                         <div v-if="isLoadingContact" class="text-center mt-5">
                             <span class="spinner-border spinner-border-sm text-primary"></span>
                         </div>
-                        <div v-for="contact in contacts" :key="contact.id" 
-                             @click="selectContact(contact)"
-                             class="d-flex flex-stack py-4 px-2 cursor-pointer hover-effect rounded"
-                             :class="{ 'bg-light-primary': activeContact && activeContact.id === contact.id }">
-                            
+                        <div v-for="contact in contacts" :key="contact.id" @click="selectContact(contact)" class="d-flex align-items-center p-3 mb-2 rounded cursor-pointer contact-item position-relative overflow-hidden" :class="{ 'bg-light-primary': activeContact?.id === contact.id }">   
                             <div class="d-flex align-items-center">
-                                <div class="symbol symbol-45px symbol-circle">
-                                    <img :src="contact.photo ? `/storage/${contact.photo}` : '/media/avatars/blank.png'" alt="pic" />
-                                    <!-- INDICATOR ONLINE -->
-                                    <div v-if="onlineUsersSet.has(String(contact.id)) || contact.is_online" class="symbol-badge bg-success start-100 top-100 border-4 h-8px w-8px ms-n2 mt-n2"></div>
+                                <div class="symbol symbol-40px symbol-circle me-3">
+                                    <img :src="contact.photo ? `/storage/${contact.photo}` : '/media/avatars/blank.png'" alt="image">
+                                    <!-- Indikator Online -->
+                                    <div v-if="contact.is_online" class="symbol-badge bg-success start-100 top-100 border-4 h-8px w-8px ms-n2 mt-n2"></div>
                                 </div>
-                                <div class="ms-5">
-                                    <span class="fs-5 fw-bold text-gray-900 mb-2 d-block">{{ contact.name }}</span>
-                                    <div class="fw-semibold text-muted">{{ contact.email }}</div>
+                                <div class="d-flex flex-column flex-grow-1 overflow-hidden">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="d-flex align-items-center overflow-hidden">
+                                            <span class="fw-bold text-gray-800 text-hover-primary fs-6 text-truncate">
+                                                {{ contact.display_name }}
+                                            </span>
+                                            
+                                            <span v-if="!contact.is_saved" class="badge badge-light-warning ms-2 fs-9 flex-shrink-0">
+                                                Unknown
+                                            </span>
+                                        </div>
+                                        <span class="text-muted fs-8 time-stamp transition-opacity ms-2">
+                                            {{ formatTime(contact.last_message_time) }}
+                                        </span>
+                                    </div>
+
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <span class="text-muted fs-7 text-truncate pe-2" style="max-width: 150px;">
+                                            <span v-if="contact.last_message && contact.last_message_sender_id === currentUser?.id" class="me-1">
+                                                <i v-if="contact.last_message_read_at" class="fas fa-check-double text-primary fs-9"></i>
+                                                <i v-else class="fas fa-check-double text-gray-400 fs-9"></i>
+                                            </span>
+                                            {{ contact.last_message || 'Belum ada pesan' }}
+                                        </span>
+                                        <span v-if="contact.unread_count > 0" class="badge badge-circle badge-primary w-20px h-20px fs-9">
+                                            {{ contact.unread_count }}
+                                        </span>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="d-flex flex-column align-items-end ms-2">
-                                <span class="text-muted fs-7 mb-1">{{ contact.contact_added_at ? formatTime(contact.contact_added_at) : '' }}</span>
-                                <span v-if="contact.unread_count > 0" class="badge badge-circle badge-primary w-20px h-20px">{{ contact.unread_count }}</span>
                             </div>
                         </div>
                     </div>
@@ -511,36 +547,43 @@ onUnmounted(() => {
                 </div>
 
                 <div v-else class="d-flex flex-column h-100">
-                    <div class="card-header d-flex align-items-center p-3 border-bottom" style="min-height: 70px;">
-                        <div class="symbol symbol-45px symbol-circle me-3">
-                            <img :src="activeContact.photo ? `/storage/${activeContact.photo}` : '/media/avatars/blank.png'" alt="image" />
-                            <!-- STATUS ICON DI HEADER -->
-                            <div v-if="onlineUsersSet.has(String(activeContact.id)) || activeContact.is_online" class="symbol-badge bg-success start-100 top-100 border-4 h-10px w-10px ms-n2 mt-n2"></div>
-                        </div>
-
-                        <div class="d-flex flex-column flex-grow-1">
-                            <div class="d-flex align-items-center">
-                                <span class="fw-bold fs-5 text-gray-900 me-2">{{ activeContact.name }}</span>
-                                <button @click="openEditContactModal(activeContact)" class="btn btn-sm btn-icon btn-light-primary w-20px h-20px">
-                                    <i class="fas fa-pen fs-9"></i>
-                                </button>
-                            </div>
-                            <!-- STATUS TEXT -->
-                            <span class="fs-8" :class="(onlineUsersSet.has(String(activeContact.id)) || activeContact.is_online) ? 'text-success fw-bold' : 'text-muted'">
-                                {{ getContactStatus(activeContact) }}
-                            </span>
+                    <div class="card-header d-flex align-items-center p-3 border-bottom" style="min-height: 70px;" v-if="activeContact">
+                    <div class="d-flex align-items-center flex-grow-1">
+                        <button class="btn btn-icon btn-sm btn-active-light-primary d-lg-none me-3" @click="activeContact = null">
+                            <i class="fas fa-arrow-left fs-2"></i>
+                        </button>
+                        
+                        <div class="symbol symbol-40px symbol-circle me-3">
+                            <img :src="activeContact.photo ? `/storage/${activeContact.photo}` : '/media/avatars/blank.png'" alt="image">
                         </div>
                         
-                        <!-- Video Call Buttons -->
-                        <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-icon btn-sm btn-light-primary">
-                                <Video class="w-5 h-5 text-gray-700 dark:text-gray-300"/>
-                            </button>
-                            <button class="btn btn-icon btn-sm btn-light-primary">
-                                <Phone class="w-5 h-5 text-gray-700 dark:text-gray-300"/>
-                            </button>
+                        <div class="d-flex flex-column">
+                            <span class="fw-bold text-gray-800 fs-6">
+                                {{ activeContact.display_name }}
+                            </span>
+                            <span class="text-muted fs-8">
+                                {{ activeContact.is_online ? 'Online' : (activeContact.last_seen ? 'Terakhir dilihat ' + formatTime(activeContact.last_seen) : 'Offline') }}
+                            </span>
                         </div>
                     </div>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <button 
+                            v-if="!activeContact.is_saved"
+                            @click="openSaveContactModal(activeContact)" 
+                            class="btn btn-sm btn-light-primary d-none d-sm-inline-flex align-items-center"
+                        >
+                            <i class="fas fa-user-plus fs-7 me-1"></i> Simpan
+                        </button>
+
+                        <button class="btn btn-icon btn-sm text-gray-500"><Phone class="w-20px h-20px" /></button>
+                        <button class="btn btn-icon btn-sm text-gray-500"><Video class="w-20px h-20px" /></button>
+                        
+                        <button class="btn btn-icon btn-sm text-gray-500">
+                            <i class="fas fa-ellipsis-v fs-4"></i>
+                        </button>
+                    </div>
+                </div>
 
                     <div class="card-body p-4 chat-body-custom" ref="chatBodyRef" @scroll="handleScroll">
                         <div v-if="isLoadingMessages" class="d-flex justify-content-center align-items-center h-100">
@@ -562,6 +605,7 @@ onUnmounted(() => {
                                         
                                         <div v-if="msg.type === 'image'" class="mb-2 position-relative">
                                             <img :src="`/storage/${msg.file_path}`" class="rounded w-100 cursor-pointer border" @click="openLightbox(msg.file_path)" style="max-height: 250px; object-fit: cover;">
+                                            <button @click.stop="downloadAttachment(msg)" class="btn btn-icon btn-sm btn-dark position-absolute bottom-0 end-0 m-2 shadow-sm download-btn"style="width: 30px; height: 30px; background-color: rgba(0,0,0,0.6); border: none;" title="Download Gambar"><i class="fas fa-download fs-8 text-white"></i></button>
                                         </div>
                                         <div v-else-if="msg.type === 'file'" class="d-flex align-items-center p-2 rounded mb-2" :class="msg.sender_id === currentUser?.id ? 'bg-white bg-opacity-20' : 'bg-light'">
                                             <div class="symbol symbol-35px me-2"
@@ -635,7 +679,7 @@ onUnmounted(() => {
     </div>
     <div v-if="isEditContactOpen" class="modal-overlay">
         <div class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden" style="max-width: 500px; width: 100%;">
-            <EditForm :selected="contactIdToEdit" @close="isEditContactOpen = false" @refresh="fetchContacts" />
+            <EditForm v-if="isEditContactOpen" :contactId="contactIdToEdit" :title="editModalTitle"  @close="isEditContactOpen = false" @updated="handleContactUpdated" @refresh="fetchContacts" />
         </div>
     </div>
     <div v-if="isLightboxOpen" class="lightbox-overlay" @click.self="closeLightbox">
@@ -692,7 +736,7 @@ onUnmounted(() => {
 }
 
 .hover-effect:hover {
-    background-color: #f1faff;
+    background-color: #b6c3f0;
 }
 
 /* Modal & Lightbox Overlays */
