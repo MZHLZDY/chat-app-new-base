@@ -45,13 +45,13 @@
         <div class="border-bottom border-gray-300 w-100 mt-5 mb-10"></div>
 
         <!--begin::Link-->
-        <!-- <div class="text-gray-400 fw-semobold fs-4 text-center">
-            {{ $t('login.daftar_label') }}
+        <div class="text-gray-700 fw-bold fs-4 text-center">
+            BELUM PUNYA AKUN?
 
-            <router-link to="/auth/sign-up" class="link-primary fw-bold">
-                {{ $t('login.daftar') }}
+            <router-link to="/sign-up" class="link-primary fw-bold">
+                DAFTAR DISINI
             </router-link>
-        </div> -->
+        </div>
         <!--end::Link-->
     </div>
     <!--end::Form-->
@@ -66,7 +66,7 @@ import * as Yup from "yup";
 import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
 import { blockBtn, unblockBtn } from "@/libs/utils";
-
+import { MessagesSquare } from 'lucide-vue-next';
 import WithEmail from "./tabs/WithEmail.vue";
 import WithPhone from "./tabs/WithPhone.vue";
 import { useSetting } from "@/services";

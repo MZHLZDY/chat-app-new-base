@@ -1,11 +1,14 @@
 <template>
 	<!--begin::Authentication Layout -->
 	<div class="d-flex flex-column flex-column-fluid flex-lg-row justify-content-center"
-		:style="`background-image: url('${setting?.bg_auth}'); background-size: cover`">
+		:style="`background-image: url('media/misc/bg-auth.png'); background-size: cover`">
 		<!--begin::Body-->
 		<div class="d-flex flex-column-fluid flex-lg-row-auto justify-content-center justify-content-lg-end p-12 p-lg-20">
 			<!--begin::Card-->
-			<div class="bg-body d-flex flex-column align-items-stretch flex-center rounded-4 w-md-600px p-md-20 w-100">
+			<div 
+              class="bg-body d-flex flex-column align-items-stretch flex-center rounded-4 w-md-600px p-md-20 w-100"
+              style="background-color: rgba(255, 255, 255, 0.5) !important; backdrop-filter: blur(10px);"
+            >
 				<!--begin::Wrapper-->
 				<div class="d-flex flex-center flex-column flex-column-fluid px-10 py-20 py-md-0">
 					<router-view></router-view>

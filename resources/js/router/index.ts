@@ -24,6 +24,7 @@ const routes: Array<RouteRecordRaw> = [
             middleware: "auth",
         },
         children: [
+            
             {
                 path: "/dashboard",
                 name: "dashboard",
@@ -124,6 +125,24 @@ const routes: Array<RouteRecordRaw> = [
                 component: () => import("@/pages/errors/Error500.vue"),
                 meta: {
                     pageTitle: "Error 500",
+                },
+            },
+            {
+              path: "/email/verify/:id/:hash",
+              name: "email-verify",
+              component: () => import("@/pages/auth/EmailVerifiedSuccess.vue"),
+              meta: {
+                 pageTitle: "Email Verification",
+                 middleware: "guest",
+                },
+            },
+            {
+              path: "/email/verify/failed",
+              name: "email-verify-failed",
+              component: () => import("@/pages/auth/EmailVerifiedFailed.vue"),
+              meta: {
+                 pageTitle: "Verification Failed",
+                 middleware: "guest",
                 },
             },
         ],

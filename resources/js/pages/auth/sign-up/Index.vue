@@ -13,7 +13,20 @@
                     Daftar Akun <span class="text-primary">CHAT APP</span>
                 </h1>
             </div>
-            <div
+
+            <!-- Alert untuk verifikasi email -->
+            <div v-if="showEmailVerificationAlert" class="alert alert-success d-flex align-items-center mb-10">
+                <i class="ki-duotone ki-shield-tick fs-2hx text-success me-4">
+                    <span class="path1"></span>
+                    <span class="path2"></span>
+                </i>
+                <div class="d-flex flex-column">
+                    <h4 class="mb-1 text-success">Registrasi Berhasil!</h4>
+                    <span>Email verifikasi telah dikirim ke <strong>{{ formData.email }}</strong>. Silakan cek inbox atau spam folder Anda.</span>
+                </div>
+            </div>
+
+            <div v-if="!showEmailVerificationAlert"
                 class="stepper stepper-links d-flex flex-column"
                 id="kt_create_account_stepper"
                 ref="horizontalWizardRef"
@@ -85,14 +98,21 @@
                             </button>
                         </div>
                     </div>
-                    </form>
-                </div>
+                </form>
+            </div>
+
+            <div v-else class="text-center pt-10">
+                <router-link to="/sign-in" class="btn btn-lg btn-primary">
+                    <KTIcon icon-name="arrow-left" icon-class="fs-4 me-2" />
+                    Kembali ke Login
+                </router-link>
+            </div>
 
             <div class="border-bottom border-gray-300 w-100 mt-5 mb-10"></div>
 
-            <div class="text-gray-400 fw-semobold fs-4 text-center">
+            <div class="text-gray-700 fw-bold fs-4 text-center">
                 Sudah memiliki akun?
-                <router-link to="/auth/sign-in" class="link-primary fw-bold">
+                <router-link to="/sign-in" class="link-primary fw-bold">
                     Masuk
                 </router-link>
             </div>
@@ -107,14 +127,13 @@ import * as Yup from "yup";
 import { StepperComponent } from "@/assets/ts/components";
 import { useForm } from "vee-validate";
 import Credential from "./steps/Credential.vue";
-import Password from "./steps/Password.vue"; // Hanya import 2 ini
+import Password from "./steps/Password.vue";
 import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
 import { blockBtn, unblockBtn } from "@/libs/utils";
 import router from "@/router";
 import { useSetting } from "@/services";
 
-// Interface Sederhana
 interface ICredential {
     nama?: string;
     email?: string;
@@ -132,13 +151,14 @@ export default defineComponent({
     name: "sign-up",
     components: {
         Credential,
-        Password, // VerifyEmail dan VerifyPhone SUDAH DIHAPUS
+        Password,
     },
     setup() {
         const { data: setting = {} } = useSetting();
         const _stepperObj = ref<StepperComponent | null>(null);
         const horizontalWizardRef = ref<HTMLElement | null>(null);
         const currentStepIndex = ref(0);
+        const showEmailVerificationAlert = ref(false);
 
         const formData = ref<CreateAccount>({
             nama: "",
@@ -154,9 +174,7 @@ export default defineComponent({
             );
         });
 
-        // Schema Validasi (Hanya 2 Langkah)
         const createAccountSchema = [
-            // Langkah 1: Data Diri
             Yup.object({
                 nama: Yup.string().required("Nama tidak boleh kosong").label("Nama"),
                 email: Yup.string().email().required("Email tidak boleh kosong").label("Email"),
@@ -165,7 +183,6 @@ export default defineComponent({
                     .required("No. Telepon tidak boleh kosong")
                     .label("No. Telepon"),
             }),
-            // Langkah 2: Password
             Yup.object({
                 password: Yup.string()
                     .min(8, "Password minimal terdiri dari 8 karakter")
@@ -198,11 +215,9 @@ export default defineComponent({
             formData.value = { ...formData.value, ...values };
 
             if (currentStepIndex.value === 0) {
-                // Dari Step 1 -> Lanjut ke Step 2
                 currentStepIndex.value++;
                 _stepperObj.value?.goNext();
             } else if (currentStepIndex.value === 1) {
-                // Dari Step 2 -> Submit ke Backend
                 formSubmit(formData.value);
             }
         });
@@ -216,12 +231,14 @@ export default defineComponent({
         const formSubmit = (values: CreateAccount) => {
             blockBtn("#submit-form");
 
-            // Kirim data langsung ke Register API (Tanpa OTP)
             axios
                 .post("/auth/register", values)
                 .then((res) => {
-                    toast.success("Akun berhasil dibuat! Silakan login.");
-                    router.push({ name: "sign-in" });
+                    toast.success(res.data.message);
+                    showEmailVerificationAlert.value = true;
+                    
+                    // Scroll to top untuk melihat alert
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                 })
                 .catch((err) => {
                     toast.error(err.response?.data?.message || "Terjadi kesalahan");
@@ -238,6 +255,7 @@ export default defineComponent({
             getAssetPath,
             formData,
             setting,
+            showEmailVerificationAlert,
         };
     },
 });
