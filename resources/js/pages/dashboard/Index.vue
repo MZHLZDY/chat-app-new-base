@@ -192,7 +192,7 @@ const formatCount = (count: number): string => {
 <style scoped>
 /* Base Container */
 .dashboard-container {
-  min-height: 100vh;
+  min-height: 70vh;
   padding: 2rem;
   background-color: #f5f5f5;
   transition: background-color 0.3s ease;
@@ -205,7 +205,7 @@ const formatCount = (count: number): string => {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 0.75fr;
   gap: 2rem;
   max-width: 1400px;
   margin: 0 auto;
