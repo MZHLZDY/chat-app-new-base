@@ -2,13 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\User;
 use App\Models\ChatMessage;
 use App\Models\Contact;
-use App\Events\MessageSent;
-use App\Events\MessageRead;
-use App\Events\MessageDeleted;
-use App\Events\FileMessageSent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,10 +15,19 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;   
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver; 
-use Carbon\Carbon;
+use Kreait\Firebase\Contract\Database;
 
 class ChatController extends Controller
 {
+
+    protected $database;
+
+    // Inject Firebase Database via Constructor
+    public function __construct(Database $database)
+    {
+        $this->database = $database;
+    }
+    
     /**
      * 1. GET CONTACTS LIST
      */
@@ -29,7 +35,7 @@ class ChatController extends Controller
     {
         $authId = Auth::id();
         
-        // Update last_seen saya saat load kontak
+        // Update last_seen saya
         User::where('id', $authId)->update(['last_seen' => now()]);
 
         $contacts = User::leftJoin('contacts', function($join) use ($authId) {
@@ -54,15 +60,14 @@ class ChatController extends Controller
         ->get();
 
         foreach ($contacts as $contact) {
-            // Jika ada alias, pakai alias. Jika tidak, tandai sebagai unknown
             if ($contact->alias) {
                 $contact->display_name = $contact->alias;
                 $contact->is_saved = true;
             } else {
-                // Tampilkan Nomor Tidak Dikenal (atau nomor HP aslinya)
                 $contact->display_name = $contact->phone ? $contact->phone : "(Nomor Tidak Dikenal)";
                 $contact->is_saved = false;
             }
+            // Ambil pesan terakhir dari MySQL
             $lastMsg = ChatMessage::where(function ($q) use ($authId, $contact) {
                 $q->where('sender_id', $authId)->where('receiver_id', $contact->id);
             })->orWhere(function ($q) use ($authId, $contact) {
@@ -72,7 +77,7 @@ class ChatController extends Controller
             if ($lastMsg) {
                 $contact->last_message = $lastMsg->message;
                 $contact->last_message_time = $lastMsg->created_at;
-                // Logic Unread Count
+                
                 if ($lastMsg->sender_id !== $authId && !$lastMsg->read_at) {
                     $contact->unread_count = ChatMessage::where('sender_id', $contact->id)
                         ->where('receiver_id', $authId)
@@ -93,7 +98,7 @@ class ChatController extends Controller
     }
 
     /**
-     * HEARTBEAT (Update status online user setiap interval tertentu)
+     * HEARTBEAT 
      */
     public function heartbeat()
     {
@@ -118,24 +123,19 @@ class ChatController extends Controller
         }
 
         $myId = Auth::id();
-
         $targetUser = User::where('phone', $request->phone)->first();
 
         if (!$targetUser) {
-            return response()->json([
-                'message' => 'User dengan nomor ini belum terdaftar di aplikasi.'
-            ], 404);
+            return response()->json(['message' => 'User dengan nomor ini belum terdaftar.'], 404);
         }
         if ($targetUser->id == $myId) {
             return response()->json(['message' => 'Tidak bisa menyimpan nomor sendiri.'], 422);
         }
 
-        $exists = Contact::where('user_id', $myId)
-                         ->where('friend_id', $targetUser->id)
-                         ->exists();
+        $exists = Contact::where('user_id', $myId)->where('friend_id', $targetUser->id)->exists();
 
         if ($exists) {
-            return response()->json(['message' => 'Kontak ini sudah ada di daftar Anda.'], 422);
+            return response()->json(['message' => 'Kontak ini sudah ada.'], 422);
         }
 
         Contact::create([
@@ -144,11 +144,11 @@ class ChatController extends Controller
             'alias'     => $request->name
         ]);
 
-        return response()->json(['message' => 'Kontak berhasil ditemukan & disimpan.']);
+        return response()->json(['message' => 'Kontak berhasil disimpan.']);
     }
 
     /**
-     * 3. GET MESSAGES
+     * 3. GET MESSAGES (Load History dari MySQL)
      */
     public function getMessages($friendId)
     {
@@ -160,8 +160,11 @@ class ChatController extends Controller
             ->where('receiver_id', $myId)
             ->whereNull('read_at')
             ->update(['read_at' => now()]);
-
-        broadcast(new MessageRead($myId, $friendId))->toOthers();
+        $this->database->getReference('notifications/' . $friendId)->push([
+            'type' => 'read_receipt',
+            'reader_id' => $myId, 
+            'read_at' => now()->toIso8601String(),
+        ]);
 
         $messages = ChatMessage::where(function ($q) use ($myId, $friendId) {
             $q->where('sender_id', $myId)->where('receiver_id', $friendId);
@@ -180,12 +183,10 @@ class ChatController extends Controller
     }
 
     /**
-     * 4. SEND MESSAGE
+     * 4. SEND MESSAGE (TEXT & FILE) - FIREBASE INTEGRATION
      */
     public function sendMessage(Request $request)
     {
-        \Log::info('Chat send request:', $request->all());
-
         $validator = Validator::make($request->all(), [
             'receiver_id' => 'required|exists:users,id',
             'message'     => 'nullable|string', 
@@ -194,7 +195,6 @@ class ChatController extends Controller
         ]);
 
         if ($validator->fails()) {
-            \Log::error('Validation failed:', $validator->errors()->toArray());
             return response()->json($validator->errors(), 422);
         }
 
@@ -218,7 +218,7 @@ class ChatController extends Controller
             $safeName = str_replace(' ', '_', $originalName);
             $path = $file->storeAs('chat_files', $safeName, 'public');
             $mime = $file->getMimeType();
-            $type = str_starts_with($mime, 'image/') ? 'image' : 'file';
+            $type = str_starts_with($mime, 'image/') ? 'image' : (str_starts_with($mime, 'video/') ? 'video' : 'file');
 
             $messageData['type']           = $type;
             $messageData['file_path']      = $path;
@@ -226,30 +226,49 @@ class ChatController extends Controller
             $messageData['file_mime_type'] = $mime;
             $messageData['file_size']      = $file->getSize();
         }
+
         $message = ChatMessage::create($messageData);
-        
         $message->load('sender');
 
-        if ($request->hasFile('file')) {
-            broadcast(new FileMessageSent($message))->toOthers();
-        } else {
-            broadcast(new MessageSent($message))->toOthers();
+        try {
+            $payload = [
+                'id' => (int) $message->id,
+                'sender_id' => (int) $message->sender_id,
+                'receiver_id' => (int) $message->receiver_id,
+                'message' => $message->message ?? '',
+                'type' => $message->type ?? 'text',
+                'file_path' => $message->file_path ?? null,
+                'file_name' => $message->file_name ?? null,
+                'file_size' => $message->file_size ? (int) $message->file_size : null,
+                'created_at' => $message->created_at->toIso8601String(),
+                'read_at' => null,
+                'sender' => [
+                    'name' => $message->sender->name ?? '',
+                    'photo' => $message->sender->photo ?? null,
+                ]
+            ];
+            $this->database
+            ->getReference("chats/{$request->receiver_id}")
+            ->push($payload);
+            
+            \Log::info("Firebase message sent: {$uniqueKey}");
+            
+        } catch (\Exception $e) {
+            \Log::error("Firebase error: " . $e->getMessage());
         }
 
         return response()->json($message, 201);
     }
 
     /**
-     * 4a. DOWNLOAD FILE MESSAGE
+     * 4. DOWNLOAD FILE
      */
     public function downloadFile($id)
     {
         $message = ChatMessage::findOrFail($id);
-
         if (!$message->file_path || !Storage::disk('public')->exists($message->file_path)) {
             return response()->json(['message' => 'File tidak ditemukan'], 404);
         }
-
         return Storage::disk('public')->download($message->file_path, $message->file_name);
     }
 
@@ -264,43 +283,39 @@ class ChatController extends Controller
 
         if ($type === 'everyone') {
             if ($message->sender_id !== $user->id) {
-                return response()->json(['error' => 'Hanya pengirim yang bisa menghapus untuk semua'], 403);
+                return response()->json(['error' => 'Hanya pengirim yang bisa menghapus.'], 403);
             }
 
             if ($message->file_path && Storage::disk('public')->exists($message->file_path)) {
                 Storage::disk('public')->delete($message->file_path);
             }
-
             $message->delete();
-            
-            broadcast(new MessageDeleted($message))->toOthers();
+            $this->database->getReference('notifications/' . $message->receiver_id)->push([
+                'type' => 'message_deleted',
+                'message_id' => $id
+            ]);
 
             return response()->json(['message' => 'Pesan dihapus untuk semua orang']);
 
         } else {
             $deletedBy = $message->deleted_by_users ?? [];
-            
             if (!in_array($user->id, $deletedBy)) {
                 $deletedBy[] = $user->id;
                 $message->deleted_by_users = $deletedBy;
                 $message->save();
             }
-
             return response()->json(['message' => 'Pesan dihapus untuk saya']);
         }
     }
     
     /**
-     * 6. SHOW CONTACT (Untuk mengisi Form saat Edit)
+     * 6. SHOW CONTACT
      */
     public function showContact($friendId)
     {
         $myId = Auth::id();
-
         $friend = User::findOrFail($friendId);
-        $contact = Contact::where('user_id', $myId)
-            ->where('friend_id', $friendId)
-            ->first();
+        $contact = Contact::where('user_id', $myId)->where('friend_id', $friendId)->first();
 
         return response()->json([
             'id' => $friend->id,
@@ -313,7 +328,7 @@ class ChatController extends Controller
     }
 
     /**
-     * 7. UPDATE CONTACT (Simpan Perubahan Alias)
+     * 7. UPDATE CONTACT
      */
     public function updateContact(Request $request, $friendId)
     {
@@ -325,24 +340,14 @@ class ChatController extends Controller
             return response()->json(['message' => $validator->errors()->first()], 422);
         }
 
-        $myId = Auth::id();
-
-        User::findOrFail($friendId);
         Contact::updateOrCreate(
-            [
-                'user_id' => $myId,
-                'friend_id' => $friendId
-            ],
-            [
-                'alias' => $request->name, 
-                'updated_at' => now()
-            ]
+            ['user_id' => Auth::id(), 'friend_id' => $friendId],
+            ['alias' => $request->name, 'updated_at' => now()]
         );
 
-        return response()->json([
-            'message' => 'Kontak berhasil diperbarui',
-        ]);
+        return response()->json(['message' => 'Kontak berhasil diperbarui']);
     }
+
     /**
      * 8. MARK MESSAGE AS READ
      */
@@ -351,7 +356,13 @@ class ChatController extends Controller
         $msg = ChatMessage::find($id);
         if($msg && !$msg->read_at) {
             $msg->update(['read_at' => now()]);
-            broadcast(new MessageRead(Auth::id(), $msg->sender_id))->toOthers();
+
+            $this->database->getReference('notifications/' . $msg->sender_id)->push([
+                'type' => 'read_receipt',
+                'reader_id' => Auth::id(),
+                'message_id' => $id,
+                'read_at' => now()->toIso8601String(),
+            ]);
         }
         
         return response()->json(['success' => true]);

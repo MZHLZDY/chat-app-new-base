@@ -3,7 +3,7 @@ import { ref, onMounted, nextTick, computed, onUnmounted, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
-import { format, isToday, isYesterday, isSameDay, formatDistanceToNow } from 'date-fns';
+import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { id } from 'date-fns/locale'; 
 import { Phone, Video } from 'lucide-vue-next';
 
@@ -11,12 +11,23 @@ import { Phone, Video } from 'lucide-vue-next';
 import ContactForm from "./Form.vue";
 import EditForm from "./Edit.vue";
 
-// Definisi Global Echo
-declare global {
-    interface Window {
-        Echo: any;
-    }
-}
+// --- FIREBASE IMPORT ---
+import { db, auth } from "@/libs/firebase"; 
+import { 
+    ref as firebaseRef, 
+    onChildAdded,
+    onChildRemoved, 
+    onValue,
+    off, 
+    remove, 
+    set, 
+    onDisconnect,
+    type Unsubscribe,
+    query, 
+    orderByChild, 
+    limitToLast
+} from "firebase/database";
+import { onAuthStateChanged } from "firebase/auth";
 
 // --- STATE UTAMA ---
 const authStore = useAuthStore();
@@ -43,16 +54,17 @@ const messageToDelete = ref<any>(null);
 const isLightboxOpen = ref(false);
 const activeLightboxUrl = ref("");
 const heartbeatInterval = ref<any>(null);
-const onlineUsersSet = ref(new Set<string>()); 
 const showScrollButton = ref(false);
 
-const getChatChannel = (otherId: any) => {
-    if (!currentUser.value) return "";
-    const myId = parseInt(String(currentUser.value.id));
-    const friendId = parseInt(String(otherId));
-    const ids = [myId, friendId].sort((a, b) => a - b);
-    return `chat.${ids[0]}.${ids[1]}`;
-};
+// --- FIREBASE STATE (Untuk Cleanup yang Benar) ---
+let unsubscribeChats: Unsubscribe | null = null;
+let unsubscribeNotif: Unsubscribe | null = null;
+let unsubscribeOnlineAdded: Unsubscribe | null = null;
+let unsubscribeOnlineRemoved: Unsubscribe | null = null;
+
+// Ref untuk onValue (karena onValue cara cleanup-nya beda, pakai off)
+let connectedRef: any = null; 
+let onlineRef: any = null;
 
 const scrollToBottom = () => {
     nextTick(() => {
@@ -68,7 +80,6 @@ const scrollToBottom = () => {
 const handleScroll = () => {
     if (chatBodyRef.value) {
         const { scrollTop, scrollHeight, clientHeight } = chatBodyRef.value;
-        // Tampilkan tombol jika jarak dari bawah lebih dari 300px
         const distanceToBottom = scrollHeight - (scrollTop + clientHeight);
         showScrollButton.value = distanceToBottom > 300;
     }
@@ -94,35 +105,11 @@ const shouldShowDateDivider = (index: number) => {
     return !isSameDay(currentMsgDate, prevMsgDate);
 };
 
-
-const syncOnlineStatus = () => {
-    contacts.value.forEach(contact => {
-        const strId = String(contact.id);
-        if (onlineUsersSet.value.has(strId)) {
-            contact.is_online = true;
-        }
-    });
-};
-
 const fetchContacts = async () => {
     isLoadingContact.value = true;
     try {
         const response = await axios.get("/chat/contacts");
         contacts.value = response.data;
-
-        syncOnlineStatus();
-        if (activeContact.value) {
-            const updatedActive = contacts.value.find(c => c.id === activeContact.value.id);
-            if (updatedActive) {
-                activeContact.value.name = updatedActive.name;
-                activeContact.value.photo = updatedActive.photo;
-                activeContact.value.last_seen = updatedActive.last_seen; 
-                if (onlineUsersSet.value.has(String(updatedActive.id))) {
-                    activeContact.value.is_online = true;
-                }
-            }
-        }
-
     } catch (error) {
         console.error("Gagal memuat kontak", error);
     } finally {
@@ -131,12 +118,6 @@ const fetchContacts = async () => {
 };
 
 const selectContact = async (contact: any) => {
-    if (activeContact.value && window.Echo) {
-        try {
-            window.Echo.leave(getChatChannel(activeContact.value.id));
-        } catch (e) {}
-    }
-
     activeContact.value = contact;
     messages.value = [];
     
@@ -145,9 +126,7 @@ const selectContact = async (contact: any) => {
         contacts.value[contactIndex].unread_count = 0;
     }
 
-    await getMessages(contact.id);
-    
-    listenForActiveChat(contact);
+    await getMessages(contact.id)
 };
 
 const getMessages = async (friendId: any) => {
@@ -196,9 +175,9 @@ const sendMessage = async () => {
         });
         const realMessage = response.data.data ? response.data.data : response.data;
         const index = messages.value.findIndex(m => m.id === tempId);
-            if (index !== -1) {
-                messages.value[index] = realMessage;
-            }
+        if (index !== -1) {
+            messages.value[index] = realMessage;
+        }
     } catch (error) {
         console.error("Gagal kirim pesan", error);
         toast.error("Gagal mengirim pesan");
@@ -308,7 +287,7 @@ const openSaveContactModal = (contact: any) => {
 
 const handleContactUpdated = async () => {
     isEditContactOpen.value = false;
-    await fetchContacts(); // Refresh list agar status 'Unknown' hilang
+    await fetchContacts(); 
     if (activeContact.value && contactIdToEdit.value === activeContact.value.id) {
         const updatedContact = contacts.value.find(c => c.id === activeContact.value.id);
         if (updatedContact) {
@@ -318,97 +297,143 @@ const handleContactUpdated = async () => {
     toast.success("Kontak berhasil disimpan!");
 };
 
-const listenForActiveChat = (contact: any) => {
-    if (!window.Echo) return;
-    const channelName = getChatChannel(contact.id);
-
-    window.Echo.join(channelName)
-        .listen('.MessageSent', (e: any) => {
-            if (e.message.sender_id !== currentUser.value?.id) {
-                const exists = messages.value.some((m: any) => m.id === e.message.id);
-                if (!exists) {
-                    messages.value.push(e.message);
-                    scrollToBottom();
-                    axios.put(`/chat/message/${e.message.id}/read`);
-                }
-            }
-        })
-        .listen('.FileMessageSent', (e: any) => {
-             if (e.message.sender_id !== currentUser.value?.id) {
-                const exists = messages.value.some((m: any) => m.id === e.message.id);
-                if (!exists) {
-                    messages.value.push(e.message);
-                    scrollToBottom();
-                }
-            }
-        })
-        .listen('.message.deleted', (e: any) => {
-            messages.value = messages.value.filter((m: any) => m.id !== e.messageId);
-        })
-        .listen('.MessageRead', (e: any) => {
-            if (e.readerId === activeContact.value.id) {
-                messages.value.forEach((msg) => {
-                    if (msg.sender_id === currentUser.value.id && !msg.read_at) {
-                        msg.read_at = new Date().toISOString();
-                    }
-                });
-            };
-        });
-};
-
-const listenGlobalNotifications = () => {
-    if (!currentUser.value) return;
-    
-    window.Echo.private(`notifications.${currentUser.value.id}`)
-        .listen('.MessageSent', async (e: any) => {
-            const incomingMsg = e.message;
-            if (incomingMsg.sender_id === currentUser.value.id) return;
-            const contactIndex = contacts.value.findIndex(c => c.id === incomingMsg.sender_id);
-
-            if (contactIndex !== -1) {
-                const contact = contacts.value[contactIndex];
-                contact.last_message = incomingMsg.message;
-                contact.last_message_time = incomingMsg.created_at;
-                if (!activeContact.value || activeContact.value.id !== contact.id) {
-                    contact.unread_count = (contact.unread_count || 0) + 1;
-                }
-                contacts.value.splice(contactIndex, 1);
-                contacts.value.unshift(contact);
-
-            } else {
-                console.log("Pesan dari orang baru! Merefresh kontak...");
-                await fetchContacts(); 
-                
-                // Opsional: Mainkan suara notifikasi
-                // playNotificationSound();
-            }
-        })
-        .listen('.MessageRead', (e: any) => {
-            console.log("Event Read Diterima:", e);
-            if (activeContact.value && e.readerId === activeContact.value.id) {
-                messages.value.forEach((msg) => {
-                    if (msg.sender_id === currentUser.value.id && !msg.read_at) {
-                        msg.read_at = new Date().toISOString();
-                    }
-                });
-            }
-        });
-};
-
 const updateContactStatus = (userId: any, isOnline: boolean) => {
     const strUserId = String(userId);
     const contact = contacts.value.find(c => String(c.id) === strUserId);
-    
     if (contact) {
         contact.is_online = isOnline;
         if (!isOnline) {
             contact.last_seen = new Date().toISOString();
         }
-        if (activeContact.value && String(activeContact.value.id) === strUserId) {
-            activeContact.value.is_online = isOnline;
-            if (!isOnline) activeContact.value.last_seen = contact.last_seen;
+    }
+    if (activeContact.value && String(activeContact.value.id) === strUserId) {
+        activeContact.value.is_online = isOnline;
+        if (!isOnline) {
+            activeContact.value.last_seen = new Date().toISOString();
         }
     }
+};
+
+// --- SETUP LISTENER YANG BENAR ---
+const setupFirebaseListeners = () => {
+    if (!currentUser.value) return;
+    const myId = currentUser.value.id;
+    const chatRefRaw = firebaseRef(db, `chats/${myId}`);
+    const chatQuery = query(chatRefRaw, limitToLast(50)); 
+    
+    const processedMessageIds = new Set<number>();
+    
+    unsubscribeChats = onChildAdded(chatQuery, async (snapshot) => {
+        const messageKey = snapshot.key;
+        const incomingMsg = snapshot.val();
+        
+        if (!incomingMsg || !messageKey) {
+            return;
+        }
+        
+        if (processedMessageIds.has(incomingMsg.id)) {
+            return;
+        }
+        
+        processedMessageIds.add(incomingMsg.id);
+        
+        const msgTime = new Date(incomingMsg.created_at).getTime();
+        const now = Date.now();
+        const ageInSeconds = (now - msgTime) / 1000;
+        
+        if (ageInSeconds > 60) {
+            return;
+        }
+        
+        if (activeContact.value && incomingMsg.sender_id === activeContact.value.id) {
+            const exists = messages.value.some((m: any) => m.id === incomingMsg.id);
+            
+            if (!exists) {
+                messages.value.push(incomingMsg);
+                scrollToBottom();
+                
+                try {
+                    await axios.put(`/chat/message/${incomingMsg.id}/read`);
+                } catch (error) {
+                }
+            }
+        }
+        
+        const contactIndex = contacts.value.findIndex(c => c.id === incomingMsg.sender_id);
+        
+        if (contactIndex !== -1) {
+            const contact = contacts.value[contactIndex];
+            contact.last_message = incomingMsg.message || 
+                (incomingMsg.type === 'image' ? 'Gambar' : 
+                 incomingMsg.type === 'video' ? 'Video' : 'File');
+            contact.last_message_time = incomingMsg.created_at;
+            
+            if (!activeContact.value || activeContact.value.id !== incomingMsg.sender_id) {
+                contact.unread_count = (contact.unread_count || 0) + 1;
+            }
+            
+            contacts.value.splice(contactIndex, 1);
+            contacts.value.unshift(contact);
+        } else {
+            await fetchContacts();
+        }
+    });
+
+    const notifRefRaw = firebaseRef(db, `notifications/${myId}`);
+    const processedNotifKeys = new Set<string>();
+    
+    unsubscribeNotif = onChildAdded(notifRefRaw, (snapshot) => {
+        const notifKey = snapshot.key;
+        const notif = snapshot.val();
+        
+        if (!notif || !notifKey || processedNotifKeys.has(notifKey)) {
+            return;
+        }
+        
+        processedNotifKeys.add(notifKey);
+        
+        if (notif.type === 'read_receipt') {
+            if (activeContact.value && notif.reader_id === activeContact.value.id) {
+                messages.value.forEach((msg: any) => {
+                    if (msg.sender_id === myId && !msg.read_at) {
+                        msg.read_at = notif.read_at;
+                    }
+                });
+            }
+        } else if (notif.type === 'message_deleted') {
+            messages.value = messages.value.filter((m: any) => m.id !== notif.message_id);
+        }
+    });
+
+    const myOnlineRef = firebaseRef(db, `online_users/${myId}`);
+    connectedRef = firebaseRef(db, ".info/connected");
+    
+    onValue(connectedRef, (snap) => {
+        if (snap.val() === true) {
+            
+            set(myOnlineRef, true)
+                .then(() => {
+                })
+                .catch((error) => {
+                });
+            
+            onDisconnect(myOnlineRef).remove();
+        }
+    });
+
+    onlineRef = firebaseRef(db, 'online_users');
+    
+    unsubscribeOnlineAdded = onChildAdded(onlineRef, (snapshot) => {
+        if (snapshot.key) {
+            updateContactStatus(snapshot.key, true);
+        }
+    });
+
+    unsubscribeOnlineRemoved = onChildRemoved(onlineRef, (snapshot) => {
+        if (snapshot.key) {
+            updateContactStatus(snapshot.key, false);
+        }
+    });
 };
 
 watch(messages, () => {
@@ -423,47 +448,36 @@ watch(activeContact, (newVal, oldVal) => {
     }
 });
 
-onMounted(() => {
-    fetchContacts();
+onMounted(async () => {
+    await fetchContacts();
 
-    if (currentUser.value && window.Echo) {
-        listenGlobalNotifications();
-        window.Echo.join('online')
-            .here((users: any[]) => {
-                onlineUsersSet.value.clear();
-                users.forEach(u => onlineUsersSet.value.add(String(u.id)));
-                syncOnlineStatus();
-            })
-            .joining((user: any) => {
-                onlineUsersSet.value.add(String(user.id));
-                updateContactStatus(user.id, true);
-            })
-            .leaving((user: any) => {
-                const strUserId = String(user.id);
-                onlineUsersSet.value.delete(strUserId);
-                updateContactStatus(user.id, false);
-            })
-            .error((error: any) => {
-                console.error('Echo Online Error:', error);
-            });
-
-        axios.post('/chat/heartbeat').catch(() => {});
-        heartbeatInterval.value = setInterval(() => {
-            axios.post('/chat/heartbeat').catch(() => {});
-        }, 60000); 
+    if (currentUser.value) {
+        onAuthStateChanged(auth, (firebaseUser) => {
+            if (firebaseUser) {
+                setupFirebaseListeners();
+                axios.post('/chat/heartbeat').catch(() => {});
+                heartbeatInterval.value = setInterval(() => {
+                    axios.post('/chat/heartbeat').catch(() => {});
+                }, 60000);
+            } else {
+            }
+        });
     }
 });
 
+
 onUnmounted(() => {
-    if (window.Echo) {
-        if (currentUser.value) {
-            window.Echo.leave(`notifications.${currentUser.value.id}`);
-            window.Echo.leave('online');
-        }
-        if (activeContact.value) {
-            window.Echo.leave(getChatChannel(activeContact.value.id));
-        }
+    if (unsubscribeChats) unsubscribeChats();
+    if (unsubscribeNotif) unsubscribeNotif();
+    if (unsubscribeOnlineAdded) unsubscribeOnlineAdded();
+    if (unsubscribeOnlineRemoved) unsubscribeOnlineRemoved();
+    if (connectedRef) off(connectedRef);
+    if (onlineRef) off(onlineRef);
+    if (currentUser.value) {
+        const myOnlineRef = firebaseRef(db, `online_users/${currentUser.value.id}`);
+        remove(myOnlineRef);
     }
+
     if (heartbeatInterval.value) {
         clearInterval(heartbeatInterval.value);
     }
@@ -472,7 +486,6 @@ onUnmounted(() => {
 
 <template>
     <div class="d-flex flex-column flex-lg-row h-100">
-        <!-- SIDEBAR -->
         <div class="flex-column flex-lg-row-auto w-100 w-lg-350px w-xl-400px mb-10 mb-lg-0">
             <div class="card card-flush h-100">
                 <div class="card-header pt-7" id="kt_chat_contacts_header">
@@ -492,11 +505,10 @@ onUnmounted(() => {
                         <div v-if="isLoadingContact" class="text-center mt-5">
                             <span class="spinner-border spinner-border-sm text-primary"></span>
                         </div>
-                        <div v-for="contact in contacts" :key="contact.id" @click="selectContact(contact)" class="d-flex align-items-center p-3 mb-2 rounded cursor-pointer contact-item position-relative overflow-hidden" :class="{ 'bg-light-primary': activeContact?.id === contact.id }">   
+                        <div v-for="contact in contacts" :key="contact.id" @click="selectContact(contact)" class="d-flex align-items-center p-3 mb-2 rounded cursor-pointer contact-item position-relative overflow-hidden" :class="{ 'bg-light-primary': activeContact?.id === contact.id }">      
                             <div class="d-flex align-items-center">
                                 <div class="symbol symbol-40px symbol-circle me-3">
                                     <img :src="contact.photo ? `/storage/${contact.photo}` : '/media/avatars/blank.png'" alt="image">
-                                    <!-- Indikator Online -->
                                     <div v-if="contact.is_online" class="symbol-badge bg-success start-100 top-100 border-4 h-8px w-8px ms-n2 mt-n2"></div>
                                 </div>
                                 <div class="d-flex flex-column flex-grow-1 overflow-hidden">
@@ -535,7 +547,6 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <!-- CHAT AREA -->
         <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10" style="min-width: 0;">
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
                 <div v-if="!activeContact" class="card-body d-flex flex-column justify-content-center align-items-center h-100">
@@ -671,7 +682,6 @@ onUnmounted(() => {
         </div>
     </div>
 
-    <!-- MODALS -->
     <div v-if="isAddContactOpen" class="modal-overlay">
         <div class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden" style="max-width: 500px; width: 100%;">
             <ContactForm @close="isAddContactOpen = false" @refresh="fetchContacts" />
