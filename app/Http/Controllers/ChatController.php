@@ -166,18 +166,19 @@ class ChatController extends Controller
             'read_at' => now()->toIso8601String(),
         ]);
 
-        $messages = ChatMessage::where(function ($q) use ($myId, $friendId) {
-            $q->where('sender_id', $myId)->where('receiver_id', $friendId);
-        })->orWhere(function ($q) use ($myId, $friendId) {
-            $q->where('sender_id', $friendId)->where('receiver_id', $myId);
-        })
-        ->orderBy('created_at', 'asc')
-        ->get()
-        ->filter(function ($message) use ($myId) {
-            $deletedBy = $message->deleted_by_users ?? [];
-            return !in_array($myId, $deletedBy);
-        })
-        ->values();
+        $messages = ChatMessage::with(['replyTo.sender']) 
+            ->where(function ($q) use ($myId, $friendId) {
+                $q->where('sender_id', $myId)->where('receiver_id', $friendId);
+            })->orWhere(function ($q) use ($myId, $friendId) {
+                $q->where('sender_id', $friendId)->where('receiver_id', $myId);
+            })
+            ->orderBy('created_at', 'asc')
+            ->get()
+            ->filter(function ($message) use ($myId) {
+                $deletedBy = $message->deleted_by_users ?? [];
+                return !in_array($myId, $deletedBy);
+            })
+            ->values();
 
         return response()->json($messages);
     }
@@ -189,75 +190,94 @@ class ChatController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'receiver_id' => 'required|exists:users,id',
-            'message'     => 'nullable|string', 
-            'text'        => 'nullable|string', 
-            'file'        => 'nullable|file',
+            'message'     => 'nullable|string',
+            'file'        => 'nullable|file|max:102400', 
+            'reply_to_id' => 'nullable|exists:chat_messages,id'
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json(['message' => $validator->errors()->first()], 422);
         }
-
-        $messageText = $request->message ?? $request->text;
-
-        if (!$messageText && !$request->hasFile('file')) {
-            return response()->json(['error' => 'Pesan atau file tidak boleh kosong.'], 422);
+        if (!$request->message && !$request->hasFile('file')) {
+            return response()->json(['message' => 'Pesan atau file tidak boleh kosong'], 422);
         }
-
-        $senderId = Auth::id();
-        $messageData = [
-            'sender_id'   => $senderId,
-            'receiver_id' => $request->receiver_id,
-            'message'     => $messageText,
-            'type'        => 'text',
-        ];
-
-        if ($request->hasFile('file')) {
-            $file = $request->file('file');
-            $originalName = $file->getClientOriginalName(); 
-            $safeName = str_replace(' ', '_', $originalName);
-            $path = $file->storeAs('chat_files', $safeName, 'public');
-            $mime = $file->getMimeType();
-            $type = str_starts_with($mime, 'image/') ? 'image' : (str_starts_with($mime, 'video/') ? 'video' : 'file');
-
-            $messageData['type']           = $type;
-            $messageData['file_path']      = $path;
-            $messageData['file_name']      = $originalName;
-            $messageData['file_mime_type'] = $mime;
-            $messageData['file_size']      = $file->getSize();
-        }
-
-        $message = ChatMessage::create($messageData);
-        $message->load('sender');
 
         try {
-            $payload = [
-                'id' => (int) $message->id,
-                'sender_id' => (int) $message->sender_id,
-                'receiver_id' => (int) $message->receiver_id,
-                'message' => $message->message ?? '',
-                'type' => $message->type ?? 'text',
-                'file_path' => $message->file_path ?? null,
-                'file_name' => $message->file_name ?? null,
-                'file_size' => $message->file_size ? (int) $message->file_size : null,
-                'created_at' => $message->created_at->toIso8601String(),
-                'read_at' => null,
-                'sender' => [
-                    'name' => $message->sender->name ?? '',
-                    'photo' => $message->sender->photo ?? null,
-                ]
-            ];
-            $this->database
-            ->getReference("chats/{$request->receiver_id}")
-            ->push($payload);
-            
-            \Log::info("Firebase message sent: {$uniqueKey}");
-            
-        } catch (\Exception $e) {
-            \Log::error("Firebase error: " . $e->getMessage());
-        }
+            DB::beginTransaction();
 
-        return response()->json($message, 201);
+            $senderId = Auth::id();
+            
+            $filePath = null;
+            $fileName = null;
+            $fileMime = null;
+            $fileSize = null;
+            $msgType  = 'text'; 
+            if ($request->hasFile('file')) {
+                $file = $request->file('file');
+                
+                if (!$file->isValid()) {
+                    return response()->json(['message' => 'File korup atau gagal upload'], 400);
+                }
+
+                $originalName = $file->getClientOriginalName();
+                $fileMime = $file->getMimeType();
+                $fileSize = $file->getSize();
+                
+                $path = $file->storeAs('chat_files', time() . '_' . str_replace(' ', '_', $originalName), 'public');
+                
+                $filePath = $path;
+                $fileName = $originalName;
+                if (str_starts_with($fileMime, 'image/')) {
+                    $msgType = 'image';
+                } elseif (str_starts_with($fileMime, 'video/')) {
+                    $msgType = 'video';
+                } else {
+                    $msgType = 'file';
+                }
+            }
+            $message = ChatMessage::create([
+                'sender_id'      => $senderId,
+                'receiver_id'    => $request->receiver_id,
+                'message'        => $request->message, 
+                'file_path'      => $filePath,
+                'file_name'      => $fileName,
+                'file_mime_type' => $fileMime,
+                'file_size'      => $fileSize,
+                'type'           => $msgType,
+                'reply_to_id'    => $request->reply_to_id,
+                'created_at'     => now(),
+            ]);
+
+            DB::commit();
+
+            $message->load(['sender', 'replyTo.sender']);
+
+            $firebaseData = [
+            'id'             => $message->id,
+            'sender_id'      => $message->sender_id,
+            'receiver_id'    => $message->receiver_id,
+            'message'        => $message->message,
+            'file_path'      => $message->file_path,
+            'file_name'      => $message->file_name,
+            'type'           => $message->type,
+            'created_at'     => $message->created_at->toIso8601String(),
+            'reply_to'       => $message->replyTo ? [
+                'id'        => $message->replyTo->id,
+                'message'   => $message->replyTo->message,
+                'sender_id' => $message->replyTo->sender_id,
+                'type'      => $message->replyTo->type
+            ] : null,
+        ];
+        $this->database->getReference('chats/' . $request->receiver_id)->push($firebaseData);
+            return response()->json([
+                'status' => 'success',
+                'data'   => $message
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Server Error: ' . $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -277,35 +297,38 @@ class ChatController extends Controller
      */
     public function deleteMessage(Request $request, $id)
     {
-        $user = Auth::user();
-        $message = ChatMessage::findOrFail($id);
-        $type = $request->input('type', 'me');
+        $userId = Auth::id();
+        $message = ChatMessage::find($id);
 
-        if ($type === 'everyone') {
-            if ($message->sender_id !== $user->id) {
-                return response()->json(['error' => 'Hanya pengirim yang bisa menghapus.'], 403);
-            }
+        if (!$message) {
+            return response()->json(['message' => 'Pesan tidak ditemukan'], 404);
+        }
+        $isDeleteForEveryone = $request->input('delete_for_everyone', false);
 
-            if ($message->file_path && Storage::disk('public')->exists($message->file_path)) {
-                Storage::disk('public')->delete($message->file_path);
+        if ($isDeleteForEveryone) {
+            // --- LOGIC HAPUS UNTUK SEMUA ORANG ---
+            if ($message->sender_id !== $userId) {
+                return response()->json(['message' => 'Anda bukan pengirim pesan ini'], 403);
             }
-            $message->delete();
+            $message->delete(); 
             $this->database->getReference('notifications/' . $message->receiver_id)->push([
-                'type' => 'message_deleted',
-                'message_id' => $id
+                'type'       => 'message_deleted',
+                'message_id' => (int)$id,
+                'deleted_by' => $userId,
+                'timestamp'  => now()->timestamp
             ]);
 
-            return response()->json(['message' => 'Pesan dihapus untuk semua orang']);
-
         } else {
+            // --- LOGIC HAPUS UNTUK DIRI SENDIRI ---
             $deletedBy = $message->deleted_by_users ?? [];
-            if (!in_array($user->id, $deletedBy)) {
-                $deletedBy[] = $user->id;
+            if (!in_array($userId, $deletedBy)) {
+                $deletedBy[] = $userId;
                 $message->deleted_by_users = $deletedBy;
                 $message->save();
             }
-            return response()->json(['message' => 'Pesan dihapus untuk saya']);
         }
+
+        return response()->json(['status' => 'success']);
     }
     
     /**
@@ -366,5 +389,30 @@ class ChatController extends Controller
         }
         
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * 9. CLEAR CHAT (Hapus Riwayat untuk Diri Sendiri)
+     */
+    public function clearChat($friendId)
+    {
+        $myId = Auth::id();
+
+        $messages = ChatMessage::where(function ($q) use ($myId, $friendId) {
+            $q->where('sender_id', $myId)->where('receiver_id', $friendId);
+        })->orWhere(function ($q) use ($myId, $friendId) {
+            $q->where('sender_id', $friendId)->where('receiver_id', $myId);
+        })->get();
+
+        foreach ($messages as $message) {
+            $deletedBy = $message->deleted_by_users ?? [];
+            if (!in_array($myId, $deletedBy)) {
+                $deletedBy[] = $myId;
+                $message->deleted_by_users = $deletedBy;
+                $message->save();
+            }
+        }
+
+        return response()->json(['message' => 'Chat berhasil dibersihkan']);
     }
 }

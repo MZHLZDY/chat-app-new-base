@@ -23,8 +23,7 @@ import {
     set, 
     onDisconnect,
     type Unsubscribe,
-    query, 
-    orderByChild, 
+    query,
     limitToLast
 } from "firebase/database";
 import { onAuthStateChanged } from "firebase/auth";
@@ -55,6 +54,12 @@ const isLightboxOpen = ref(false);
 const activeLightboxUrl = ref("");
 const heartbeatInterval = ref<any>(null);
 const showScrollButton = ref(false);
+const replyingTo = ref<any>(null);
+const isHeaderMenuOpen = ref(false);
+const isInfoModalOpen = ref(false);
+const isFriendTyping = ref(false);
+let typingTimeout: ReturnType<typeof setTimeout> | null = null;
+let typingListenerOff: Unsubscribe | null = null;
 
 // --- FIREBASE STATE (Untuk Cleanup yang Benar) ---
 let unsubscribeChats: Unsubscribe | null = null;
@@ -75,6 +80,15 @@ const scrollToBottom = () => {
             });
         }
     });
+};
+
+const scrollToMessage = (id: number) => {
+    const el = document.getElementById('msg-' + id);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('bg-light-warning');
+        setTimeout(() => el.classList.remove('bg-light-warning'), 1000);
+    }
 };
 
 const handleScroll = () => {
@@ -143,45 +157,72 @@ const getMessages = async (friendId: any) => {
 };
 
 const sendMessage = async () => {
-    if (!newMessage.value.trim() && !fileInput.value?.files?.length) return;
-    if (!activeContact.value) return;
+    const textContent = newMessage.value.trim();
+    const file = fileInput.value?.files?.[0];
 
-    if (fileInput.value?.files?.length) {
-        await uploadFile();
-        return;
-    }
+    if (!textContent && !file) return;
+    if (!activeContact.value) return;
 
     const tempId = Date.now();
     const tempMessage = {
         id: tempId,
         sender_id: currentUser.value?.id,
         receiver_id: activeContact.value.id,
-        message: newMessage.value,
+        message: textContent,
+        file_path: file ? URL.createObjectURL(file) : null, 
+        type: file ? (file.type.startsWith('image') ? 'image' : 'file') : 'text',
         created_at: new Date().toISOString(),
         read_at: null,
-        type: 'text'
+        reply_to: replyingTo.value ? replyingTo.value : null
     };
 
     messages.value.push(tempMessage);
-    const msgToSend = newMessage.value;
-    newMessage.value = "";
     scrollToBottom();
-    refreshContactOrder(activeContact.value.id);
+    const formData = new FormData();
+    formData.append("receiver_id", activeContact.value.id);
+    
+    if (textContent) formData.append("message", textContent);
+    if (file) formData.append("file", file);
+    
+    if (replyingTo.value) {
+        formData.append("reply_to_id", replyingTo.value.id);
+    }
+
+    const tempReply = replyingTo.value;
+    newMessage.value = "";
+    replyingTo.value = null; 
+    if (fileInput.value) fileInput.value.value = "";
 
     try {
-       const response = await axios.post("/chat/send", {
-            receiver_id: activeContact.value.id,
-            message: msgToSend
+        const response = await axios.post("/chat/send", formData, {
+            headers: { "Content-Type": "multipart/form-data" }
         });
         const realMessage = response.data.data ? response.data.data : response.data;
         const index = messages.value.findIndex(m => m.id === tempId);
         if (index !== -1) {
             messages.value[index] = realMessage;
         }
+
+        refreshContactOrder(activeContact.value.id);
+
     } catch (error) {
         console.error("Gagal kirim pesan", error);
         toast.error("Gagal mengirim pesan");
+        messages.value = messages.value.filter(m => m.id !== tempId);
+        replyingTo.value = tempReply; 
     }
+};
+
+const setReply = (msg: any) => {
+    replyingTo.value = msg; 
+    nextTick(() => {
+        const input = document.querySelector('textarea'); 
+        if(input) input.focus();
+    });
+};
+
+const cancelReply = () => {
+    replyingTo.value = null;
 };
 
 const isTempId = (id: any) => {
@@ -190,29 +231,6 @@ const isTempId = (id: any) => {
 
 const triggerFileUpload = () => {
     fileInput.value?.click();
-};
-
-const uploadFile = async () => {
-    const file = fileInput.value?.files?.[0];
-    if (!file || !activeContact.value) return;
-
-    const formData = new FormData();
-    formData.append("receiver_id", activeContact.value.id);
-    formData.append("file", file);
-
-    if (fileInput.value) fileInput.value.value = "";
-
-    try {
-        const response = await axios.post("/chat/send-file", formData, {
-            headers: { "Content-Type": "multipart/form-data" }
-        });
-        messages.value.push(response.data);
-        scrollToBottom();
-        refreshContactOrder(activeContact.value.id);
-    } catch (error) {
-        console.error(error);
-        toast.error("Gagal mengirim file");
-    }
 };
 
 const downloadAttachment = async (msg: any) => {
@@ -251,13 +269,23 @@ const closeDeleteModal = () => {
 
 const confirmDelete = async (type: 'me' | 'everyone') => {
     if (!messageToDelete.value) return;
+    const isForEveryone = (type === 'everyone');
+
     try {
-        await axios.delete(`/chat/delete/${messageToDelete.value.id}`, { data: { type } });
+        await axios.delete(`/chat/delete/${messageToDelete.value.id}`, { 
+            data: { 
+                delete_for_everyone: isForEveryone 
+            } 
+        });
         messages.value = messages.value.filter(m => m.id !== messageToDelete.value.id);
-        toast.success(type === 'everyone' ? "Pesan dihapus untuk semua" : "Pesan dihapus untuk saya");
+        
+        toast.success(isForEveryone ? "Pesan dihapus untuk semua orang" : "Pesan dihapus untuk saya");
         closeDeleteModal();
+
     } catch (error: any) {
-        toast.error("Gagal menghapus pesan");
+        console.error("Error delete:", error);
+        const errorMsg = error.response?.data?.message || "Gagal menghapus pesan";
+        toast.error(errorMsg);
     }
 };
 
@@ -283,6 +311,17 @@ const openSaveContactModal = (contact: any) => {
         editModalTitle.value = "Ubah Nama Kontak";
     }
     isEditContactOpen.value = true;
+};
+
+const openEditModal = () => {
+    isHeaderMenuOpen.value = false;
+    if (!activeContact.value) {
+        toast.error("Tidak ada kontak yang dipilih");
+        return;
+    }
+    contactIdToEdit.value = activeContact.value.id; 
+    editModalTitle.value = "Edit Kontak";
+    isEditContactOpen.value = true; 
 };
 
 const handleContactUpdated = async () => {
@@ -314,6 +353,63 @@ const updateContactStatus = (userId: any, isOnline: boolean) => {
     }
 };
 
+const toggleHeaderMenu = () => {
+    isHeaderMenuOpen.value = !isHeaderMenuOpen.value;
+};
+
+const openInfoModal = () => {
+    isHeaderMenuOpen.value = false;
+    isInfoModalOpen.value = true;
+};
+
+const handleClearChat = async () => {
+    if (!activeContact.value) return;
+    if (!confirm("Apakah Anda yakin ingin menghapus semua riwayat chat ini?")) return;
+
+    try {
+        await axios.post(`/chat/clear/${activeContact.value.id}`);
+        messages.value = [];
+        toast.success("Chat berhasil dibersihkan");
+        isHeaderMenuOpen.value = false;
+        await fetchContacts();
+    } catch (error) {
+        console.error(error);
+        toast.error("Gagal membersihkan chat");
+    }
+};
+
+const handleTyping = () => {
+    if (!activeContact.value || !currentUser.value) return;
+    const myTypingRef = firebaseRef(db, `typing_status/${currentUser.value.id}`);
+    set(myTypingRef, {
+        is_typing: true,
+        receiver_id: activeContact.value.id
+    });
+    onDisconnect(myTypingRef).remove();
+    if (typingTimeout) clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+        set(myTypingRef, null); 
+    }, 2000);
+};
+const listenToTypingStatus = (friendId: number) => {
+    if (typingListenerOff) {
+        typingListenerOff(); 
+        typingListenerOff = null;
+    }
+
+    const friendTypingRef = firebaseRef(db, `typing_status/${friendId}`);
+    typingListenerOff = onValue(friendTypingRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data && data.is_typing && data.receiver_id === currentUser.value?.id) {
+            isFriendTyping.value = true;setTimeout(() => {
+                scrollToBottom();
+            }, 100);
+        } else {
+            isFriendTyping.value = false;
+        }
+    });
+};
+
 // --- SETUP LISTENER YANG BENAR ---
 const setupFirebaseListeners = () => {
     if (!currentUser.value) return;
@@ -337,7 +433,19 @@ const setupFirebaseListeners = () => {
         
         processedMessageIds.add(incomingMsg.id);
         
-        const msgTime = new Date(incomingMsg.created_at).getTime();
+        if (incomingMsg.type === 'delete_notify') {
+        console.log("Menerima perintah hapus untuk ID:", incomingMsg.target_message_id);
+        
+        const index = messages.value.findIndex(m => m.id === incomingMsg.target_message_id);
+        
+        if (index !== -1) {
+            messages.value.splice(index, 1);
+            // messages.value[index].message = "🚫 Pesan ini telah dihapus";
+            // messages.value[index].type = "deleted";
+        }
+        return; 
+    }
+        const msgTime = new Date(incomingMsg.created_at).getTime(); 
         const now = Date.now();
         const ageInSeconds = (now - msgTime) / 1000;
         
@@ -446,6 +554,14 @@ watch(activeContact, (newVal, oldVal) => {
             scrollToBottom();
         }, 100);
     }
+    if (typingListenerOff) {
+        typingListenerOff();
+        typingListenerOff = null;
+    }
+    if (newVal) {
+        isFriendTyping.value = false; 
+        listenToTypingStatus(newVal.id);
+    }
 });
 
 onMounted(async () => {
@@ -522,18 +638,14 @@ onUnmounted(() => {
                                                 Unknown
                                             </span>
                                         </div>
-                                        <span class="text-muted fs-8 time-stamp transition-opacity ms-2">
-                                            {{ formatTime(contact.last_message_time) }}
-                                        </span>
                                     </div>
-
                                     <div class="d-flex align-items-center justify-content-between">
                                         <span class="text-muted fs-7 text-truncate pe-2" style="max-width: 150px;">
                                             <span v-if="contact.last_message && contact.last_message_sender_id === currentUser?.id" class="me-1">
                                                 <i v-if="contact.last_message_read_at" class="fas fa-check-double text-primary fs-9"></i>
                                                 <i v-else class="fas fa-check-double text-gray-400 fs-9"></i>
                                             </span>
-                                            {{ contact.last_message || 'Belum ada pesan' }}
+                                            {{ contact.email }}
                                         </span>
                                         <span v-if="contact.unread_count > 0" class="badge badge-circle badge-primary w-20px h-20px fs-9">
                                             {{ contact.unread_count }}
@@ -577,7 +689,6 @@ onUnmounted(() => {
                             </span>
                         </div>
                     </div>
-
                     <div class="d-flex align-items-center gap-2">
                         <button 
                             v-if="!activeContact.is_saved"
@@ -590,17 +701,39 @@ onUnmounted(() => {
                         <button class="btn btn-icon btn-sm text-gray-500"><Phone class="w-20px h-20px" /></button>
                         <button class="btn btn-icon btn-sm text-gray-500"><Video class="w-20px h-20px" /></button>
                         
-                        <button class="btn btn-icon btn-sm text-gray-500">
-                            <i class="fas fa-ellipsis-v fs-4"></i>
-                        </button>
-                    </div>
-                </div>
+                        <div class="position-relative">
+                            <button class="btn btn-icon btn-sm text-gray-500" @click.stop="toggleHeaderMenu">
+                                <i class="fas fa-ellipsis-v fs-4"></i>
+                            </button>
 
+                            <div v-if="isHeaderMenuOpen" class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-bold w-200px py-3 show position-absolute end-0 mt-2 shadow bg-white" style="z-index: 105;">
+                                
+                                <div class="menu-item px-3">
+                                    <a href="#" class="menu-link px-3" @click.prevent="openInfoModal">
+                                        <i class="fas fa-info-circle me-2"></i> Info Kontak
+                                    </a>
+                                </div>
+                                <div class="menu-item px-3">
+                                    <a href="#" class="menu-link px-3" @click.prevent="handleClearChat">
+                                        <i class="fas fa-eraser me-2"></i> Bersihkan Chat
+                                    </a>
+                                </div>
+                                <div class="separator my-2"></div>
+                                <div class="menu-item px-3">
+                                    <a href="#" class="menu-link px-3" @click.prevent="openEditModal">
+                                        <i class="fas fa-user-edit me-2"></i> Edit Kontak
+                                    </a>
+                                </div>
+                            </div>
+                            <div v-if="isHeaderMenuOpen" @click="isHeaderMenuOpen = false" class="position-fixed top-0 start-0 w-100 h-100" style="z-index: 104;"></div>
+                        </div>
+                    </div>
+                    </div>
                     <div class="card-body p-4 chat-body-custom" ref="chatBodyRef" @scroll="handleScroll">
                         <div v-if="isLoadingMessages" class="d-flex justify-content-center align-items-center h-100">
                             <span class="spinner-border text-primary"></span>
                         </div>
-                        <div v-else v-for="(msg, index) in messages" :key="msg.id">
+                        <div v-else v-for="(msg, index) in messages" :key="msg.id" :id="'msg-' + msg.id">
                             <div v-if="shouldShowDateDivider(index)" class="d-flex justify-content-center my-4">
                                 <span class="badge badge-light-primary text-primary px-3 py-2 rounded-pill shadow-sm fs-9 fw-bold border">
                                     {{ formatDateLabel(msg.created_at) }}
@@ -608,20 +741,43 @@ onUnmounted(() => {
                             </div>
                             <div class="d-flex mb-4" :class="msg.sender_id === currentUser?.id ? 'justify-content-end' : 'justify-content-start'">
                                 <div class="d-flex flex-column" :class="msg.sender_id === currentUser?.id ? 'align-items-end' : 'align-items-start'">
+                                    
                                     <div class="p-3 rounded shadow-sm position-relative group-hover"
-                                         :class="msg.sender_id === currentUser?.id 
+                                        :class="msg.sender_id === currentUser?.id 
                                             ? 'bg-primary text-white rounded-bottom-end-0' 
                                             : 'receiver-bubble rounded-bottom-start-0'"
-                                         style="max-width: 320px; min-width: 120px;">
-                                        
+                                        style="max-width: 320px; min-width: 120px;">
+
+                                        <div v-if="msg.reply_to" 
+                                            class="mb-2 p-2 rounded border-start border-4 cursor-pointer d-flex flex-column"
+                                            :class="msg.sender_id === currentUser?.id ? 'bg-black bg-opacity-10 border-white' : 'bg-secondary bg-opacity-25 border-primary'"
+                                            @click="scrollToMessage(msg.reply_to.id)">
+                                            
+                                            <span class="fw-bold fs-8 mb-1" 
+                                                :class="msg.sender_id === currentUser?.id ? 'text-white' : 'text-primary'">
+                                                {{ msg.reply_to.sender_id === currentUser?.id ? 'Anda' : (activeContact?.name || 'Teman') }}
+                                            </span>
+
+                                            <span class="fs-8 text-truncate" 
+                                                :class="msg.sender_id === currentUser?.id ? 'text-white text-opacity-75' : 'text-gray-600'">
+                                                <i v-if="msg.reply_to.type === 'image'" class="fas fa-camera me-1"></i>
+                                                <i v-else-if="msg.reply_to.type === 'video'" class="fas fa-video me-1"></i>
+                                                <i v-else-if="msg.reply_to.type === 'file'" class="fas fa-file me-1"></i>
+                                                {{ msg.reply_to.message || (msg.reply_to.type === 'text' ? '' : (msg.reply_to.type === 'image' ? 'Foto' : 'File')) }}
+                                            </span>
+                                        </div>
                                         <div v-if="msg.type === 'image'" class="mb-2 position-relative">
-                                            <img :src="`/storage/${msg.file_path}`" class="rounded w-100 cursor-pointer border" @click="openLightbox(msg.file_path)" style="max-height: 250px; object-fit: cover;">
-                                            <button @click.stop="downloadAttachment(msg)" class="btn btn-icon btn-sm btn-dark position-absolute bottom-0 end-0 m-2 shadow-sm download-btn"style="width: 30px; height: 30px; background-color: rgba(0,0,0,0.6); border: none;" title="Download Gambar"><i class="fas fa-download fs-8 text-white"></i></button>
+                                            <img :src="msg.file_path.startsWith('blob') ? msg.file_path : `/storage/${msg.file_path}`" 
+                                                class="rounded w-100 cursor-pointer border" 
+                                                @click="openLightbox(msg.file_path)" 
+                                                style="max-height: 250px; object-fit: cover;">
+                                            <button @click.stop="downloadAttachment(msg)" class="btn btn-icon btn-sm btn-dark position-absolute bottom-0 end-0 m-2 shadow-sm download-btn" style="width: 30px; height: 30px; background-color: rgba(0,0,0,0.6); border: none;" title="Download Gambar"><i class="fas fa-download fs-8 text-white"></i></button>
                                         </div>
+
                                         <div v-else-if="msg.type === 'file'" class="d-flex align-items-center p-2 rounded mb-2" :class="msg.sender_id === currentUser?.id ? 'bg-white bg-opacity-20' : 'bg-light'">
-                                            <div class="symbol symbol-35px me-2"
-                                            ><span class="symbol-label fw-bold text-primary bg-white">FILE</span>
-                                        </div>
+                                            <div class="symbol symbol-35px me-2">
+                                                <span class="symbol-label fw-bold text-primary bg-white">FILE</span>
+                                            </div>
                                             <div class="text-truncate" style="max-width: 150px;">
                                                 <a href="#" @click.prevent="downloadAttachment(msg)" class="fw-bold fs-7 d-block text-truncate" :class="msg.sender_id === currentUser?.id ? 'text-white' : 'text-gray-800'">{{ msg.file_name }}</a>
                                                 <div class="fs-8" :class="msg.sender_id === currentUser?.id ? 'text-white text-opacity-75' : 'text-muted'">{{ (msg.file_size / 1024).toFixed(0) }} KB</div>
@@ -630,9 +786,11 @@ onUnmounted(() => {
                                                 <i class="fas fa-download fs-7"></i>
                                             </button>
                                         </div>
+
                                         <div v-if="msg.message" class="fs-6 px-1 text-break">
                                             {{ msg.message }}
                                         </div>
+
                                         <div class="d-flex justify-content-end align-items-center mt-1">
                                             <span class="fs-9 me-1" :class="msg.sender_id === currentUser?.id ? 'text-white text-opacity-75' : 'text-muted'">
                                                 {{ formatTime(msg.created_at) }}
@@ -649,8 +807,14 @@ onUnmounted(() => {
                                                 </span>
                                             </div>
                                         </div>
-                                        <div class="position-absolute top-0 end-0 mt-n2 me-n2 delete-btn-wrapper">
-                                            <button @click="openDeleteModal(msg)" class="btn btn-sm btn-icon btn-circle btn-white shadow w-20px h-20px">
+                                        <div class="position-absolute top-0 end-0 mt-n2 me-n2 d-flex gap-1" 
+                                            style="opacity: 0; transition: opacity 0.2s;" 
+                                            onmouseover="this.style.opacity=1" 
+                                            onmouseout="this.style.opacity=0">
+                                            <button @click="setReply(msg)" class="btn btn-sm btn-icon btn-circle btn-white shadow w-20px h-20px" title="Balas">
+                                                <i class="fas fa-reply fs-9 text-warning"></i>
+                                            </button>
+                                            <button @click="openDeleteModal(msg)" class="btn btn-sm btn-icon btn-circle btn-white shadow w-20px h-20px" title="Hapus">
                                                 <i class="fas fa-trash fs-9 text-danger"></i>
                                             </button>
                                         </div>
@@ -658,6 +822,42 @@ onUnmounted(() => {
                                 </div>
                             </div>
                         </div>
+                            <div v-if="isFriendTyping" class="d-flex justify-content-start mb-10">
+                                <div class="d-flex flex-column align-items-start">
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="symbol symbol-35px symbol-circle">
+                                            <img :src="activeContact?.photo ? `/storage/${activeContact.photo}` : '/media/avatars/blank.png'" alt="image" />
+                                        </div>
+                                        <div class="ms-3 p-4 bg-light rounded shadow-sm text-dark fw-bold text-start d-inline-block" 
+                                            style="border-bottom-left-radius: 0 !important; min-width: 60px;">
+                                            
+                                            <div class="typing-indicator">
+                                                <span></span>
+                                                <span></span>
+                                                <span></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                    </div>
+                    <div v-if="replyingTo" class="px-4 py-2 bg-light border-top d-flex justify-content-between align-items-center">
+                        <div class="d-flex flex-column border-start border-4 border-primary ps-2">
+                            <span class="text-primary fw-bold small">
+                                {{ replyingTo.sender_id === currentUser.id ? 'Anda' : activeContact.name }}
+                            </span>
+                            
+                            <span class="text-muted small text-truncate" style="max-width: 300px;">
+                                <i v-if="replyingTo.type === 'image'" class="fas fa-camera me-1"></i>
+                                <i v-else-if="replyingTo.type === 'video'" class="fas fa-video me-1"></i>
+                                <i v-else-if="replyingTo.type === 'file'" class="fas fa-file me-1"></i>
+                                {{ replyingTo.message || (replyingTo.type === 'image' ? 'Foto' : 'File') }}
+                            </span>
+                        </div>
+                        
+                        <button @click="cancelReply" class="btn btn-sm btn-icon btn-light-danger">
+                            <i class="fas fa-times"></i>
+                        </button>
                     </div>
                     <transition name="fade">
                         <button 
@@ -672,8 +872,8 @@ onUnmounted(() => {
                     <div class="card-footer pt-4 pb-4" style="min-height: 80px;">
                         <div class="d-flex align-items-center">
                             <button class="btn btn-sm btn-icon btn-active-light-primary me-2" @click="triggerFileUpload"><KTIcon icon-name="paper-clip" icon-class="fs-3" /></button>
-                            <input type="file" ref="fileInput" class="d-none" @change="sendMessage" />
-                            <input v-model="newMessage" @keyup.enter="sendMessage" type="text" class="form-control form-control-solid me-3" placeholder="Ketik pesan..." />
+                            <input type="file" ref="fileInput" class="d-none" @change="sendMessage" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
+                            <input v-model="newMessage" @keyup.enter="sendMessage" type="text" @input="handleTyping" class="form-control form-control-solid me-3" placeholder="Ketik pesan..." />
                             <button class="btn btn-primary btn-icon" @click="sendMessage"><KTIcon icon-name="send" icon-class="fs-2" /></button>
                         </div>
                     </div>
@@ -682,6 +882,7 @@ onUnmounted(() => {
         </div>
     </div>
 
+    <!-- Modal State -->
     <div v-if="isAddContactOpen" class="modal-overlay">
         <div class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden" style="max-width: 500px; width: 100%;">
             <ContactForm @close="isAddContactOpen = false" @refresh="fetchContacts" />
@@ -707,6 +908,41 @@ onUnmounted(() => {
                 <button @click="confirmDelete('me')" class="btn btn-light-primary">Hapus untuk saya</button>
                 <button v-if="messageToDelete?.sender_id === currentUser?.id" @click="confirmDelete('everyone')" class="btn btn-light-danger">Hapus untuk semua orang</button>
                 <button @click="closeDeleteModal" class="btn btn-link text-muted btn-sm">Batal</button>
+            </div>
+        </div>
+    </div>
+    <div v-if="isInfoModalOpen" class="modal-overlay" @click.self="isInfoModalOpen = false">
+        <div class="modal-content bg-white rounded shadow p-0 overflow-hidden" style="max-width: 400px; width: 100%;">
+            <div class="modal-header p-4 border-bottom d-flex justify-content-between align-items-center">
+                <h3 class="fw-bold m-0">Info Kontak</h3>
+                <div class="btn btn-icon btn-sm btn-active-light-primary ms-2" @click="isInfoModalOpen = false">
+                    <i class="fas fa-times fs-2"></i>
+                </div>
+            </div>
+            <div class="modal-body p-5 text-center">
+                <div class="symbol symbol-100px symbol-circle mb-4">
+                    <img :src="activeContact?.photo ? `/storage/${activeContact.photo}` : '/media/avatars/blank.png'" alt="image" style="object-fit: cover;" />
+                </div>
+                
+                <h4 class="fw-bold text-gray-800">{{ activeContact?.alias || activeContact?.name }}</h4>
+                <div v-if="activeContact?.alias" class="text-muted fs-7">~ {{ activeContact?.name }}</div>
+                
+                <div class="text-start bg-light rounded p-4 mt-4">
+                    <div class="d-flex mb-3">
+                        <i class="fas fa-phone text-gray-500 fs-4 me-3 mt-1"></i>
+                        <div>
+                            <div class="fs-7 text-muted">Nomor Telepon</div>
+                            <div class="fw-bold text-gray-800">{{ activeContact?.phone }}</div>
+                        </div>
+                    </div>
+                    <div class="d-flex mb-3">
+                        <i class="fas fa-envelope text-gray-500 fs-4 me-3 mt-1"></i>
+                        <div>
+                            <div class="fs-7 text-muted">Email</div>
+                            <div class="fw-bold text-gray-800">{{ activeContact?.email || '-' }}</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -747,6 +983,41 @@ onUnmounted(() => {
 
 .hover-effect:hover {
     background-color: #b6c3f0;
+}
+
+/* Animasi Typing Indicator */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 10px;
+}
+
+.typing-indicator span {
+  display: block;
+  width: 6px;
+  height: 6px;
+  background-color: #888;
+  border-radius: 50%;
+  margin: 0 2px;
+  animation: typing 1.4s infinite ease-in-out both;
+}
+
+.typing-indicator span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing {
+  0%, 80%, 100% {
+    transform: scale(0);
+  }
+  40% {
+    transform: scale(1);
+  }
 }
 
 /* Modal & Lightbox Overlays */
@@ -800,6 +1071,23 @@ onUnmounted(() => {
     background-color: #ffffff;
     color: #3f4254; /* Text Dark */
 }
+
+/* toast color */
+:root {
+  --toastify-text-color-light: #000000 !important;
+  --toastify-color-light: #ffffff;
+}
+
+.Toastify__toast-theme--light {
+  color: #333333 !important;
+  background-color: #ffffff !important;
+}
+
+.Toastify__close-button--light {
+  color: #333333 !important;
+  opacity: 0.7;
+}
+
 /* Dark Mode Styles */
 [data-bs-theme="dark"] .chat-body-custom {
     background-color: #151521 !important; /* Background Gelap */
