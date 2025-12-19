@@ -7,7 +7,7 @@
 			<!--begin::Card-->
 			<div 
               class="bg-body d-flex flex-column align-items-stretch flex-center rounded-4 w-md-600px p-md-20 w-100"
-              style="background-color: rgba(255, 255, 255, 0.5) !important; backdrop-filter: blur(10px);"
+              style="background-color: rgba(255, 255, 255, 0.75) !important; backdrop-filter: blur(1.5px);"
             >
 				<!--begin::Wrapper-->
 				<div class="d-flex flex-center flex-column flex-column-fluid px-10 py-20 py-md-0">

@@ -111,9 +111,9 @@
             <div class="border-bottom border-gray-300 w-100 mt-5 mb-10"></div>
 
             <div class="text-gray-700 fw-bold fs-4 text-center">
-                Sudah memiliki akun?
+                SUDAH PUNYA AKUN?
                 <router-link to="/sign-in" class="link-primary fw-bold">
-                    Masuk
+                    LOGIN DISINI
                 </router-link>
             </div>
         </main>
