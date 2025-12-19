@@ -70,7 +70,7 @@ const routes: Array<RouteRecordRaw> = [
                     import("@/pages/dashboard/master/users/Index.vue"),
                 meta: {
                     pageTitle: "Group Chat",
-                    breadcrumbs: ["Master", "Users"],
+                    breadcrumbs: ["Group Chat"],
                 },
             },
         ],

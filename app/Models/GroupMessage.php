@@ -4,14 +4,31 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\HiddenMessage;
 
 class GroupMessage extends Model
 {
-    use HasFactory, SoftDeletes;
-    protected $fillable = ['group_id','sender_id','message', 'type', 'file_path', 'file_name', 'file_mime_type', 'file_size'];
+    use HasFactory;
+
+    protected $fillable = [
+        'group_id',
+        'sender_id',
+        'message', 
+        'type', 
+        'file_path', 
+        'file_name', 
+        'file_mime_type', 
+        'file_size',
+        'reply_to_id',
+        'deleted_by'
+    ];
+
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_by' => 'array',
+    ];
 
     public function group(): BelongsTo
     {
@@ -22,9 +39,9 @@ class GroupMessage extends Model
     {
         return $this->belongsTo(User::class, 'sender_id');
     }
-    
-    public function hiddenForUsers()
+
+    public function replyTo(): BelongsTo
     {
-        return $this->morphMany(HiddenMessage::class, 'message');
+        return $this->belongsTo(GroupMessage::class, 'reply_to_id');
     }
 }

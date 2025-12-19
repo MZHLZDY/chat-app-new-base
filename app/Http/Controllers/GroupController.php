@@ -2,133 +2,200 @@
 
 namespace App\Http\Controllers;
 
-use App\Events\GroupMessageSent;
-use App\Events\MessageDeleted;
-use App\Events\GroupFileMessageSent;
 use App\Models\Group;
 use App\Models\GroupMessage;
-use App\Models\User;
+use App\Models\User; // Tambahan
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
+use Kreait\Firebase\Contract\Database; // <--- INI YG PENTING (DARI PRIVATE CHAT)
 
 class GroupController extends Controller
 {
+    protected $database;
+
+    public function __construct(Database $database)
+    {
+        $this->database = $database;
+    }
+
     public function index()
     {
-        $groups = Group::with('members:id,name')
-            ->with('latestMessage.sender')
-            ->withCount('members')
-            ->whereHas('members', fn($q) => $q->where('users.id', auth()->id()))
-            ->orderByDesc('updated_at') 
+        $userId = Auth::id();
+        $groups = Group::whereHas('members', function ($query) use ($userId) {
+            $query->where('user_id', $userId);
+        })
+        ->withCount('members') 
+        ->with(['latestMessage.sender']) 
+        ->get()
+        ->map(function ($group) use ($userId) {
+            $latestMsg = $group->latestMessage;
+            return [
+                'id' => $group->id,
+                'name' => $group->name,
+                'photo' => $group->photo, 
+                'members_count' => $group->members_count,
+                'unread_count' => 0, 
+                'last_message_sender_id' => $latestMsg ? $latestMsg->sender_id : null,
+                'last_message_sender_name' => $latestMsg && $latestMsg->sender ? $latestMsg->sender->name : null,
+                'last_message_preview' => $latestMsg ? ($latestMsg->message ?? ($latestMsg->type == 'image' ? 'Foto' : 'File')) : 'Belum ada pesan',
+                'updated_at' => $group->updated_at,
+            ];
+        });
+
+        return response()->json($groups->sortByDesc('updated_at')->values());
+    }
+
+    // 1. GET MESSAGES DARI FIREBASE
+    public function getMessages($groupId)
+    {
+        $isMember = DB::table('group_user')
+            ->where('group_id', $groupId)
+            ->where('user_id', Auth::id())
+            ->exists();
+
+        if (!$isMember) return response()->json(['message' => 'Unauthorized'], 403);
+
+        $messages = GroupMessage::where('group_id', $groupId)
+            ->with(['sender', 'replyTo.sender'])
+            ->orderBy('created_at', 'asc')
             ->get();
 
-        return response()->json($groups);
+        return response()->json(['data' => $messages]);
     }
 
-    public function store(Request $request)
+    // 2. SEND MESSAGE DENGAN FIREBASE PUSH (Realtime)
+    public function sendMessage(Request $request)
     {
-        $data = $request->validate([
-            'name'    => 'required|string|max:100',
-            'member_ids' => 'required|array|min:1',
-            'member_ids.*' => 'exists:users,id'
+        $request->validate([
+            'group_id' => 'required|exists:groups,id',
+            'message' => 'nullable|string',
+            'file' => 'nullable|file|max:10240',
+            'reply_to_id' => 'nullable|exists:group_messages,id'
         ]);
 
-        $group = Group::create([
-            'name' => $data['name'],
-            'owner_id' => auth()->id(),
-        ]);
-
-        $group->members()->sync(array_unique(array_merge($data['member_ids'], [auth()->id()])));
-
-        return response()->json($group->load('members:id,name'));
-    }
-
-    public function messages(Group $group)
-    {
-        $authId = auth()->id();
-        // authorize: user harus member
-        abort_unless($group->members()->where('users.id',auth()->id())->exists(), 403);
-
-        $messages = GroupMessage::where('group_id', $group->id)
-        ->whereDoesntHave('hiddenForUsers', function ($query) use ($authId) {
-            $query->where('user_id', $authId);
-        })
-        ->with('sender:id,name')
-        ->orderByDesc('created_at')
-        ->simplePaginate(50);
-
-        return response()->json($messages);
-    }
-
-    public function send(Request $request, Group $group)
-    {
-        abort_unless($group->members()->where('users.id', auth()->id())->exists(), 403);
-
-        $request->validate([ 'message' => 'required|string|max:2000' ]);
-
-        $message = $group->messages()->create([
-            'sender_id' => auth()->id(),
-            'message' => $request->message,
-        ]);
-
-        broadcast(new GroupMessageSent($message))->toOthers();
-
-        return response()->json($message);
-    }
-
-    public function destroy(GroupMessage $message)
-    {
-        if ($message->sender_id !== auth()->id()) {
-            return response()->json(['error' => 'Anda tidak memiliki izin untuk menghapus pesan ini.'], 403);
-        }
-        $deletedMessageId = $message->id;
-        $message->delete();
-
-        broadcast(new MessageDeleted($message))->toOthers();
-
-        return response()->json([
-            'message' => 'Pesan grup berhasil dihapus.',
-            'deleted_message_id' => $deletedMessageId
-        ], 200);
-    }
-
-    public function storeFile(Request $request, $groupId)
-    {
-        $validator = Validator::make($request->all(), [
-            'file' => 'required|file|max:25600',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+        if (!$request->message && !$request->hasFile('file')) {
+            return response()->json(['message' => 'Pesan kosong'], 422);
         }
 
-        $file = $request->file('file');
-        $path = $file->store('group_files', 'public');
-        $mime = $file->getMimeType();
+        $filePath = null;
+        $fileName = null;
+        $fileMime = null;
+        $fileSize = null;
+        $type = 'text';
 
-        $type = 'file';
-        if (str_starts_with($mime, 'image/')) {
-            $type = 'image';
-        } elseif (str_starts_with($mime, 'video/')) {
-            $type = 'video';
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $fileName = $file->getClientOriginalName();
+            $fileMime = $file->getMimeType();
+            $fileSize = $file->getSize();
+            $type = str_starts_with($fileMime, 'image/') ? 'image' : 'file';
+            $filePath = $file->store('chat_files', 'public');
         }
+
         $message = GroupMessage::create([
-            'group_id'       => $groupId,
-            'sender_id'      => auth()->id(),
-            'message'        => $request->input('text'),
-            'type'           => $type,
-            'file_path'      => $path,
-            'file_name'      => $file->getClientOriginalName(),
-            'file_mime_type' => $mime,
-            'file_size'      => $file->getSize(),
+            'group_id' => $request->group_id,
+            'sender_id' => Auth::id(),
+            'message' => $request->message,
+            'file_path' => $filePath,
+            'file_name' => $fileName,
+            'file_mime_type' => $fileMime,
+            'file_size' => $fileSize,
+            'type' => $type,
+            'reply_to_id' => $request->reply_to_id,
         ]);
 
-        $message->load('sender');
+        Group::where('id', $request->group_id)->update(['updated_at' => now()]);
+        
+        $message->load(['sender', 'replyTo.sender']);
+        $this->database->getReference('group_messages/' . $request->group_id)
+            ->push([
+                'id' => $message->id,
+                'sender_id' => $message->sender_id,
+                'message' => $message->message,
+                'type' => $message->type,
+                'file_path' => $message->file_path,
+                'file_name' => $message->file_name,
+                'file_size' => $message->file_size,
+                'created_at' => $message->created_at->toIso8601String(),
+                'sender' => [
+                    'id' => $message->sender->id,
+                    'name' => $message->sender->name,
+                    'photo' => $message->sender->photo,
+                ],
+                'reply_to' => $message->replyTo ? [
+                    'id' => $message->replyTo->id,
+                    'message' => $message->replyTo->message,
+                    'sender' => [
+                        'name' => $message->replyTo->sender->name ?? 'Unknown'
+                    ]
+                ] : null
+            ]);
 
-        broadcast(new GroupFileMessageSent($message))->toOthers();
+        return response()->json(['data' => $message]);
+    }
 
-        return response()->json($message, 201);
+    // 2. LEAVE GROUP
+    public function leaveGroup($id)
+    {
+        $deleted = DB::table('group_user')
+            ->where('group_id', $id)
+            ->where('user_id', Auth::id())
+            ->delete();
+
+        if ($deleted) return response()->json(['message' => 'Berhasil keluar']);
+        return response()->json(['message' => 'Gagal'], 400);
+    }
+    
+    // 3. DOWNLOAD ATTACHMENT
+    public function downloadAttachment($msgId)
+    {
+        $message = GroupMessage::findOrFail($msgId);
+        return Storage::disk('public')->download($message->file_path, $message->file_name);
+    }
+
+    // 4. DELETE MESSAGE
+    public function deleteMessage(Request $request, $id)
+    {
+        $userId = Auth::id();
+        $message = GroupMessage::find($id);
+
+        if (!$message) {
+            return response()->json(['message' => 'Pesan tidak ditemukan'], 404);
+        }
+
+        $isDeleteForEveryone = $request->input('delete_for_everyone', false);
+
+        if ($isDeleteForEveryone) {
+            // --- LOGIC HAPUS UNTUK SEMUA ORANG ---
+            if ($message->sender_id !== $userId) {
+                return response()->json(['message' => 'Anda bukan pengirim pesan ini'], 403);
+            }
+
+            $groupId = $message->group_id;
+            $msgId = $message->id;
+            $message->delete(); 
+            $this->database->getReference('group_messages/' . $groupId)->push([
+                'id' => 'del_' . time(), 
+                'type' => 'delete_notify',
+                'target_message_id' => $msgId,
+                'deleted_by_user_id' => $userId,
+                'timestamp' => now()->timestamp
+            ]);
+
+            return response()->json(['status' => 'success', 'message' => 'Pesan dihapus untuk semua orang']);
+
+        } else {
+            // --- LOGIC HAPUS UNTUK SAYA (LOCAL) ---
+            $deletedBy = $message->deleted_by ?? [];
+            if (!in_array($userId, $deletedBy)) {
+                $deletedBy[] = $userId;
+                $message->deleted_by = $deletedBy;
+                $message->save();
+            }
+
+            return response()->json(['status' => 'success', 'message' => 'Pesan dihapus untuk Anda']);
+        }
     }
 }
