@@ -21,25 +21,6 @@ use Inertia\Inertia;
 |
 */
 
-// Route::middleware(['auth:sanctum'])->group(function () {
-//     Route::post('/broadcasting/auth', function (\Illuminate\Http\Request $request) {
-//         return \Illuminate\Support\Facades\Broadcast::auth($request);
-//     });
-// });
-
-// Route::middleware('auth:sanctum')->group(function () {
-    
-//     // Dashboard Statistics
-//     Route::prefix('dashboard')->group(function () {
-//         // Get basic stats (untuk dashboard)
-//         Route::get('/stats', [DashboardController::class, 'getStats']);
-        
-//         // Get detailed stats (optional - untuk keperluan analytics)
-//         Route::get('/stats/detailed', [DashboardController::class, 'getDetailedStats']);
-//     });
-    
-// });
-
 // Authentication Route
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
@@ -107,6 +88,7 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::get('download/{id}', [ChatController::class, 'downloadFile']);
         Route::delete('delete/{id}', [ChatController::class, 'deleteMessage']);
         Route::put('message/{id}/read', [ChatController::class, 'markAsRead']);
+        Route::post('clear/{id}', [ChatController::class, 'clearChat']);
     });
 
     Route::prefix('call')->group(function () {

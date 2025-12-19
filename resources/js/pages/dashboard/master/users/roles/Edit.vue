@@ -69,7 +69,7 @@ const submit = async () => {
             toast.success("Kontak berhasil ditambahkan.");
         }
 
-        emit('refresh'); // Refresh list di Index.vue
+        emit('refresh');
         emit('close');   
     } catch (error: any) {
         console.error("Error submit:", error);

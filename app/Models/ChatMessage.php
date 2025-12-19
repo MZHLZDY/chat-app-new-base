@@ -19,7 +19,8 @@ class ChatMessage extends Model
         'file_name',
         'file_mime_type',
         'file_size',
-        'read_at'
+        'read_at',
+        'reply_to_id',
     ];
 
     protected $casts = [
@@ -37,5 +38,10 @@ class ChatMessage extends Model
     public function receiver()
     {
         return $this->belongsTo(User::class, 'receiver_id');
+    }
+
+    public function replyTo()
+    {
+        return $this->belongsTo(ChatMessage::class, 'reply_to_id');
     }
 }
