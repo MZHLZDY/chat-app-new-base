@@ -7,17 +7,15 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up()
     {
-        // 1. Tabel Groups
         Schema::create('groups', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('description')->nullable();
-            $table->foreignId('admin_id')->constrained('users')->onDelete('cascade'); // Pembuat grup
+            $table->foreignId('admin_id')->constrained('users')->onDelete('cascade'); 
             $table->string('photo')->nullable();
             $table->timestamps();
         });
 
-        // 2. Tabel Pivot (Anggota Group)
         Schema::create('group_user', function (Blueprint $table) {
             $table->id();
             $table->foreignId('group_id')->constrained()->onDelete('cascade');

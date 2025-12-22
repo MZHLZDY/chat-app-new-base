@@ -461,8 +461,8 @@ const setupFirebaseListeners = () => {
                 scrollToBottom();
                 
                 try {
-                    await axios.put(`/chat/message/${incomingMsg.id}/read`);
-                } catch (error) {
+                        await axios.put(`/chat/message/${incomingMsg.id}/read`);
+                    } catch (error) {
                 }
             }
         }
@@ -685,7 +685,7 @@ onUnmounted(() => {
                                 {{ activeContact.display_name }}
                             </span>
                             <span class="text-muted fs-8">
-                                {{ activeContact.is_online ? 'Online' : (activeContact.last_seen ? 'Terakhir dilihat ' + formatTime(activeContact.last_seen) : 'Offline') }}
+                                {{ activeContact.is_online ? 'Online' : (activeContact.last_seen ? 'Terakhir dilihat pada ' + formatTime(activeContact.last_seen) : 'Offline') }}
                             </span>
                         </div>
                     </div>
