@@ -4,12 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Group;
 use App\Models\GroupMessage;
-use App\Models\User; // Tambahan
+use App\Models\User; 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
-use Kreait\Firebase\Contract\Database; // <--- INI YG PENTING (DARI PRIVATE CHAT)
+use Kreait\Firebase\Contract\Database;
 
 class GroupController extends Controller
 {
@@ -18,6 +18,43 @@ class GroupController extends Controller
     public function __construct(Database $database)
     {
         $this->database = $database;
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name'       => 'required|string|max:100',
+            'member_ids' => 'required|array|min:1', 
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $group = Group::create([
+                'name'     => $request->name,
+                'admin_id' => Auth::id(), 
+                'photo'    => null,
+            ]);
+
+            $group->members()->attach(Auth::id(), ['is_admin' => true]);
+
+            $memberIds = collect($request->member_ids)
+                ->diff([Auth::id()])
+                ->unique();
+            
+            $group->members()->attach($memberIds, ['is_admin' => false]);
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Grup berhasil dibuat',
+                'data' => $group
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
     }
 
     public function index()

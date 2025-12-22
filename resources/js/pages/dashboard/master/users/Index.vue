@@ -251,7 +251,7 @@ const triggerFileUpload = () => {
 
 const downloadAttachment = async (msg: any) => {
     try {
-        const response = await axios.get(`/chat/download/${msg.id}`, { responseType: 'blob' });
+        const response = await axios.get(`/chat/group/download/${msg.id}`, { responseType: 'blob' });
         const url = window.URL.createObjectURL(new Blob([response.data]));
         const link = document.createElement('a');
         link.href = url;
@@ -426,20 +426,27 @@ const setupGroupListener = (groupId: number) => {
         const realExists = messages.value.some((m: any) => m.id === incomingMsg.id && !m.is_temp);
         if (realExists) return;
         if (incomingMsg.sender_id === currentUser.value.id) {
-            const tempIndex = messages.value.findIndex(m => 
-                m.is_temp === true && 
-                m.message === incomingMsg.message &&
-                m.type === incomingMsg.type
-            );
+            const tempIndex = messages.value.findIndex(m => {
+                if (!m.is_temp) return false;
+                
+                if (m.type !== incomingMsg.type) return false;
+                
+                const localCaption = m.message || "";  
+                const serverCaption = incomingMsg.message || "";
+
+                return localCaption === serverCaption;
+            });
 
             if (tempIndex !== -1) {
                 messages.value[tempIndex] = incomingMsg;
                 return; 
             }
         }
+        
         messages.value.push(incomingMsg);
         scrollToBottom();
     });
+    
     listenToGroupTyping(groupId);
 };
 
