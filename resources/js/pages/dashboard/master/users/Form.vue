@@ -1,315 +1,156 @@
 <script setup lang="ts">
-import { block, unblock } from "@/libs/utils";
-import { onMounted, ref, watch, computed } from "vue";
-import * as Yup from "yup";
+import { ref, onMounted, computed } from "vue";
+import { useAuthStore } from "@/stores/auth";
 import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
-import type { User, Role } from "@/types";
-import ApiService from "@/core/services/ApiService";
-import { useRole } from "@/services/useRole";
+import * as Yup from "yup";
+import { ErrorMessage, Field, Form as VeeForm } from "vee-validate";
 
-const props = defineProps({
-    selected: {
-        type: String,
-        default: null,
-    },
-});
-
+// Props & Emits
 const emit = defineEmits(["close", "refresh"]);
 
-const user = ref<User>({} as User);
-const fileTypes = ref(["image/jpeg", "image/png", "image/jpg"]);
-const photo = ref<any>([]);
-const formRef = ref();
+// State
+const authStore = useAuthStore();
+const currentUser = computed(() => authStore.user);
+const users = ref<any[]>([]);
+const isLoading = ref(false);
+const isSubmitting = ref(false);
 
-const formSchema = Yup.object().shape({
-    name: Yup.string().required("Nama harus diisi"),
-    email: Yup.string()
-        .email("Email harus valid")
-        .required("Email harus diisi"),
-    password: Yup.string().min(8, "Minimal 8 karakter").nullable(),
-    passwordConfirmation: Yup.string()
-        .oneOf([Yup.ref("password")], "Konfirmasi password harus sama")
-        .nullable(),
-    phone: Yup.string().required("Nomor Telepon harus diisi"),
-    role_id: Yup.string().required("Pilih role"),
+// Form Data
+const formData = ref({
+    name: "",
+    member_ids: [] as number[],
 });
 
-function getEdit() {
-    block(document.getElementById("form-user"));
-    ApiService.get("master/users", props.selected)
-        .then(({ data }) => {
-            user.value = data.user;
-            photo.value = data.user.photo
-                ? ["/storage/" + data.user.photo]
-                : [];
-        })
-        .catch((err: any) => {
-            toast.error(err.response.data.message);
-        })
-        .finally(() => {
-            unblock(document.getElementById("form-user"));
-        });
-}
-
-function submit() {
-    const formData = new FormData();
-    formData.append("name", user.value.name);
-    formData.append("email", user.value.email);
-    formData.append("phone", user.value.phone);
-    formData.append("role_id", user.value.role_id);
-
-    if (user.value?.password) {
-        formData.append("password", user.value.password);
-        formData.append(
-            "password_confirmation",
-            user.value.passwordConfirmation
-        );
-    }
-    if (photo.value.length) {
-        formData.append("photo", photo.value[0].file);
-    }
-    if (props.selected) {
-        formData.append("_method", "PUT");
-    }
-
-    block(document.getElementById("form-user"));
-    axios({
-        method: "post",
-        url: props.selected
-            ? `/master/users/${props.selected}`
-            : "/master/users/store",
-        data: formData,
-        headers: {
-            "Content-Type": "multipart/form-data",
-        },
-    })
-        .then(() => {
-            emit("close");
-            emit("refresh");
-            toast.success("Data berhasil disimpan");
-            formRef.value.resetForm();
-        })
-        .catch((err: any) => {
-            formRef.value.setErrors(err.response.data.errors);
-            toast.error(err.response.data.message);
-        })
-        .finally(() => {
-            unblock(document.getElementById("form-user"));
-        });
-}
-
-const role = useRole();
-const roles = computed(() =>
-    role.data.value?.map((item: Role) => ({
-        id: item.id,
-        text: item.full_name,
-    }))
-);
-
-onMounted(async () => {
-    if (props.selected) {
-        getEdit();
-    }
+// Schema Validasi
+const schema = Yup.object().shape({
+    name: Yup.string().required("Nama grup wajib diisi").max(100, "Maksimal 100 karakter"),
+    member_ids: Yup.array().min(1, "Pilih minimal 1 anggota grup"),
 });
 
-watch(
-    () => props.selected,
-    () => {
-        if (props.selected) {
-            getEdit();
-        }
+// 1. Fetch Users untuk dijadikan Anggota
+const fetchUsers = async () => {
+    isLoading.value = true;
+    try {
+        const { data } = await axios.get("/master/users"); 
+        const allUsers = data.data ? data.data : data;
+        users.value = allUsers.filter((u: any) => u.id !== currentUser.value.id);
+    } catch (error) {
+        console.error(error);
+        toast.error("Gagal memuat daftar user");
+    } finally {
+        isLoading.value = false;
     }
-);
+};
+
+// 2. Submit Form
+const submit = async () => {
+    isSubmitting.value = true;
+    try {
+        await axios.post("/chat/groups", formData.value);
+        toast.success("Grup berhasil dibuat");
+        emit("refresh");
+        emit("close");   
+    } catch (error: any) {
+        console.error(error);
+        toast.error(error.response?.data?.message || "Gagal membuat grup");
+    } finally {
+        isSubmitting.value = false;
+    }
+};
+
+onMounted(() => {
+    fetchUsers();
+});
 </script>
 
 <template>
-    <VForm
-        class="form card mb-10"
-        @submit="submit"
-        :validation-schema="formSchema"
-        id="form-user"
-        ref="formRef"
-    >
-        <div class="card-header align-items-center">
-            <h2 class="mb-0">{{ selected ? "Edit" : "Tambah" }} User</h2>
-            <button
-                type="button"
-                class="btn btn-sm btn-light-danger ms-auto"
-                @click="emit('close')"
-            >
-                Batal
-                <i class="la la-times-circle p-0"></i>
-            </button>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <!--begin::Input group-->
-                    <div class="fv-row mb-7">
-                        <label class="form-label fw-bold fs-6 required">
-                            Nama
-                        </label>
-                        <Field
-                            class="form-control form-control-lg form-control-solid"
-                            type="text"
-                            name="name"
-                            autocomplete="off"
-                            v-model="user.name"
-                            placeholder="Masukkan Nama"
-                        />
-                        <div class="fv-plugins-message-container">
-                            <div class="fv-help-block">
+    <div class="modal fade show d-block" tabindex="-1" role="dialog" style="background: rgba(0,0,0,0.5)">
+        <div class="modal-dialog modal-dialog-centered mw-650px">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 class="fw-bold">Buat Grup Baru</h2>
+                    <div class="btn btn-icon btn-sm btn-active-icon-primary" @click="$emit('close')">
+                        <span class="svg-icon svg-icon-1">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect opacity="0.5" x="6" y="17.3137" width="16" height="2" rx="1" transform="rotate(-45 6 17.3137)" fill="currentColor"/>
+                                <rect x="7.41422" y="6" width="16" height="2" rx="1" transform="rotate(45 7.41422 6)" fill="currentColor"/>
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="modal-body scroll-y mx-5 mx-xl-15 my-7">
+                    <VeeForm :validation-schema="schema" @submit="submit">
+                        
+                        <div class="d-flex flex-column mb-8">
+                            <label class="d-flex align-items-center fs-6 fw-bold mb-2">
+                                <span class="required">Nama Grup</span>
+                            </label>
+                            <Field 
+                                type="text" 
+                                class="form-control form-control-solid" 
+                                placeholder="Contoh: Tim IT, Alumni 2024" 
+                                name="name" 
+                                v-model="formData.name"
+                            />
+                            <div class="text-danger mt-1">
                                 <ErrorMessage name="name" />
                             </div>
                         </div>
-                    </div>
-                    <!--end::Input group-->
-                </div>
-                <div class="col-md-6">
-                    <!--begin::Input group-->
-                    <div class="fv-row mb-7">
-                        <label class="form-label fw-bold fs-6 required">
-                            Email
-                        </label>
-                        <Field
-                            class="form-control form-control-lg form-control-solid"
-                            type="text"
-                            name="email"
-                            autocomplete="off"
-                            v-model="user.email"
-                            placeholder="Masukkan Email"
-                        />
-                        <div class="fv-plugins-message-container">
-                            <div class="fv-help-block">
-                                <ErrorMessage name="email" />
+
+                        <div class="d-flex flex-column mb-8">
+                            <label class="fs-6 fw-bold mb-2">
+                                <span class="required">Pilih Anggota</span>
+                            </label>
+                            
+                            <div class="border rounded p-4 scroll-y" style="max-height: 200px; overflow-y: auto;">
+                                <div v-if="isLoading" class="text-center text-muted">Memuat user...</div>
+                                
+                                <div v-else v-for="user in users" :key="user.id" class="d-flex align-items-center mb-4">
+                                    <label class="form-check form-check-custom form-check-solid me-5">
+                                        <input 
+                                            class="form-check-input" 
+                                            type="checkbox" 
+                                            :value="user.id" 
+                                            v-model="formData.member_ids"
+                                        />
+                                    </label>
+                                    <div class="d-flex align-items-center flex-grow-1">
+                                        <div class="symbol symbol-35px symbol-circle me-3">
+                                            <span class="symbol-label bg-light-primary text-primary fw-bold">
+                                                {{ user.name.charAt(0).toUpperCase() }}
+                                            </span>
+                                        </div>
+                                        <div class="d-flex flex-column">
+                                            <span class="text-gray-900 fw-bold">{{ user.name }}</span>
+                                            <span class="text-gray-500 fs-7">{{ user.email }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div v-if="!isLoading && users.length === 0" class="text-muted text-center">
+                                    Tidak ada user lain ditemukan.
+                                </div>
+                            </div>
+                            <div class="text-danger mt-1">
+                                <ErrorMessage name="member_ids" />
                             </div>
                         </div>
-                    </div>
-                    <!--end::Input group-->
-                </div>
-                <div class="col-md-6">
-                    <!--begin::Input group-->
-                    <div class="fv-row mb-7">
-                        <label class="form-label fw-bold fs-6">
-                            Password
-                        </label>
-                        <Field
-                            class="form-control form-control-lg form-control-solid"
-                            type="password"
-                            name="password"
-                            autocomplete="off"
-                            v-model="user.password"
-                            placeholder="Masukkan password"
-                        />
-                        <div class="fv-plugins-message-container">
-                            <div class="fv-help-block">
-                                <ErrorMessage name="password" />
-                            </div>
+
+                        <div class="text-center pt-15">
+                            <button type="button" class="btn btn-light me-3" @click="$emit('close')">
+                                Batal
+                            </button>
+                            <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
+                                <span v-if="!isSubmitting">Buat Grup</span>
+                                <span v-else>Menyimpan...</span>
+                            </button>
                         </div>
-                    </div>
-                    <!--end::Input group-->
-                </div>
-                <div class="col-md-6">
-                    <!--begin::Input group-->
-                    <div class="fv-row mb-7">
-                        <label class="form-label fw-bold fs-6">
-                            Konfirmasi Password
-                        </label>
-                        <Field
-                            class="form-control form-control-lg form-control-solid"
-                            type="password"
-                            name="passwordConfirmation"
-                            autocomplete="off"
-                            v-model="user.passwordConfirmation"
-                            placeholder="Konfirmasi password"
-                        />
-                        <div class="fv-plugins-message-container">
-                            <div class="fv-help-block">
-                                <ErrorMessage name="passwordConfirmation" />
-                            </div>
-                        </div>
-                    </div>
-                    <!--end::Input group-->
-                </div>
-                <div class="col-md-6">
-                    <!--begin::Input group-->
-                    <div class="fv-row mb-7">
-                        <label class="form-label fw-bold fs-6 required">
-                            Role
-                        </label>
-                        <Field
-                            name="role_id"
-                            type="hidden"
-                            v-model="user.role_id"
-                        >
-                            <select2
-                                placeholder="Pilih role"
-                                class="form-select-solid"
-                                :options="roles"
-                                name="role_id"
-                                v-model="user.role_id"
-                            >
-                            </select2>
-                        </Field>
-                        <div class="fv-plugins-message-container">
-                            <div class="fv-help-block">
-                                <ErrorMessage name="role_id" />
-                            </div>
-                        </div>
-                    </div>
-                    <!--end::Input group-->
-                </div>
-                <div class="col-md-6">
-                    <!--begin::Input group-->
-                    <div class="fv-row mb-7">
-                        <label class="form-label fw-bold fs-6 required">
-                            Nomor Telepon
-                        </label>
-                        <Field
-                            class="form-control form-control-lg form-control-solid"
-                            type="text"
-                            name="phone"
-                            autocomplete="off"
-                            v-model="user.phone"
-                            placeholder="089"
-                        />
-                        <div class="fv-plugins-message-container">
-                            <div class="fv-help-block">
-                                <ErrorMessage name="phone" />
-                            </div>
-                        </div>
-                    </div>
-                    <!--end::Input group-->
-                </div>
-                <div class="col-md-6">
-                    <!--begin::Input group-->
-                    <div class="fv-row mb-7">
-                        <label class="form-label fw-bold fs-6">
-                            User Photo
-                        </label>
-                        <!--begin::Input-->
-                        <file-upload
-                            :files="photo"
-                            :accepted-file-types="fileTypes"
-                            required
-                            v-on:updatefiles="(file) => (photo = file)"
-                        ></file-upload>
-                        <!--end::Input-->
-                        <div class="fv-plugins-message-container">
-                            <div class="fv-help-block">
-                                <ErrorMessage name="photo" />
-                            </div>
-                        </div>
-                    </div>
-                    <!--end::Input group-->
+
+                    </VeeForm>
                 </div>
             </div>
         </div>
-        <div class="card-footer d-flex">
-            <button type="submit" class="btn btn-primary btn-sm ms-auto">
-                Simpan
-            </button>
-        </div>
-    </VForm>
+    </div>
 </template>

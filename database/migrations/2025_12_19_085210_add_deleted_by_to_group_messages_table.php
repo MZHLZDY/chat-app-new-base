@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('group_messages', function (Blueprint $table) {
-            $table->softDeletes();
+            $table->json('deleted_by')->nullable();
         });
     }
 
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('group_messages', function (Blueprint $table) {
-            $table->dropSoftDeletes();
+            $table->dropColumn('deleted_by');
         });
     }
 };

@@ -6,6 +6,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\GroupController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -59,22 +60,7 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::post('', [SettingController::class, 'update']);
     });
     // Master Data Management
-    Route::prefix('master')->group(function () {
-        
-        // Users (Kontak Chat)
-        Route::get('users', [UserController::class, 'get']);
-        Route::post('users', [UserController::class, 'index']);
-        Route::post('users/store', [UserController::class, 'store']);
-        Route::apiResource('users', UserController::class)
-            ->except(['index', 'store'])->scoped(['user' => 'uuid']);
-
-        // Roles
-        Route::get('roles', [RoleController::class, 'get']);
-        Route::post('roles', [RoleController::class, 'index']);
-        Route::post('roles/store', [RoleController::class, 'store']);
-        Route::apiResource('roles', RoleController::class)
-            ->except(['index', 'store']);
-    });
+    Route::get('/master/users', [ChatController::class, 'getContacts']);
 
     Route::prefix('chat')->group(function () {
         Route::get('contacts', [ChatController::class, 'getContacts']);
@@ -89,6 +75,17 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::delete('delete/{id}', [ChatController::class, 'deleteMessage']);
         Route::put('message/{id}/read', [ChatController::class, 'markAsRead']);
         Route::post('clear/{id}', [ChatController::class, 'clearChat']);
+
+        // Group Chat Routes
+        Route::get('groups', [GroupController::class, 'index']);
+        Route::post('groups', [GroupController::class, 'store']); 
+        Route::get('groups/{id}', [GroupController::class, 'show']);
+        Route::put('groups/{id}', [GroupController::class, 'update']); 
+        Route::post('group/{id}/leave', [GroupController::class, 'leaveGroup']); 
+        Route::get('group-messages/{groupId}', [GroupController::class, 'getMessages']); 
+        Route::post('group/send', [GroupController::class, 'sendMessage']); 
+        Route::delete('group/delete/{msgId}', [GroupController::class, 'deleteMessage']); 
+        Route::get('group/download/{msgId}', [GroupController::class, 'downloadAttachment']);
     });
 
     Route::prefix('call')->group(function () {

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Group extends Model
 {
-    protected $fillable = ['name','owner_id'];
+    protected $fillable = ['name', 'admin_id', 'description', 'photo'];
 
     public function members(): BelongsToMany
     {
@@ -22,7 +22,6 @@ class Group extends Model
 
     public function latestMessage()
     {
-        // Ambil satu pesan (hasOne) dan urutkan berdasarkan yang paling baru (latest()).
         return $this->hasOne(GroupMessage::class)->latest();
     }
 
