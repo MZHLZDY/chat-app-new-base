@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Models\User;
 use App\Models\Group;
 use App\Models\ChatMessage;
@@ -22,86 +23,127 @@ class DashboardController extends Controller
         try {
             $userId = Auth::id();
             
-            // Debug log
             \Log::info('Dashboard Stats - User ID: ' . $userId);
             
-            // 1. Hitung total pesan belum dibaca (Personal Chat + Group Chat)
-            
-            // Personal messages yang belum dibaca
+            // 1. Hitung total pesan belum dibaca (Personal Chat)
             $unreadPersonalMessages = ChatMessage::where('receiver_id', $userId)
                 ->whereNull('read_at')
-                ->whereNull('deleted_at')
+                ->when(Schema::hasColumn('chat_messages', 'deleted_at'), function($query) {
+                    return $query->whereNull('deleted_at');
+                })
                 ->count();
             
             \Log::info('Unread Personal Messages: ' . $unreadPersonalMessages);
             
-            // Group messages belum dibaca
-            // Ambil semua grup yang user ikuti
-            $userGroupIds = DB::table('group_user')
-                ->where('user_id', $userId)
-                ->pluck('group_id');
+            // 2. Hitung pesan grup yang belum dibaca
+            $unreadGroupMessages = 0;
             
-            \Log::info('User Group IDs: ' . $userGroupIds->toJson());
-            
-            // Hitung pesan grup yang belum dibaca (exclude pesan sendiri)
-            $unreadGroupMessages = GroupMessage::whereIn('group_id', $userGroupIds)
-                ->where('sender_id', '!=', $userId)
-                ->whereNull('deleted_at')
-                ->count();
+            // Cek apakah ada tabel group_user atau groups
+            if (Schema::hasTable('groups')) {
+                // Ambil semua grup
+                // OPTION 1: Jika grup punya relasi members
+                if (method_exists(Group::class, 'members')) {
+                    $userGroupIds = Group::whereHas('members', function($query) use ($userId) {
+                        $query->where('user_id', $userId);
+                    })->pluck('id');
+                    
+                    \Log::info('User Group IDs (from members relation): ' . $userGroupIds->toJson());
+                }
+                // OPTION 2: Jika grup punya kolom participants (JSON)
+                elseif (Schema::hasColumn('groups', 'participants')) {
+                    $userGroupIds = Group::whereJsonContains('participants', $userId)
+                        ->orWhere('owner_id', $userId)
+                        ->pluck('id');
+                    
+                    \Log::info('User Group IDs (from participants): ' . $userGroupIds->toJson());
+                }
+                // OPTION 3: Jika grup punya owner saja
+                else {
+                    $userGroupIds = Group::where('owner_id', $userId)->pluck('id');
+                    
+                    \Log::info('User Group IDs (owned only): ' . $userGroupIds->toJson());
+                }
+                
+                // Hitung pesan grup yang belum dibaca (exclude pesan sendiri)
+                if (isset($userGroupIds) && $userGroupIds->isNotEmpty()) {
+                    $unreadGroupMessages = GroupMessage::whereIn('group_id', $userGroupIds)
+                        ->where('sender_id', '!=', $userId)
+                        // Cek apakah kolom deleted_at ada
+                        ->when(Schema::hasColumn('group_messages', 'deleted_at'), function($query) {
+                            return $query->whereNull('deleted_at');
+                        })
+                        ->count();
+                }
+            } else {
+                \Log::info('Groups table not found, skipping group messages count');
+            }
             
             \Log::info('Unread Group Messages: ' . $unreadGroupMessages);
             
             $totalUnreadMessages = $unreadPersonalMessages + $unreadGroupMessages;
             
-            // 2. Hitung total kontak personal
-            // PERBAIKAN: Gunakan contacts table atau user relationship jika ada
-            
-            // Cek apakah ada tabel contacts atau user_contacts
+            // 3. Hitung total kontak personal
             $totalContacts = 0;
             
-            // OPTION 1: Jika menggunakan tabel contacts/user_contacts
-            if (DB::getSchemaBuilder()->hasTable('contacts')) {
+            // OPTION 1: Jika menggunakan tabel contacts
+            if (Schema::hasTable('contacts')) {
                 $totalContacts = DB::table('contacts')
                     ->where('user_id', $userId)
                     ->count();
                     
-                \Log::info('Total Contacts from contacts table: ' . $totalContacts);
+                \Log::info('Total Contacts (from contacts table): ' . $totalContacts);
             } 
             // OPTION 2: Jika menggunakan user_contacts pivot table
-            elseif (DB::getSchemaBuilder()->hasTable('user_contacts')) {
+            elseif (Schema::hasTable('user_contacts')) {
                 $totalContacts = DB::table('user_contacts')
                     ->where('user_id', $userId)
                     ->count();
                     
-                \Log::info('Total Contacts from user_contacts table: ' . $totalContacts);
+                \Log::info('Total Contacts (from user_contacts table): ' . $totalContacts);
             }
             // OPTION 3: Fallback ke perhitungan dari chat messages
             else {
                 $contactIds = collect();
                 
                 // User yang pernah mengirim pesan ke kita
-                $sendersToMe = ChatMessage::where('receiver_id', $userId)
-                    ->whereNull('deleted_at')
-                    ->distinct()
-                    ->pluck('sender_id');
+                $sendersQuery = ChatMessage::where('receiver_id', $userId);
+                if (Schema::hasColumn('chat_messages', 'deleted_at')) {
+                    $sendersQuery->whereNull('deleted_at');
+                }
+                $sendersToMe = $sendersQuery->distinct()->pluck('sender_id');
                 
                 // User yang pernah kita kirimi pesan
-                $receiversFromMe = ChatMessage::where('sender_id', $userId)
-                    ->whereNull('deleted_at')
-                    ->distinct()
-                    ->pluck('receiver_id');
+                $receiversQuery = ChatMessage::where('sender_id', $userId);
+                if (Schema::hasColumn('chat_messages', 'deleted_at')) {
+                    $receiversQuery->whereNull('deleted_at');
+                }
+                $receiversFromMe = $receiversQuery->distinct()->pluck('receiver_id');
                 
                 // Gabungkan dan unique
                 $contactIds = $sendersToMe->merge($receiversFromMe)->unique();
                 
                 $totalContacts = $contactIds->count();
                 
-                \Log::info('Total Contacts from chat messages: ' . $totalContacts);
+                \Log::info('Total Contacts (from chat messages): ' . $totalContacts);
                 \Log::info('Contact IDs: ' . $contactIds->toJson());
             }
             
-            // 3. Hitung total grup yang user ikuti
-            $totalGroups = $userGroupIds->count();
+            // 4. Hitung total grup yang user ikuti
+            $totalGroups = 0;
+            
+            if (Schema::hasTable('groups')) {
+                if (method_exists(Group::class, 'members')) {
+                    $totalGroups = Group::whereHas('members', function($query) use ($userId) {
+                        $query->where('user_id', $userId);
+                    })->count();
+                } elseif (Schema::hasColumn('groups', 'participants')) {
+                    $totalGroups = Group::whereJsonContains('participants', $userId)
+                        ->orWhere('owner_id', $userId)
+                        ->count();
+                } else {
+                    $totalGroups = Group::where('owner_id', $userId)->count();
+                }
+            }
             
             \Log::info('Total Groups: ' . $totalGroups);
             
@@ -144,45 +186,75 @@ class DashboardController extends Controller
             $personalStats = [
                 'unread' => ChatMessage::where('receiver_id', $userId)
                     ->whereNull('read_at')
-                    ->whereNull('deleted_at')
+                    ->when(Schema::hasColumn('chat_messages', 'deleted_at'), function($query) {
+                        return $query->whereNull('deleted_at');
+                    })
                     ->count(),
                 'total_received' => ChatMessage::where('receiver_id', $userId)
-                    ->whereNull('deleted_at')
+                    ->when(Schema::hasColumn('chat_messages', 'deleted_at'), function($query) {
+                        return $query->whereNull('deleted_at');
+                    })
                     ->count(),
                 'total_sent' => ChatMessage::where('sender_id', $userId)
-                    ->whereNull('deleted_at')
+                    ->when(Schema::hasColumn('chat_messages', 'deleted_at'), function($query) {
+                        return $query->whereNull('deleted_at');
+                    })
                     ->count(),
             ];
             
             // Group stats
-            $userGroupIds = DB::table('group_user')
-                ->where('user_id', $userId)
-                ->pluck('group_id');
-            
             $groupStats = [
-                'total_groups' => $userGroupIds->count(),
-                'owned_groups' => Group::where('owner_id', $userId)->count(),
-                'total_messages' => GroupMessage::whereIn('group_id', $userGroupIds)
-                    ->whereNull('deleted_at')
-                    ->count(),
-                'unread_messages' => GroupMessage::whereIn('group_id', $userGroupIds)
-                    ->where('sender_id', '!=', $userId)
-                    ->whereNull('deleted_at')
-                    ->count(),
+                'total_groups' => 0,
+                'owned_groups' => 0,
+                'total_messages' => 0,
+                'unread_messages' => 0,
             ];
+            
+            if (Schema::hasTable('groups')) {
+                // Get user groups
+                if (method_exists(Group::class, 'members')) {
+                    $userGroupIds = Group::whereHas('members', function($query) use ($userId) {
+                        $query->where('user_id', $userId);
+                    })->pluck('id');
+                } elseif (Schema::hasColumn('groups', 'participants')) {
+                    $userGroupIds = Group::whereJsonContains('participants', $userId)
+                        ->orWhere('owner_id', $userId)
+                        ->pluck('id');
+                } else {
+                    $userGroupIds = Group::where('owner_id', $userId)->pluck('id');
+                }
+                
+                $groupStats = [
+                    'total_groups' => $userGroupIds->count(),
+                    'owned_groups' => Group::where('owner_id', $userId)->count(),
+                    'total_messages' => GroupMessage::whereIn('group_id', $userGroupIds)
+                        ->when(Schema::hasColumn('group_messages', 'deleted_at'), function($query) {
+                            return $query->whereNull('deleted_at');
+                        })
+                        ->count(),
+                    'unread_messages' => GroupMessage::whereIn('group_id', $userGroupIds)
+                        ->where('sender_id', '!=', $userId)
+                        ->when(Schema::hasColumn('group_messages', 'deleted_at'), function($query) {
+                            return $query->whereNull('deleted_at');
+                        })
+                        ->count(),
+                ];
+            }
             
             // Contacts
             $contactIds = collect();
             
-            $sendersToMe = ChatMessage::where('receiver_id', $userId)
-                ->whereNull('deleted_at')
-                ->distinct()
-                ->pluck('sender_id');
+            $sendersQuery = ChatMessage::where('receiver_id', $userId);
+            if (Schema::hasColumn('chat_messages', 'deleted_at')) {
+                $sendersQuery->whereNull('deleted_at');
+            }
+            $sendersToMe = $sendersQuery->distinct()->pluck('sender_id');
             
-            $receiversFromMe = ChatMessage::where('sender_id', $userId)
-                ->whereNull('deleted_at')
-                ->distinct()
-                ->pluck('receiver_id');
+            $receiversQuery = ChatMessage::where('sender_id', $userId);
+            if (Schema::hasColumn('chat_messages', 'deleted_at')) {
+                $receiversQuery->whereNull('deleted_at');
+            }
+            $receiversFromMe = $receiversQuery->distinct()->pluck('receiver_id');
             
             $contactIds = $sendersToMe->merge($receiversFromMe)->unique();
             

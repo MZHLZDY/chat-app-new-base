@@ -11,7 +11,7 @@ import { getAuth, signInAnonymously } from "firebase/auth";
 const firebaseConfig = {
   apiKey: "AIzaSyDVb-Jab7CWhzKCD6Zcr_OyGTs7d2qC-ik",
   authDomain: "chat-app-new-base.firebaseapp.com",
-  databaseURL: "https://chat-app-new-base-default-rtdb.asia-southeast1.firebasedatabase.app/",
+  databaseURL: "https://chat-app-new-base-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "chat-app-new-base",
   storageBucket: "chat-app-new-base.firebasestorage.app",
   messagingSenderId: "641895816036",
@@ -22,6 +22,7 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
+
 const db = getDatabase(app);
 const auth = getAuth(app);
 signInAnonymously(auth)

@@ -1,13 +1,13 @@
 <template>
 	<!--begin::Authentication Layout -->
 	<div class="d-flex flex-column flex-column-fluid flex-lg-row justify-content-center"
-		:style="`background-image: url('media/misc/bg-auth.png'); background-size: cover`">
+    :style="`background-image: url('${backgroundUrl}'); background-size: cover`">
 		<!--begin::Body-->
 		<div class="d-flex flex-column-fluid flex-lg-row-auto justify-content-center justify-content-lg-end p-12 p-lg-20">
 			<!--begin::Card-->
 			<div 
               class="bg-body d-flex flex-column align-items-stretch flex-center rounded-4 w-md-600px p-md-20 w-100"
-              style="background-color: rgba(255, 255, 255, 0.75) !important; backdrop-filter: blur(1.5px);"
+              style="background-color: rgba(255, 255, 255, 0.3) !important; backdrop-filter: blur(9px);"
             >
 				<!--begin::Wrapper-->
 				<div class="d-flex flex-center flex-column flex-column-fluid px-10 py-20 py-md-0">
@@ -24,7 +24,7 @@
 
 <script lang="ts">
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, onMounted } from "vue";
+import { defineComponent, onMounted, computed } from "vue"; // 1. Tambahkan computed
 import LayoutService from "@/core/services/LayoutService";
 import { useBodyStore } from "@/stores/body";
 import { useSetting } from "@/services";
@@ -34,7 +34,7 @@ export default defineComponent({
 	components: {},
 	setup() {
 		const store = useBodyStore();
-		const { data: setting = {} } = useSetting()
+		const { data: setting } = useSetting(); // 2. Hapus '= {}' agar reactivity lebih aman saat pengecekan null
 
 		onMounted(() => {
 			LayoutService.emptyElementClassesAndAttributes(document.body);
@@ -43,9 +43,20 @@ export default defineComponent({
 			store.addBodyClassname("bg-body");
 		});
 
+        // 3. Buat Computed Property untuk menentukan URL background
+        const backgroundUrl = computed(() => {
+            // Cek apakah setting ada datanya dan field bg_auth terisi
+            if (setting.value && setting.value.bg_auth) {
+                return setting.value.bg_auth;
+            }
+            // Jika tidak ada, gunakan default
+            return 'media/misc/bg-auth.png';
+        });
+
 		return {
 			getAssetPath,
-			setting
+			setting,
+            backgroundUrl // 4. Return variable ini ke template
 		};
 	},
 });
