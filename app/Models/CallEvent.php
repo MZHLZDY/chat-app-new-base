@@ -4,65 +4,47 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use App\Models\ChatMessage;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CallEvent extends Model
 {
     use HasFactory;
 
+    public $timestamps = false;
+
     protected $fillable = [
-        'caller_id',
-        'callee_id',
-        'channel',
-        'status',
-        'duration',
-        'call_type',
-        'reason',
+        'call_id',
+        'user_id',
+        'event_type',
+        'metadata',
     ];
 
-    public function chatMessage(): HasOne
+    protected $casts = [
+        'metadata' => 'array',
+        'created_at' => 'datetime',
+    ];
+
+    // Relationship: Personal Call
+    public function call(): BelongsTo
     {
-        return $this->hasOne(ChatMessage::class);
+        return $this->belongsTo(PersonalCall::class, 'call_id');
     }
 
-    // Method untuk menerjemahkan status menjadi teks yang ramah pengguna
-    public function getCallMessageText(): string
-{
-    $text = $this->call_type === 'video' ? 'Panggilan Video' : 'Panggilan Suara';
-
-    switch ($this->status) {
-        case 'calling':   
-            $text .= ' • Memanggil'; 
-            break;
-        case 'cancelled': 
-            $text .= ' • Dibatalkan'; 
-            break;
-        case 'rejected':  
-            $text .= ' • Ditolak';
-            if ($this->reason && $this->reason !== 'Ditolak') {
-                $text .= ' - ' . $this->reason;
-            }
-            break;
-        case 'missed':    
-            $text .= ' • Tak terjawab'; 
-            break;
-        case 'accepted':  
-            $text .= ' • Diterima'; 
-            break;
-        case 'ended':
-            if ($this->duration > 0) {
-                $durationText = app(\App\Http\Controllers\AgoraCallController::class)
-                    ->formatDurationForPublic($this->duration);
-                $text .= ' • ' . $durationText;
-            } else {
-                $text .= ' • Selesai';
-            }
-            break;
-        default:
-            $text .= ' • Selesai';
+    // Relationship: User yang trigger event
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
-    return $text;
-}
+    // Boot method untuk auto-set created_at
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (!$model->created_at) {
+                $model->created_at = now();
+            }
+        });
+    }
 }

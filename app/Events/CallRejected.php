@@ -22,19 +22,17 @@ class CallRejected implements ShouldBroadcast
     public $message; // ✅ Tambahkan property message
 
     public function __construct(
-        string $callId,
+        int $callId,
         int $callerId,
-        string $reason,
         int $calleeId,
         string $callType,
-        ?ChatMessage $message = null // ✅ Tambahkan parameter message
+        ?string $reason = null, 
     ) {
         $this->callId = $callId;
         $this->callerId = $callerId;
-        $this->reason = $reason;
         $this->calleeId = $calleeId;
         $this->callType = $callType;
-        $this->message = $message; // ✅ Set message
+        $this->reason = $reason;
     }
 
     public function broadcastOn(): array
@@ -56,9 +54,9 @@ class CallRejected implements ShouldBroadcast
         return [
             'call_id' => $this->callId,
             'caller_id' => $this->callerId,
-            'reason' => $this->reason,
             'callee_id' => $this->calleeId,
             'call_type' => $this->callType,
+            'reason' => $this->reason,
             'message' => $this->message ? [
                 'id' => $this->message->id,
                 'message' => $this->message->message,
