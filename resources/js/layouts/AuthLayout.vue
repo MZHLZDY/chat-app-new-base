@@ -1,7 +1,7 @@
 <template>
 	<!--begin::Authentication Layout -->
 	<div class="d-flex flex-column flex-column-fluid flex-lg-row justify-content-center"
-		:style="`background-image: url('media/misc/bg-auth.png'); background-size: cover`">
+		:style="`background-image: url('media/misc/bg.jpg'); background-size: cover`">
 		<!--begin::Body-->
 		<div class="d-flex flex-column-fluid flex-lg-row-auto justify-content-center justify-content-lg-end p-12 p-lg-20">
 			<!--begin::Card-->
