@@ -9,8 +9,9 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use App\Models\PersonalCall;
 
-class IncomingCallVoice implements ShouldBroadcast
+class IncomingCall implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -19,14 +20,18 @@ class IncomingCallVoice implements ShouldBroadcast
     public $callType;
     public $channel;
     public $callId;
+    public $token;
+    public PersonalCall $call;
 
-    public function __construct($caller, $callee, $callType, $channel, $callId)
+    public function __construct($caller, $callee, $callType, $channel, $callId, $token, PersonalCall $call)
     {
         $this->caller = $caller;
         $this->callee = $callee;
         $this->callType = $callType;
         $this->channel = $channel;
         $this->callId = $callId;
+        $this->token = $token;
+        $this->call = $call;
     }
 
     public function broadcastOn()
@@ -45,10 +50,12 @@ class IncomingCallVoice implements ShouldBroadcast
             'call_id' => $this->callId,
             'caller' => [
                 'id' => $this->caller->id,
-                'name' => $this->caller->name
+                'name' => $this->caller->name,
+                'avatar' => $this->caller->avatar_url ?? null,
             ],
             'call_type' => $this->callType,
             'channel' => $this->channel,
+            'token' => $this->token,
             'timestamp' => now()->toISOString()
         ];
     }

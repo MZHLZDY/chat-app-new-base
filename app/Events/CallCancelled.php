@@ -4,40 +4,34 @@ namespace App\Events;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use App\Models\ChatMessage;
 
-class CallEnded implements ShouldBroadcast
+class CallCancelled implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-
+    
     public $callId;
     public $callerId;
     public $calleeId;
-    public $endedBy;
-    public $duration;
     public $callType;
-    public $message; // ✅ Tambahkan property message
 
-    public function __construct(
-        int $callId,
-        int $callerId,
-        int $calleeId,
-        int $endedBy,
-        int $duration,
-        string $callType
-    ) {
+    public function __construct(int $callId, int $callerId,  int $calleeId, string $callType)
+    {
         $this->callId = $callId;
         $this->callerId = $callerId;
         $this->calleeId = $calleeId;
-        $this->endedBy = $endedBy;
-        $this->duration = $duration;
         $this->callType = $callType;
     }
 
+    /**
+     * Get the channels the event should broadcast on.
+     *
+     * @return array<int, \Illuminate\Broadcasting\Channel>
+     */
     public function broadcastOn(): array
     {
         return [
@@ -48,20 +42,17 @@ class CallEnded implements ShouldBroadcast
 
     public function broadcastAs(): string
     {
-        return 'call-ended';
+        return 'call-cancelled';
     }
 
-    // ✅ PERBAIKAN: Sertakan message dalam broadcast data
     public function broadcastWith(): array
     {
-        return [
+        return[
             'call_id' => $this->callId,
             'caller_id' => $this->callerId,
             'callee_id' => $this->calleeId,
-            'ended_by' => $this->endedBy,
-            'duration' => $this->duration,
             'call_type' => $this->callType,
-            'timestamp' => now()->toISOString(),
+            'cancelled_at' => now()->toISOString(),
         ];
     }
 }
