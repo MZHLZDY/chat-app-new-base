@@ -58,6 +58,7 @@ const replyingTo = ref<any>(null);
 const isHeaderMenuOpen = ref(false);
 const isInfoModalOpen = ref(false);
 const isFriendTyping = ref(false);
+const isMuted = ref(false);
 let typingTimeout: ReturnType<typeof setTimeout> | null = null;
 let typingListenerOff: Unsubscribe | null = null;
 
@@ -410,6 +411,25 @@ const listenToTypingStatus = (friendId: number) => {
     });
 };
 
+const notificationSound = new Audio('/media/preview.mp3');
+notificationSound.volume = 0.5;
+const playNotificationSound = async () => {
+    if (isMuted.value) return;
+    
+    try {
+        notificationSound.currentTime = 0; 
+        await notificationSound.play();
+    } catch (error) {
+        console.warn("Gagal memutar notifikasi suara:", error);
+    }
+};
+
+const requestNotificationPermission = async () => {
+    if ("Notification" in window && Notification.permission !== "granted") {
+        await Notification.requestPermission();
+    }
+};
+
 // --- SETUP LISTENER YANG BENAR ---
 const setupFirebaseListeners = () => {
     if (!currentUser.value) return;
@@ -451,6 +471,10 @@ const setupFirebaseListeners = () => {
         
         if (ageInSeconds > 60) {
             return;
+        }
+
+        if (incomingMsg.sender_id !== currentUser.value?.id) {
+            playNotificationSound();
         }
         
         if (activeContact.value && incomingMsg.sender_id === activeContact.value.id) {
@@ -565,6 +589,7 @@ watch(activeContact, (newVal, oldVal) => {
 });
 
 onMounted(async () => {
+    requestNotificationPermission();
     await fetchContacts();
 
     if (currentUser.value) {
@@ -707,6 +732,13 @@ onUnmounted(() => {
                             </button>
 
                             <div v-if="isHeaderMenuOpen" class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-bold w-200px py-3 show position-absolute end-0 mt-2 shadow bg-white" style="z-index: 105;">
+
+                                <div class="menu-item px-3">
+                                    <a href="#" class="menu-link px-3" @click.prevent="isMuted = !isMuted">
+                                        <i class="fas me-2" :class="isMuted ? 'fa-volume-mute' : 'fa-volume-up'"></i> 
+                                        {{ isMuted ? 'Bunyikan Suara' : 'Bisukan Suara' }}
+                                    </a>
+                                </div>
                                 
                                 <div class="menu-item px-3">
                                     <a href="#" class="menu-link px-3" @click.prevent="openInfoModal">
