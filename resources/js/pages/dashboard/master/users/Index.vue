@@ -404,6 +404,22 @@ const listenToGroupTyping = (groupId: number) => {
     });
 };
 
+const handleEscKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+        if (isLightboxOpen.value) {
+            closeLightbox();
+            return;
+        }
+        if (isCreateGroupOpen.value || isEditGroupOpen.value || isDeleteModalOpen.value || isInfoModalOpen.value || isHeaderMenuOpen.value) {
+            if (isHeaderMenuOpen.value) isHeaderMenuOpen.value = false;
+            return;
+        }
+        if (activeGroup.value) {
+            activeGroup.value = null;
+        }
+    }
+};
+
 // --- LISTENER GROUP CHAT ---
 const setupGroupListener = (groupId: number) => {
     if (unsubscribeGroupChats) {
@@ -464,6 +480,8 @@ onMounted(async () => {
             }
         });
     }
+
+    window.addEventListener('keydown', handleEscKey);
 });
 
 onUnmounted(() => {
@@ -473,6 +491,8 @@ onUnmounted(() => {
          const myRef = firebaseRef(db, `typing_status_groups/${activeGroup.value.id}/${currentUser.value.id}`);
          set(myRef, null);
     }
+
+    window.removeEventListener('keydown', handleEscKey);
 });
 </script>
 

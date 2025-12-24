@@ -430,6 +430,22 @@ const requestNotificationPermission = async () => {
     }
 };
 
+const handleEscKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+        if (isLightboxOpen.value) {
+            closeLightbox();
+            return;
+        }
+        if (isAddContactOpen.value || isEditContactOpen.value || isDeleteModalOpen.value || isInfoModalOpen.value || isHeaderMenuOpen.value) {
+            if (isHeaderMenuOpen.value) isHeaderMenuOpen.value = false;
+            return;
+        }
+        if (activeContact.value) {
+            activeContact.value = null;
+        }
+    }
+};
+
 // --- SETUP LISTENER YANG BENAR ---
 const setupFirebaseListeners = () => {
     if (!currentUser.value) return;
@@ -604,6 +620,8 @@ onMounted(async () => {
             }
         });
     }
+
+    window.addEventListener('keydown', handleEscKey);
 });
 
 
@@ -622,6 +640,8 @@ onUnmounted(() => {
     if (heartbeatInterval.value) {
         clearInterval(heartbeatInterval.value);
     }
+
+    window.removeEventListener('keydown', handleEscKey);
 });
 </script>
 
