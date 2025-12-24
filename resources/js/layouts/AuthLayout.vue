@@ -24,7 +24,7 @@
 
 <script lang="ts">
 import { getAssetPath } from "@/core/helpers/assets";
-import { defineComponent, onMounted, computed } from "vue"; // 1. Tambahkan computed
+import { defineComponent, onMounted, computed } from "vue";
 import LayoutService from "@/core/services/LayoutService";
 import { useBodyStore } from "@/stores/body";
 import { useSetting } from "@/services";
@@ -34,7 +34,7 @@ export default defineComponent({
 	components: {},
 	setup() {
 		const store = useBodyStore();
-		const { data: setting } = useSetting(); // 2. Hapus '= {}' agar reactivity lebih aman saat pengecekan null
+		const { data: setting } = useSetting();
 
 		onMounted(() => {
 			LayoutService.emptyElementClassesAndAttributes(document.body);
@@ -43,20 +43,21 @@ export default defineComponent({
 			store.addBodyClassname("bg-body");
 		});
 
-        // 3. Buat Computed Property untuk menentukan URL background
         const backgroundUrl = computed(() => {
-            // Cek apakah setting ada datanya dan field bg_auth terisi
+            // 1. Cek jika setting sudah load DAN bg_auth tidak kosong/null
             if (setting.value && setting.value.bg_auth) {
                 return setting.value.bg_auth;
             }
-            // Jika tidak ada, gunakan default
-            return 'media/misc/bg-auth.png';
+            
+            // 2. Jika tidak ada custom background, gunakan default dengan getAssetPath
+            // Pastikan file bg-auth.png atau bg-auth.jpg ada di folder public/media/misc/
+            return getAssetPath('media/misc/bg-auth.png'); 
         });
 
 		return {
 			getAssetPath,
 			setting,
-            backgroundUrl // 4. Return variable ini ke template
+            backgroundUrl
 		};
 	},
 });

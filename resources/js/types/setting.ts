@@ -10,4 +10,5 @@ export interface Setting {
     email: string;
     logo: Array<File | string> | string;
     banner: Array<File | string> | string;
+    bg_auth: string;
 }
