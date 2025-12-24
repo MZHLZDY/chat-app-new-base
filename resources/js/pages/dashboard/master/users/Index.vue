@@ -830,6 +830,7 @@ onUnmounted(() => {
     justify-content: center;
     align-items: center;
     backdrop-filter: blur(2px);
+    animation: fadeIn 0.2s ease-out;
 }
 
 .lightbox-overlay {
@@ -837,12 +838,145 @@ onUnmounted(() => {
     z-index: 10000;
 }
 
+/* Delete Button Visibility */
+.delete-btn-wrapper {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.group-hover:hover .delete-btn-wrapper {
+    opacity: 1;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Chat Body Layout */
+.chat-body-custom {
+    height: calc(100vh - 265px);
+    overflow-y: auto;
+    background-color: #f9f9f9; /* Default Light Mode */
+    scroll-behavior: smooth;
+}
+
+/* Message Bubble Colors */
+.receiver-bubble {
+    background-color: #ffffff;
+    color: #3f4254; /* Text Dark */
+}
+
+/* toast color */
+:root {
+  --toastify-text-color-light: #000000 !important;
+  --toastify-color-light: #ffffff;
+}
+
+.Toastify__toast-theme--light {
+  color: #333333 !important;
+  background-color: #ffffff !important;
+}
+
+.Toastify__close-button--light {
+  color: #333333 !important;
+  opacity: 0.7;
+}
+
+/* Dark Mode Styles */
 [data-bs-theme="dark"] .chat-body-custom {
-    background-color: #151521 !important;
+    background-color: #151521 !important; /* Background Gelap */
+}
+
+[data-bs-theme="dark"] .card-header,
+[data-bs-theme="dark"] .card-footer {
+    background-color: #1e1e2d !important;
+    border-bottom: 1px solid #2b2b40 !important;
+    border-top: 1px solid #2b2b40 !important;
 }
 
 [data-bs-theme="dark"] .receiver-bubble {
     background-color: #2b2b40 !important;
     color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .form-control-solid {
+    background-color: #1b1b29 !important;
+    border-color: #2b2b40 !important;
+    color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .bg-white {
+    background-color: #1e1e2d !important;
+    color: #fff !important;
+}
+
+[data-bs-theme="dark"] .text-gray-900 {
+    color: #fff !important;
+}
+
+[data-bs-theme="dark"] .text-muted {
+    color: #7e8299 !important;
+}
+
+/* fix button video / voice call agar transparan */
+/* Target button di card-header yang wrap Video & Phone icon */
+.card-header .d-flex button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 8px 10px !important;
+    border-radius: 8px !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer;
+}
+
+.card-header .d-flex button:hover {
+    background: rgba(0, 0, 0, 0.05) !important;
+    transform: scale(1.1);
+}
+
+.card-header .d-flex button:active {
+    transform: scale(0.95);
+}
+
+/* Icon color */
+.card-header .d-flex button svg {
+    width: 20px !important;
+    height: 20px !important;
+    color: #7e8299 !important;
+    transition: color 0.2s ease !important;
+}
+
+/* Video icon hover - hijau */
+.card-header .d-flex button:first-child:hover svg {
+    color: #10b981 !important;
+}
+
+/* Phone icon hover - biru */
+.card-header .d-flex button:last-child:hover svg {
+    color: #3b82f6 !important;
+}
+
+/* Dark mode */
+[data-bs-theme="dark"] .card-header .d-flex button {
+    background: transparent !important;
+}
+
+[data-bs-theme="dark"] .card-header .d-flex button:hover {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-bs-theme="dark"] .card-header .d-flex button svg {
+    color: #a1a5b7 !important;
+}
+
+[data-bs-theme="dark"] .card-header .d-flex button:first-child:hover svg {
+    color: #34d399 !important;
+}
+
+[data-bs-theme="dark"] .card-header .d-flex button:last-child:hover svg {
+    color: #60a5fa !important;
 }
 </style>
