@@ -41,16 +41,16 @@ class SettingController extends Controller
 
             // === PENTING: ISI DATA DEFAULT JIKA BARIS BARU ===
             // Ini mencegah error "Column cannot be null" saat insert pertama kali
-            // if ($isNew) {
-            //     $data['app'] = $data['app'] ?? 'Nama Aplikasi Default';
-            //     $data['description'] = $data['description'] ?? 'Deskripsi Aplikasi Default';
-            //     $data['email'] = $data['email'] ?? 'admin@example.com';
+            if ($isNew) {
+                $data['app'] = $data['app'] ?? 'Nama Aplikasi Default';
+                $data['description'] = $data['description'] ?? 'Deskripsi Aplikasi Default';
+                $data['email'] = $data['email'] ?? 'admin@example.com';
                 
-            //     // Pastikan kolom lain yang required di DB juga terisi (sesuai migration Anda)
-            //     // Jika di migration kolom ini string/text dan not-null, wajib ada isinya
-            //     if (!isset($data['logo'])) $data['logo'] = 'default-logo.png'; 
-            //     if (!isset($data['banner'])) $data['banner'] = 'default-banner.png';
-            // }
+                // Pastikan kolom lain yang required di DB juga terisi (sesuai migration Anda)
+                // Jika di migration kolom ini string/text dan not-null, wajib ada isinya
+                if (!isset($data['logo'])) $data['logo'] = 'default-logo.png'; 
+                if (!isset($data['banner'])) $data['banner'] = 'default-banner.png';
+            }
 
             // ================= LOGIKA LOGO =================
             if ($request->hasFile('logo')) {

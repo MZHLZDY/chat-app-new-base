@@ -218,15 +218,22 @@ export default defineComponent({
     }
 },
     watch: {
-        setting: {
-            handler(setting) {
-                this.formData = setting.data.value
+    setting: {
+        handler(setting) {
+            // Cek apakah setting.data.value ada isinya
+            if (setting && setting.data && setting.data.value) {
+                this.formData = setting.data.value;
 
-                this.files.logo = setting.data.value.logo ? [setting.data.value.logo] : []
-                this.files.bgAuth = setting.data.value.bg_auth ? [setting.data.value.bg_auth] : []
-            },
-            deep: true
-        }
+                // Set initial files preview jika ada data dari DB
+                this.files.logo = setting.data.value.logo ? [setting.data.value.logo] : [];
+                this.files.bgAuth = setting.data.value.bg_auth ? [setting.data.value.bg_auth] : [];
+            } else {
+                // Jika data masih kosong (belum pernah disave), inisialisasi object kosong
+                this.formData = {} as any; 
+            }
+        },
+        deep: true
     }
+}
 })
 </script>
