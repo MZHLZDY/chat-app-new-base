@@ -89,12 +89,18 @@ Route::middleware(['auth', 'json'])->group(function () {
     });
 
     Route::prefix('call')->group(function () {
+        // Generate Token
+        Route::post('/token', [AgoraController::class, 'generateToken']);
+
+        // Call Actions
         Route::post('/invite', [AgoraController::class, 'inviteCall']);
         Route::post('/answer', [AgoraController::class, 'answerCall']);
+        Route::post('/reject', [AgoraController::class, 'rejectCall']);
+        Route::post('/cancel', [AgoraController::class, 'cancelCall']);
         Route::post('/end', [AgoraController::class, 'endCall']);
-        Route::post('/token', [AgoraController::class, 'generateToken']);
-        Route::post('/notification/mark-read', [AgoraController::class, 'markNotificationAsRead']);
-        Route::get('/notification/active', [AgoraController::class, 'getActiveCallNotifications']);
+
+        // Histori panggilan
+        Route::get('/history', [AgoraController::class, 'getCallHistory']);
     });
 
     Route::prefix('group-call')->as('group-call.')->group(function () {

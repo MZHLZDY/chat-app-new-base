@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\User;
+use App\Jobs\EndMissedCall;
 use App\Models\CallEvent;
 use App\Models\PersonalCall;
 use App\Services\AgoraTokenService;
@@ -109,7 +110,7 @@ class AgoraController extends Controller
             $calleeToken = $this->agoraService->generateRtcToken($channelName, $callee->id);
 
             // Dispatch Job: otomatis mengakhiri panggilan jika tidak dijawab selama 30 detik
-            // EndMissedCall::dispatch($call->id)->delay(now()->addSeconds(30)); // Uncommand jika sudah ada jobs
+            EndMissedCall::dispatch($call->id)->delay(now()->addSeconds(30)); // Uncommand jika sudah ada jobs
 
             // Broadcast untuk penerima telepon (callee)
             broadcast(new IncomingCall(
