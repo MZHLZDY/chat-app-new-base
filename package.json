@@ -22,7 +22,7 @@
         "@tanstack/vue-table": "^8.11.2",
         "@tinymce/tinymce-vue": "^5.1.0",
         "@vueform/multiselect": "^1.2.5",
-        "agora-rtc-sdk-ng": "^4.24.1",
+        "agora-rtc-sdk-ng": "^4.24.2",
         "animate.css": "^4.1.1",
         "apexcharts": "^5.3.6",
         "axios": "^1.1.3",
