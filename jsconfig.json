@@ -1,5 +1,5 @@
 {
-    "include": ["./resources/js/**/*", "./resources/js/**/{*.js,*.ts,*.vue}"],
+    "include": ["./resources/js/**/*", "./resources/js/**/{*.js,*.ts,*.vue}", "resources/js/libs/firebase.ts"],
     "compilerOptions": {
         "baseUrl": ".",
         "paths": {
