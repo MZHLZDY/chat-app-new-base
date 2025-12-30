@@ -44,14 +44,10 @@ export default defineComponent({
 		});
 
         const backgroundUrl = computed(() => {
-            // 1. Cek jika setting sudah load DAN bg_auth tidak kosong/null
             if (setting.value && setting.value.bg_auth) {
                 return setting.value.bg_auth;
             }
-            
-            // 2. Jika tidak ada custom background, gunakan default dengan getAssetPath
-            // Pastikan file bg-auth.png atau bg-auth.jpg ada di folder public/media/misc/
-            return getAssetPath('media/misc/bg-auth.png'); 
+            return getAssetPath('media/misc/bg.jpg'); 
         });
 
 		return {

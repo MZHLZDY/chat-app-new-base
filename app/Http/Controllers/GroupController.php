@@ -235,4 +235,111 @@ class GroupController extends Controller
             return response()->json(['status' => 'success', 'message' => 'Pesan dihapus untuk Anda']);
         }
     }
+
+    // DETAILS GROUP
+    public function show($id)
+    {
+        $group = Group::with(['members' => function($query) {
+            $query->select('users.id', 'users.name', 'users.email', 'users.photo', 'users.phone') 
+                  ->withPivot('is_admin'); 
+        }])->find($id);
+
+        if (!$group) {
+            return response()->json(['message' => 'Grup tidak ditemukan'], 404);
+        }
+
+        if (!$group->members->contains(Auth::id())) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $group
+        ]);
+    }
+
+    // UPDATE GROUP NAME
+    public function update(Request $request, $id)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $group = Group::find($id);
+        if (!$group) return response()->json(['message' => 'Grup tidak ditemukan'], 404);
+
+        $group->update(['name' => $request->name]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Nama grup diperbarui',
+            'data' => $group
+        ]);
+    }
+
+    // ADD MEMBERS (Fitur Tambah Anggota)
+    public function addMembers(Request $request, $id)
+    {
+        $request->validate([
+            'user_ids' => 'required|array',
+            'user_ids.*' => 'exists:users,id'
+        ]);
+
+        $group = Group::find($id);
+        if (!$group) return response()->json(['message' => 'Grup tidak ditemukan'], 404);
+
+        // Tambahkan user tanpa menghapus member lama (syncWithoutDetaching)
+        $group->members()->syncWithoutDetaching($request->user_ids);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Anggota berhasil ditambahkan',
+            'data' => $group->load('members')
+        ]);
+    }
+
+    // REMOVE MEMBER (Fitur Kick / Keluar)
+    public function removeMember($groupId, $userId)
+    {
+        $group = Group::find($groupId);
+        if (!$group) return response()->json(['message' => 'Grup tidak ditemukan'], 404);
+
+        // Hapus dari pivot table
+        $group->members()->detach($userId);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Anggota berhasil dikeluarkan'
+        ]);
+    }
+
+    // SEARCH USERS (Untuk cari orang buat di-invite)
+    public function searchUsers(Request $request)
+    {
+        $search = $request->query('q');
+        $excludeGroupId = $request->query('exclude_group');
+
+        $query = User::query();
+
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('email', 'LIKE', "%{$search}%");
+            });
+        }
+
+        // Jangan tampilkan user yang SUDAH ada di grup ini
+        if ($excludeGroupId) {
+            $query->whereDoesntHave('groups', function($q) use ($excludeGroupId) {
+                $q->where('groups.id', $excludeGroupId);
+            });
+        }
+        
+        // Jangan tampilkan diri sendiri
+        $query->where('id', '!=', Auth::id());
+
+        $users = $query->limit(10)->get();
+
+        return response()->json(['data' => $users]);
+    }
 }

@@ -55,6 +55,8 @@ const showScrollButton = ref(false);
 const replyingTo = ref<any>(null);
 const isHeaderMenuOpen = ref(false);
 const isInfoModalOpen = ref(false);
+const searchQuery = ref("");
+const chatDrafts = ref<Record<string | number, string>>({});
 
 // Typing State untuk Group (Bisa banyak orang)
 const typingUsers = ref<string[]>([]); 
@@ -129,21 +131,41 @@ const fetchGroups = async () => {
 
 const selectGroup = async (group: any) => {
     if (activeGroup.value?.id === group.id) return;
+    if (activeGroup.value) {
+        chatDrafts.value[activeGroup.value.id] = newMessage.value;
+    }
     
     activeGroup.value = group;
     messages.value = [];
     
-    // Reset unread count lokal
+    newMessage.value = chatDrafts.value[group.id] || "";
     const idx = groups.value.findIndex(g => g.id === group.id);
     if (idx !== -1) {
         groups.value[idx].unread_count = 0;
     }
 
-    // Setup listener firebase khusus untuk grup ini
     setupGroupListener(group.id);
-    
     await getMessages(group.id);
+    
+    nextTick(() => {
+        const inputEl = document.querySelector('input[type="text"].form-control');
+        if (inputEl) (inputEl as HTMLElement).focus();
+    });
 };
+
+const filteredGroups = computed(() => {
+    if (!searchQuery.value) {
+        return groups.value;
+    }
+
+    const query = searchQuery.value.toLowerCase();
+
+    return groups.value.filter((group: any) => {
+        const name = (group.name || "").toLowerCase();
+
+        return name.includes(query); 
+    });
+});
 
 const getMessages = async (groupId: any) => {
     isLoadingMessages.value = true;
@@ -206,6 +228,9 @@ const sendMessage = async () => {
     const tempReply = replyingTo.value;
     newMessage.value = "";
     replyingTo.value = null; 
+    if (activeGroup.value) {
+        delete chatDrafts.value[activeGroup.value.id];
+    }
     if (fileInput.value) fileInput.value.value = "";
 
     try {
@@ -326,14 +351,14 @@ const openEditGroupModal = () => {
     isEditGroupOpen.value = true; 
 };
 
-const handleGroupUpdated = async () => {
-    isEditGroupOpen.value = false;
-    await fetchGroups(); 
-    if (activeGroup.value && groupIdToEdit.value === activeGroup.value.id) {
-        const updated = groups.value.find(c => c.id === activeGroup.value.id);
-        if (updated) activeGroup.value = updated;
+const handleGroupUpdated = (updatedGroup: any) => {
+    if (activeGroup.value && activeGroup.value.id === updatedGroup.id) {
+        activeGroup.value.name = updatedGroup.name;
     }
-    toast.success("Info grup diperbarui!");
+    const index = groups.value.findIndex(g => g.id === updatedGroup.id);
+    if (index !== -1) {
+        groups.value[index].name = updatedGroup.name;
+    }
 };
 
 const toggleHeaderMenu = () => {
@@ -504,7 +529,7 @@ onUnmounted(() => {
                     <div class="d-flex align-items-center w-100">
                         <form class="w-100 position-relative me-3" autocomplete="off">
                             <KTIcon icon-name="magnifier" icon-class="fs-2 text-lg-1 text-gray-500 position-absolute top-50 ms-5 translate-middle-y" />
-                            <input type="text" class="form-control form-control-solid px-15" placeholder="Cari grup..." />
+                            <input type="text" class="form-control form-control-solid px-15" placeholder="Cari grup..." v-model="searchQuery" />
                         </form>
                         <button class="btn btn-sm btn-light-primary fw-bold" @click="openCreateGroupModal">
                             <KTIcon icon-name="plus" icon-class="fs-2" />
@@ -517,7 +542,7 @@ onUnmounted(() => {
                         <div v-if="isLoadingGroups" class="text-center mt-5">
                             <span class="spinner-border spinner-border-sm text-primary"></span>
                         </div>
-                        <div v-for="group in groups" :key="group.id" @click="selectGroup(group)" class="d-flex align-items-center p-3 mb-2 rounded cursor-pointer contact-item position-relative overflow-hidden" :class="{ 'bg-light-primary': activeGroup?.id === group.id }">      
+                        <div v-for="group in filteredGroups" :key="group.id" @click="selectGroup(group)" class="d-flex align-items-center p-3 mb-2 rounded cursor-pointer contact-item position-relative overflow-hidden" :class="{ 'bg-light-primary': activeGroup?.id === group.id }">      
                             <div class="d-flex align-items-center">
                                 <div class="symbol symbol-40px symbol-circle me-3">
                                     <img :src="group.photo ? `/storage/${group.photo}` : '/media/avatars/group-blank.png'" alt="grup">
@@ -531,9 +556,13 @@ onUnmounted(() => {
                                         </div>
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between">
-                                        <span class="text-muted fs-7 text-truncate pe-2" style="max-width: 150px;">
+                                        <span v-if="chatDrafts[group.id] && chatDrafts[group.id].length > 0" class="text-danger fs-7 text-truncate pe-2 fst-italic" style="max-width: 150px;">
+                                            Draft: {{ chatDrafts[group.id] }}
+                                        </span>
+                                        <span v-else class="text-muted fs-7 text-truncate pe-2" style="max-width: 150px;">
                                             {{ group.members_count }} Anggota
                                         </span>
+
                                         <span v-if="group.unread_count > 0" class="badge badge-circle badge-primary w-20px h-20px fs-9">
                                             {{ group.unread_count }}
                                         </span>
@@ -762,7 +791,7 @@ onUnmounted(() => {
 
     <div v-if="isEditGroupOpen" class="modal-overlay">
         <div class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden" style="max-width: 500px; width: 100%;">
-            <GroupEdit v-if="isEditGroupOpen" :groupId="groupIdToEdit" :title="editModalTitle"  @close="isEditGroupOpen = false" @updated="handleGroupUpdated" />
+            <GroupEdit v-if="isEditGroupOpen" :groupId="groupIdToEdit" :title="editModalTitle"  @close="isEditGroupOpen = false" @refresh="fetchGroups" @group-updated="handleGroupUpdated" />
         </div>
     </div>
 

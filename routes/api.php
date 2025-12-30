@@ -86,6 +86,9 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::post('group/send', [GroupController::class, 'sendMessage']); 
         Route::delete('group/delete/{msgId}', [GroupController::class, 'deleteMessage']); 
         Route::get('group/download/{msgId}', [GroupController::class, 'downloadAttachment']);
+        Route::get('users/search', [GroupController::class, 'searchUsers']); 
+        Route::post('groups/{id}/members', [GroupController::class, 'addMembers']);
+        Route::delete('groups/{id}/members/{userId}', [GroupController::class, 'removeMember']);
     });
 
     Route::prefix('call')->group(function () {

@@ -54,6 +54,8 @@ const isLightboxOpen = ref(false);
 const activeLightboxUrl = ref("");
 const heartbeatInterval = ref<any>(null);
 const showScrollButton = ref(false);
+const searchQuery = ref("");
+const chatDrafts = ref<Record<string | number, string>>({});
 const replyingTo = ref<any>(null);
 const isHeaderMenuOpen = ref(false);
 const isInfoModalOpen = ref(false);
@@ -120,6 +122,19 @@ const shouldShowDateDivider = (index: number) => {
     return !isSameDay(currentMsgDate, prevMsgDate);
 };
 
+const filteredContacts = computed(() => {
+    if (!searchQuery.value) {
+        return contacts.value;
+    }
+
+    const query = searchQuery.value.toLowerCase();
+    return contacts.value.filter((contact: any) => {
+        const name = (contact.display_name || "").toLowerCase();
+        const email = (contact.email || "").toLowerCase();
+        return name.includes(query) || email.includes(query);
+    });
+});
+
 const fetchContacts = async () => {
     isLoadingContact.value = true;
     try {
@@ -133,6 +148,12 @@ const fetchContacts = async () => {
 };
 
 const selectContact = async (contact: any) => {
+    if (activeContact.value?.id === contact.id) return;
+
+    if (activeContact.value) {
+        chatDrafts.value[activeContact.value.id] = newMessage.value;
+    }
+
     activeContact.value = contact;
     messages.value = [];
     
@@ -140,8 +161,13 @@ const selectContact = async (contact: any) => {
     if (contactIndex !== -1) {
         contacts.value[contactIndex].unread_count = 0;
     }
+    newMessage.value = chatDrafts.value[contact.id] || "";
+    nextTick(() => {
+        const inputEl = document.querySelector('input[type="text"].form-control');
+        if (inputEl) (inputEl as HTMLElement).focus();
+    });
 
-    await getMessages(contact.id)
+    await getMessages(contact.id);
 };
 
 const getMessages = async (friendId: any) => {
@@ -192,6 +218,9 @@ const sendMessage = async () => {
     const tempReply = replyingTo.value;
     newMessage.value = "";
     replyingTo.value = null; 
+    if (activeContact.value) {
+        delete chatDrafts.value[activeContact.value.id];
+    }
     if (fileInput.value) fileInput.value.value = "";
 
     try {
@@ -653,7 +682,7 @@ onUnmounted(() => {
                     <div class="d-flex align-items-center w-100">
                         <form class="w-100 position-relative me-3" autocomplete="off">
                             <KTIcon icon-name="magnifier" icon-class="fs-2 text-lg-1 text-gray-500 position-absolute top-50 ms-5 translate-middle-y" />
-                            <input type="text" class="form-control form-control-solid px-15" placeholder="Cari kontak..." />
+                            <input type="text" class="form-control form-control-solid px-15" placeholder="Cari kontak..." v-model="searchQuery" />
                         </form>
                         <button class="btn btn-sm btn-light-primary fw-bold" @click="openAddContactModal">
                             <KTIcon icon-name="plus" icon-class="fs-2" />
@@ -666,7 +695,7 @@ onUnmounted(() => {
                         <div v-if="isLoadingContact" class="text-center mt-5">
                             <span class="spinner-border spinner-border-sm text-primary"></span>
                         </div>
-                        <div v-for="contact in contacts" :key="contact.id" @click="selectContact(contact)" class="d-flex align-items-center p-3 mb-2 rounded cursor-pointer contact-item position-relative overflow-hidden" :class="{ 'bg-light-primary': activeContact?.id === contact.id }">      
+                        <div v-for="contact in filteredContacts" :key="contact.id" @click="selectContact(contact)" class="d-flex align-items-center p-3 mb-2 rounded cursor-pointer contact-item position-relative overflow-hidden" :class="{ 'bg-light-primary': activeContact?.id === contact.id }">      
                             <div class="d-flex align-items-center">
                                 <div class="symbol symbol-40px symbol-circle me-3">
                                     <img :src="contact.photo ? `/storage/${contact.photo}` : '/media/avatars/blank.png'" alt="image">
@@ -684,14 +713,21 @@ onUnmounted(() => {
                                             </span>
                                         </div>
                                     </div>
+
                                     <div class="d-flex align-items-center justify-content-between">
-                                        <span class="text-muted fs-7 text-truncate pe-2" style="max-width: 150px;">
+                                        
+                                        <span v-if="chatDrafts[contact.id]" class="text-danger fs-7 fw-bold fst-italic text-truncate pe-2" style="max-width: 150px;">
+                                            Draft: {{ chatDrafts[contact.id] }}
+                                        </span>
+
+                                        <span v-else class="text-muted fs-7 text-truncate pe-2" style="max-width: 150px;">
                                             <span v-if="contact.last_message && contact.last_message_sender_id === currentUser?.id" class="me-1">
                                                 <i v-if="contact.last_message_read_at" class="fas fa-check-double text-primary fs-9"></i>
                                                 <i v-else class="fas fa-check-double text-gray-400 fs-9"></i>
                                             </span>
                                             {{ contact.email }}
                                         </span>
+
                                         <span v-if="contact.unread_count > 0" class="badge badge-circle badge-primary w-20px h-20px fs-9">
                                             {{ contact.unread_count }}
                                         </span>
@@ -742,10 +778,8 @@ onUnmounted(() => {
                         >
                             <i class="fas fa-user-plus fs-7 me-1"></i> Simpan
                         </button>
-
                         <button class="btn btn-icon btn-sm text-gray-500"><Phone class="w-20px h-20px" /></button>
                         <button class="btn btn-icon btn-sm text-gray-500"><Video class="w-20px h-20px" /></button>
-                        
                         <div class="position-relative">
                             <button class="btn btn-icon btn-sm text-gray-500" @click.stop="toggleHeaderMenu">
                                 <i class="fas fa-ellipsis-v fs-4"></i>

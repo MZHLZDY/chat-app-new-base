@@ -34,45 +34,6 @@
 
                     <!--begin::Input group-->
                     <div class="fv-row mb-8">
-                        <label class="form-label fw-bold fs-6">Pemerintahan</label>
-                        <Field class="form-control form-control-lg form-control-solid" type="text" name="pemerintah"
-                            autocomplete="off" v-model="formData.pemerintah" />
-                        <div class="fv-plugins-message-container">
-                            <div class="fv-help-block">
-                                <ErrorMessage name="pemerintah" />
-                            </div>
-                        </div>
-                    </div>
-                    <!--end::Input group-->
-
-                    <!--begin::Input group-->
-                    <div class="fv-row mb-8">
-                        <label class="form-label fw-bold fs-6">Alamat</label>
-                        <Field class="form-control form-control-lg form-control-solid" type="text" name="alamat"
-                            autocomplete="off" v-model="formData.alamat" />
-                        <div class="fv-plugins-message-container">
-                            <div class="fv-help-block">
-                                <ErrorMessage name="alamat" />
-                            </div>
-                        </div>
-                    </div>
-                    <!--end::Input group-->
-
-                    <!--begin::Input group-->
-                    <div class="fv-row mb-8">
-                        <label class="form-label fw-bold fs-6">Telepon</label>
-                        <Field class="form-control form-control-lg form-control-solid" type="text" name="telepon"
-                            autocomplete="off" v-model="formData.telepon" />
-                        <div class="fv-plugins-message-container">
-                            <div class="fv-help-block">
-                                <ErrorMessage name="telepon" />
-                            </div>
-                        </div>
-                    </div>
-                    <!--end::Input group-->
-
-                    <!--begin::Input group-->
-                    <div class="fv-row mb-8">
                         <label class="form-label fw-bold fs-6">Email</label>
                         <Field class="form-control form-control-lg form-control-solid" type="text" name="email"
                             autocomplete="off" v-model="formData.email" />
