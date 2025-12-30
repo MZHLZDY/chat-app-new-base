@@ -20,5 +20,4 @@ yarn-error.log
 composer.lock
 package-lock.json
 firebase_credentials.json
-src/libs/firebase.ts
-/home/nnayy/laravel/metronic chat/chat-app-new-base/resources/js/libs/firebase.ts
+/resources/js/libs/firebase.ts
