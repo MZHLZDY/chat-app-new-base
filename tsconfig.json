@@ -1,5 +1,5 @@
 {
-    "extends": "@vue/tsconfig/tsconfig.web.json",
+    "extends": "@vue/tsconfig/tsconfig.dom.json",
     "include": [
         "env.d.ts",
         "resources/js/*",
@@ -10,6 +10,9 @@
         "verbatimModuleSyntax": true,
         "lib": ["ES2020", "DOM"],
         "noImplicitAny": false,
+        "module": "esnext",
+        "moduleResolution": "node",
+        "types": ["vite/client"],
         "baseUrl": ".",
         "paths": {
             "@/*": ["./resources/js/*"]
