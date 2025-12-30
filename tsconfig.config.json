@@ -1,5 +1,4 @@
 {
-  "extends": "@vue/tsconfig/tsconfig.node.json",
   "include": [
     "vite.config.*",
     "vitest.config.*",
@@ -9,6 +8,8 @@
   "exclude": [],
   "compilerOptions": {
     "composite": true,
+    "module": "esnext",
+    "moduleResolution": "node",
     "types": ["node"],
     "allowJs": true,
     "emitDeclarationOnly": true,
