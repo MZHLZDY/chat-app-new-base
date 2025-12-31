@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-// Import ikon Minimize2
 import { Minimize2 } from 'lucide-vue-next'; 
 import CallAvatar from '../shared/CallAvatar.vue';
 import CallControls from '../shared/CallControls.vue';
@@ -21,15 +20,24 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits([
   'toggleMute', 
   'toggleSpeaker', 
+  // 'toggleCamera', // Event baru diteruskan ke parent
   'endCall', 
-  'switchCallType',
-  'minimize' // Tambahkan event baru
+  'minimize' 
 ]);
 
-// --- SIMULASI AUDIO (Hanya untuk Demo UI) ---
+// State Lokal untuk UI Tombol Kamera
+// Kita set false karena default Voice Call kamera mati
+const isCameraOn = ref(false);
+
+// const handleToggleCamera = () => {
+//   isCameraOn.value = !isCameraOn.value;
+//   // Emit ke Parent (dimana useVoiceCall/useAgora berada) untuk eksekusi logika SDK
+//   emit('toggleCamera', isCameraOn.value); 
+// };
+
+// --- SIMULASI AUDIO (Visualizer) ---
 const simulatedVolume = ref(0);
 let audioInterval: number | null = null;
-
 const startSimulation = () => {
   audioInterval = window.setInterval(() => {
     const randomVol = Math.random() > 0.3 ? Math.random() * 60 : 5; 
@@ -44,7 +52,6 @@ onMounted(() => {
 onUnmounted(() => {
   if (audioInterval) clearInterval(audioInterval);
 });
-// ---------------------------------------------
 </script>
 
 <template>
@@ -52,16 +59,10 @@ onUnmounted(() => {
     <div class="glass-card">
       
       <div class="header-section">
-        <button 
-          @click="emit('minimize')" 
-          class="minimize-btn"
-          title="Minimize Call"
-        >
+        <button @click="emit('minimize')" class="minimize-btn" title="Minimize Call">
           <Minimize2 :size="24" color="white" />
         </button>
-
         <CallTimer />
-        
         <div class="spacer-right"></div>
       </div>
 
@@ -70,12 +71,11 @@ onUnmounted(() => {
           class="audio-ring ring-1"
           :style="{ transform: `scale(${1 + (simulatedVolume / 100) * 1.5})`, opacity: simulatedVolume > 10 ? 0.4 : 0.1 }"
         ></div>
-        
         <div 
           class="audio-ring ring-2"
           :style="{ transform: `scale(${1 + (simulatedVolume / 100) * 1.0})`, opacity: simulatedVolume > 10 ? 0.6 : 0.1 }"
         ></div>
-
+        
         <div class="avatar-z-index">
           <CallAvatar 
             :photo-url="props.remotePhoto" 
@@ -95,10 +95,9 @@ onUnmounted(() => {
         <CallControls 
           :is-muted="props.isMuted"
           :is-speaker-on="props.isSpeakerOn"
-          :is-voice-call="true" 
+          :is-camera-on="isCameraOn" 
           @toggle-mute="emit('toggleMute')"
           @toggle-speaker="emit('toggleSpeaker')"
-          @switch-call-type="emit('switchCallType')"
           @end-call="emit('endCall')"
         />
       </div>
@@ -108,6 +107,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+/* Style tetap sama seperti sebelumnya */
 .voice-call-overlay {
   position: fixed;
   top: 0;
@@ -127,14 +127,11 @@ onUnmounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  
   width: 100%;
   max-width: 400px;
   height: 80vh;
   max-height: 700px;
-  
-  padding: 30px 20px; /* Padding atas dikurangi sedikit agar header pas */
-  
+  padding: 30px 20px;
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -143,14 +140,12 @@ onUnmounted(() => {
   box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
 }
 
-/* --- UPDATE HEADER SECTION --- */
 .header-section {
   width: 100%;
   display: flex;
-  justify-content: space-between; /* Agar tombol kiri, timer tengah, kanan kosong */
+  justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  position: relative;
 }
 
 .minimize-btn {
@@ -164,23 +159,10 @@ onUnmounted(() => {
   align-items: center;
   cursor: pointer;
   transition: all 0.2s ease;
-  
-  /* Agar tidak menggeser Timer dari tengah secara visual, kita bisa pakai position absolute atau flex trick */
-  /* Di sini saya menggunakan flex space-between, jadi saya butuh spacer di kanan */
 }
+.minimize-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.1); }
+.spacer-right { width: 40px; height: 40px; }
 
-.minimize-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: scale(1.1);
-}
-
-.spacer-right {
-  width: 40px; /* Lebar sama dengan tombol minimize agar Timer benar-benar di tengah */
-  height: 40px;
-}
-/* ----------------------------- */
-
-/* Main Visual */
 .main-visual {
   position: relative;
   display: flex;
@@ -189,12 +171,7 @@ onUnmounted(() => {
   width: 250px;
   height: 250px;
 }
-
-.avatar-z-index {
-  position: relative;
-  z-index: 10;
-}
-
+.avatar-z-index { position: relative; z-index: 10; }
 .audio-ring {
   position: absolute;
   top: 50%;
@@ -205,42 +182,15 @@ onUnmounted(() => {
   transition: transform 0.1s ease-out, opacity 0.2s ease;
   z-index: 1;
 }
-
 .ring-1 { width: 150px; height: 150px; }
 .ring-2 { width: 150px; height: 150px; background-color: rgba(255, 255, 255, 0.5); }
 
-/* User Info */
-.info-section {
-  text-align: center;
-  color: white;
-  margin-top: -20px;
-}
-
-.remote-name {
-  font-size: 1.8rem;
-  font-weight: 700;
-  margin-bottom: 5px;
-  text-shadow: 0 2px 5px rgba(0,0,0,0.2);
-}
-
-.call-status {
-  font-size: 0.9rem;
-  opacity: 0.7;
-}
-
-.controls-section {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-}
+.info-section { text-align: center; color: white; margin-top: -20px; }
+.remote-name { font-size: 1.8rem; font-weight: 700; margin-bottom: 5px; text-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+.call-status { font-size: 0.9rem; opacity: 0.7; }
+.controls-section { width: 100%; display: flex; justify-content: center; }
 
 @media (max-width: 480px) {
-  .glass-card {
-    height: 100vh;
-    border-radius: 0;
-    max-width: 100%;
-    border: none;
-    background: rgba(20, 30, 60, 0.6);
-  }
+  .glass-card { height: 100vh; border-radius: 0; max-width: 100%; border: none; background: rgba(20, 30, 60, 0.6); }
 }
 </style>

@@ -5,24 +5,28 @@ import {
   PhoneForwarded, 
   Volume2, 
   VolumeOff, 
-  Video, 
-  Phone 
+  Camera,      // Import Icon Kamera
+  CameraOff    // Import Icon Kamera Off
 } from 'lucide-vue-next';
 
 interface Props {
   isMuted: boolean;
   isSpeakerOn: boolean;
-  isVoiceCall: boolean; // True jika sedang voice call, False jika video call
+  isCameraOn: boolean; // Ganti isVoiceCall menjadi isCameraOn
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), {
+  isMuted: false,
+  isSpeakerOn: false,
+  isCameraOn: false, // Default mati untuk Voice Call
+});
 
-// Mendefinisikan emit agar parent bisa menangani logika fungsinya
+// Update emits
 const emit = defineEmits([
   'toggleMute', 
   'toggleSpeaker', 
+  // 'toggleCamera', // Ganti switchCallType menjadi toggleCamera
   'endCall', 
-  'switchCallType'
 ]);
 </script>
 
@@ -47,13 +51,14 @@ const emit = defineEmits([
       <component :is="props.isSpeakerOn ? Volume2 : VolumeOff" :size="24" />
     </button>
 
-    <button 
-      @click="emit('switchCallType')" 
+    <!-- <button 
+      @click="emit('toggleCamera')" 
       class="control-btn"
-      title="Switch Call Type"
+      :class="{ 'active': props.isCameraOn }"
+      title="Toggle Camera"
     >
-      <component :is="props.isVoiceCall ? Video : Phone" :size="24" />
-    </button>
+      <component :is="props.isCameraOn ? Camera : CameraOff" :size="24" />
+    </button> -->
 
     <button 
       @click="emit('endCall')" 
@@ -80,7 +85,6 @@ const emit = defineEmits([
   margin: 0 auto;
 }
 
-/* Base Button Style */
 .control-btn {
   width: 50px;
   height: 50px;
@@ -100,13 +104,11 @@ const emit = defineEmits([
   transform: scale(1.05);
 }
 
-/* Active State (misal saat Mute On) */
 .control-btn.active {
   background-color: #fff;
   color: #333;
 }
 
-/* End Call Button Specific (Red) */
 .end-call-btn {
   background-color: #ff4d4d;
 }
@@ -115,12 +117,10 @@ const emit = defineEmits([
   background-color: #ff3333;
 }
 
-/* Rotasi sedikit ikon PhoneForwarded agar terlihat seperti gagang telepon ditutup */
 .rotate-icon {
   transform: rotate(135deg);
 }
 
-/* Responsivitas kecil */
 @media (max-width: 480px) {
   .call-controls-container {
     gap: 12px;
