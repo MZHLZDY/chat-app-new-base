@@ -6,6 +6,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
@@ -53,6 +54,10 @@ Route::middleware(['auth', 'json'])->group(function () {
     Route::prefix('dashboard')->group(function () {
         Route::get('/stats', [DashboardController::class, 'getStats']);
         Route::get('/stats/detailed', [DashboardController::class, 'getDetailedStats']);
+        Route::get('/profile', [ProfileController::class, 'show']);
+        Route::post('/profile', [ProfileController::class, 'update']);
+        Route::post('/profile/email', [ProfileController::class, 'updateEmail']);
+        Route::post('/profile/password', [ProfileController::class, 'updatePassword']);
     });
     
     // Setting Update

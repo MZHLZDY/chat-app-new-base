@@ -26,7 +26,7 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
     protected $guard_name = 'api';
 
     protected $fillable = [
-        'name', 'email', 'password', 'phone', 'photo', 'background_image_path',
+        'name', 'email', 'password', 'phone', 'photo', 'background_image_path', 'bio'
     ];
 
     protected $hidden = [

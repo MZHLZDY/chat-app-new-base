@@ -103,17 +103,17 @@ const currentLangugeLocale = computed(() => {
                 <div class="d-flex flex-column">
                     <div class="fw-bold d-flex align-items-center fs-5">
                         {{ store.user.name }}
-                        <span
+                        <!-- <span
                             class="badge badge-light-success fw-bold fs-8 px-2 py-1 ms-2"
                         >
                             {{ store.user.role?.name }}
-                        </span>
+                        </span> -->
                     </div>
                     <a
                         href="#"
                         class="fw-semibold text-muted text-hover-primary fs-7"
                     >
-                        {{ store.user.email }}
+                        {{ store.user.phone }}
                     </a>
                 </div>
                 <!--end::Username-->
@@ -126,17 +126,17 @@ const currentLangugeLocale = computed(() => {
         <!--end::Menu separator-->
 
         <!--begin::Menu item-->
-        <div class="menu-item px-5 my-1">
+        <!-- <div class="menu-item px-5 my-1">
             <router-link to="/dashboard/profile" class="menu-link px-5">
                 Account Settings
             </router-link>
-        </div>
+        </div> -->
         <!--end::Menu item-->
 
         <!--begin::Menu item-->
-        <div class="menu-item px-5">
+        <!-- <div class="menu-item px-5">
             <a @click="signOut()" class="menu-link px-5"> Sign Out </a>
-        </div>
+        </div> -->
         <!--end::Menu item-->
     </div>
     <!--end::Menu-->

@@ -38,9 +38,9 @@ const MainMenuConfig: Array<MenuItem> = [
                 ],
             },
             {
-                heading: "Setting",
-                route: "/dashboard/setting",
-                name: "setting",
+                heading: "Profile Setting",
+                route: "/dashboard/profile",
+                name: "profile-setting",
                 keenthemesIcon: "setting-2",
             },
         ],
