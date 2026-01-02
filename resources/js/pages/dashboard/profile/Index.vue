@@ -4,7 +4,7 @@ import { ref, onMounted } from "vue";
 import { ErrorMessage, Field, Form as VForm } from "vee-validate";
 import Swal from "sweetalert2/dist/sweetalert2.js";
 import * as Yup from "yup";
-import axios from "axios"; // Pastikan axios sudah diinstall
+import axios from "axios";
 
 // State UI
 const isLoading = ref(false);
@@ -23,11 +23,9 @@ const profileDetails = ref({
     email: "",
 });
 
-// File Upload State
 const avatarFile = ref<File | null>(null);
 const isAvatarRemoved = ref(false);
 
-// --- 1. FETCH DATA SAAT LOAD ---
 onMounted(async () => {
     try {
         const response = await axios.get("/dashboard/profile");
@@ -73,8 +71,6 @@ const onFileChange = (e: Event) => {
     if (target.files && target.files[0]) {
         avatarFile.value = target.files[0];
         isAvatarRemoved.value = false;
-        
-        // Preview gambar lokal sebelum upload
         const reader = new FileReader();
         reader.onload = (e) => {
             profileDetails.value.photo = e.target?.result as string;
@@ -89,7 +85,6 @@ const removeImage = () => {
     isAvatarRemoved.value = true;
 };
 
-// --- 2. UPDATE PROFILE UTAMA ---
 const saveChanges1 = async (values: any) => {
     if (!submitButton1.value) return;
 
@@ -138,7 +133,6 @@ const saveChanges1 = async (values: any) => {
     }
 };
 
-// --- 3. UPDATE EMAIL ---
 const updateEmail = async (values: any) => {
     if (!updateEmailButton.value) return;
     
@@ -150,7 +144,7 @@ const updateEmail = async (values: any) => {
             password: values.confirmemailpassword
         });
 
-        profileDetails.value.email = values.emailaddress; // Update UI
+        profileDetails.value.email = values.emailaddress;
         emailFormDisplay.value = false;
         
         Swal.fire({ text: "Email updated successfully!", icon: "success", confirmButtonText: "Ok" });
@@ -161,7 +155,6 @@ const updateEmail = async (values: any) => {
     }
 };
 
-// --- 4. UPDATE PASSWORD ---
 const updatePassword = async (values: any, { resetForm }: any) => {
     if (!updatePasswordButton.value) return;
 
@@ -175,7 +168,7 @@ const updatePassword = async (values: any, { resetForm }: any) => {
         });
 
         passwordFormDisplay.value = false;
-        resetForm(); // Bersihkan form
+        resetForm(); 
         Swal.fire({ text: "Password changed successfully!", icon: "success", confirmButtonText: "Ok" });
     } catch (error: any) {
         Swal.fire({ text: error.response?.data?.message || "Error changing password", icon: "error", confirmButtonText: "Ok" });

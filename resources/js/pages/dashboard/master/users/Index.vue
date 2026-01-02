@@ -56,7 +56,7 @@ const replyingTo = ref<any>(null);
 const isHeaderMenuOpen = ref(false);
 const isInfoModalOpen = ref(false);
 const searchQuery = ref("");
-const chatDrafts = ref<Record<string | number, string>>({});
+const chatDrafts = ref<Record<string, string>>({});
 
 // Typing State untuk Group (Bisa banyak orang)
 const typingUsers = ref<string[]>([]); 
@@ -556,7 +556,7 @@ onUnmounted(() => {
                                         </div>
                                     </div>
                                     <div class="d-flex align-items-center justify-content-between">
-                                        <span v-if="chatDrafts[group.id] && chatDrafts[group.id].length > 0" class="text-danger fs-7 text-truncate pe-2 fst-italic" style="max-width: 150px;">
+                                        <span v-if="(chatDrafts[String(group.id)] || '').length > 0" class="text-danger fs-7 text-truncate pe-2 fst-italic" style="max-width: 150px;">
                                             Draft: {{ chatDrafts[group.id] }}
                                         </span>
                                         <span v-else class="text-muted fs-7 text-truncate pe-2" style="max-width: 150px;">

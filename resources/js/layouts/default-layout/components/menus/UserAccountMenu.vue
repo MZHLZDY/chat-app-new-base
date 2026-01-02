@@ -89,7 +89,7 @@ const currentLangugeLocale = computed(() => {
                 <!--begin::Avatar-->
                 <div class="symbol symbol-50px me-5">
                     <img
-                        alt="Logo"
+                        alt="User"
                         :src="
                             getAssetPath(
                                 store.user.photo ?? 'media/avatars/300-3.jpg'
@@ -134,9 +134,9 @@ const currentLangugeLocale = computed(() => {
         <!--end::Menu item-->
 
         <!--begin::Menu item-->
-        <!-- <div class="menu-item px-5">
+        <div class="menu-item px-5">
             <a @click="signOut()" class="menu-link px-5"> Sign Out </a>
-        </div> -->
+        </div>
         <!--end::Menu item-->
     </div>
     <!--end::Menu-->
