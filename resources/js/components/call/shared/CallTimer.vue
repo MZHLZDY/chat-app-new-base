@@ -1,9 +1,34 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
 
+// Terima startTime dari luar
+const props = defineProps<{
+  startTime?: string | Date;
+}>();
+
 // State untuk menyimpan total detik
 const secondsElapsed = ref(0);
 let timerInterval: number | null = null;
+
+// Fungsi hitung selisih waktu
+const updateTimer = () => {
+  if (!props.startTime) {
+    secondsElapsed.value = 0;
+    return;
+  }
+
+  const start = new Date(props.startTime).getTime();
+  const now = new Date().getTime();
+
+  // Rumus waktu sekarang - waktu mulai = durasi asli
+  const diff = Math.floor((now - start) / 1000);
+  secondsElapsed.value = diff > 0 ? diff : 0;
+};
+
+onMounted(() => {
+  updateTimer(); //Hitung langsung pas load (biar ga nunggu 1 detik)
+  timerInterval = window.setInterval(updateTimer, 1000); // update tiap detik
+});
 
 // Mengubah detik menjadi format MM:SS atau HH:MM:SS
 const formattedTime = computed(() => {
@@ -22,13 +47,6 @@ const formattedTime = computed(() => {
   }
 
   return parts.join(':');
-});
-
-// Jalankan timer saat komponen aktif
-onMounted(() => {
-  timerInterval = window.setInterval(() => {
-    secondsElapsed.value++;
-  }, 1000);
 });
 
 // Bersihkan interval saat komponen tidak lagi digunakan (memory leak prevention)
