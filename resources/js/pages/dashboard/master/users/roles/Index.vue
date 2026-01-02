@@ -66,6 +66,7 @@ const isHeaderMenuOpen = ref(false);
 const isInfoModalOpen = ref(false);
 const isFriendTyping = ref(false);
 const isMuted = ref(false);
+const isClearChatModalOpen = ref(false);
 let typingTimeout: ReturnType<typeof setTimeout> | null = null;
 let typingListenerOff: Unsubscribe | null = null;
 
@@ -432,19 +433,25 @@ const openInfoModal = () => {
     isInfoModalOpen.value = true;
 };
 
+const openClearChatModal = () => {
+    isHeaderMenuOpen.value = false; 
+    if (!activeContact.value) return;
+    isClearChatModalOpen.value = true; 
+};
+
 const handleClearChat = async () => {
     if (!activeContact.value) return;
-    if (!confirm("Apakah Anda yakin ingin menghapus semua riwayat chat ini?")) return;
 
     try {
         await axios.post(`/chat/clear/${activeContact.value.id}`);
         messages.value = [];
         toast.success("Chat berhasil dibersihkan");
-        isHeaderMenuOpen.value = false;
         await fetchContacts();
     } catch (error) {
         console.error(error);
         toast.error("Gagal membersihkan chat");
+    } finally {
+        isClearChatModalOpen.value = false; 
     }
 };
 
@@ -505,8 +512,9 @@ const handleEscKey = (e: KeyboardEvent) => {
             closeLightbox();
             return;
         }
-        if (isAddContactOpen.value || isEditContactOpen.value || isDeleteModalOpen.value || isInfoModalOpen.value || isHeaderMenuOpen.value) {
+        if (isAddContactOpen.value || isEditContactOpen.value || isDeleteModalOpen.value || isInfoModalOpen.value || isHeaderMenuOpen.value || isClearChatModalOpen.value) {
             if (isHeaderMenuOpen.value) isHeaderMenuOpen.value = false;
+            if (isClearChatModalOpen.value) isClearChatModalOpen.value = false; 
             return;
         }
         if (activeContact.value) {
@@ -844,23 +852,26 @@ onUnmounted(() => {
                             <div v-if="isHeaderMenuOpen" class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-bold w-200px py-3 show position-absolute end-0 mt-2 shadow bg-white" style="z-index: 105;">
 
                                 <div class="menu-item px-3">
+                                    <a href="#" class="menu-link px-3" @click.prevent="openInfoModal">
+                                        <i class="fas fa-info-circle me-2"></i> Info Kontak
+                                    </a>
+                                </div>
+
+                                <div class="menu-item px-3">
                                     <a href="#" class="menu-link px-3" @click.prevent="isMuted = !isMuted">
                                         <i class="fas me-2" :class="isMuted ? 'fa-volume-mute' : 'fa-volume-up'"></i> 
                                         {{ isMuted ? 'Bunyikan Suara' : 'Bisukan Suara' }}
                                     </a>
                                 </div>
-                                
+
                                 <div class="menu-item px-3">
-                                    <a href="#" class="menu-link px-3" @click.prevent="openInfoModal">
-                                        <i class="fas fa-info-circle me-2"></i> Info Kontak
-                                    </a>
-                                </div>
-                                <div class="menu-item px-3">
-                                    <a href="#" class="menu-link px-3" @click.prevent="handleClearChat">
+                                    <a href="#" class="menu-link px-3" @click.prevent="openClearChatModal">
                                         <i class="fas fa-eraser me-2"></i> Bersihkan Chat
                                     </a>
                                 </div>
+
                                 <div class="separator my-2"></div>
+
                                 <div class="menu-item px-3">
                                     <a href="#" class="menu-link px-3" @click.prevent="openEditModal">
                                         <i class="fas fa-user-edit me-2"></i> Edit Kontak
@@ -1068,6 +1079,9 @@ onUnmounted(() => {
                 
                 <h4 class="fw-bold text-gray-800">{{ activeContact?.alias || activeContact?.name }}</h4>
                 <div v-if="activeContact?.alias" class="text-muted fs-7">~ {{ activeContact?.name }}</div>
+                <div v-if="activeContact?.bio" class="text-gray-600 fs-7 mt-2 px-4 text-break">
+                    "{{ activeContact.bio }}"
+                </div>
                 
                 <div class="text-start bg-light rounded p-4 mt-4">
                     <div class="d-flex mb-3">
@@ -1085,6 +1099,21 @@ onUnmounted(() => {
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    <div v-if="isClearChatModalOpen" class="modal-overlay">
+        <div class="modal-content bg-white rounded shadow p-5 text-center" style="width: 350px;">
+            <div class="bg-light-danger mb-4">
+                <i class="fas fa-eraser fs-2 text-danger p-3"></i>
+            </div>
+            <h3 class="fw-bold text-gray-800 mb-1">Bersihkan Chat?</h3>
+            <p class="text-muted fs-7 mb-4">
+                Apakah Anda yakin ingin menghapus <b>semua riwayat pesan</b> dengan kontak ini? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div class="d-grid gap-2">
+                <button @click="handleClearChat" class="btn btn-danger">Ya, Bersihkan</button>
+                <button @click="isClearChatModalOpen = false" class="btn btn-link text-muted btn-sm">Batal</button>
             </div>
         </div>
     </div>
