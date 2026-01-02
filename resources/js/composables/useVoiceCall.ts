@@ -31,9 +31,13 @@ export const useVoiceCall = () => {
 
         try {
             const response = await callService.inviteCall(receiverId, type);
-            store.setCurrentCall(response.data);
+            
+            console.log('📞 Response dari inviteCall:', response);
+            
+            store.setCurrentCall(response);
+            store.updateCallStatus('calling' as any);
         } catch (error: any) {
-            console.error(error);
+            console.error('❌ Error startVoiceCall:', error);
             toast.error(error.response?.data?.message || "Gagal memulai panggilan suara");
         } finally {
             processing.value = false;
@@ -45,18 +49,20 @@ export const useVoiceCall = () => {
         processing.value = true;
 
         try {
-            const response = await callService.answerCall(callId);
-            const callData = response.data;
+            const callData = await callService.answerCall(callId);
+            
+            console.log('📞 Response dari answerCall:', callData);
+            
             store.setCurrentCall(callData);
             
             if (authStore.user && authStore.user.id) {
-                await joinChannel(appId, callData.channel, callData.token, authStore.user.id);
-                await toggleVideo(true);
+                await joinChannel(appId, callData.channel_name, callData.agora_token, authStore.user.id);
+                await toggleAudio(false); // Unmute audio
             } else {
                 throw new Error("User tidak terautentikasi");
             }
         } catch (error: any) {
-            console.error(error);
+            console.error('❌ Error acceptVoiceCall:', error);
             toast.error(error.message || "Gagal menjawab panggilan");
             store.clearIncomingCall();
         } finally {
@@ -69,7 +75,7 @@ export const useVoiceCall = () => {
             await callService.rejectCall(callId);
             store.clearIncomingCall();
         } catch (error) {
-            console.error(error);
+            console.error('❌ Error rejectVoiceCall:', error);
         }
     };
 
@@ -79,35 +85,58 @@ export const useVoiceCall = () => {
             await callService.endCall(String(callId)); 
             store.clearCurrentCall();
         } catch (error) {
-            console.error(error);
+            console.error('❌ Error endVoiceCall:', error);
         }
     };
 
-    // --- EVENT HANDLERS ---
+    // --- EVENT HANDLERS (FIXED) ---
     
+    // ✅ FIX: Tambahkan console.log untuk debug dan pastikan struktur data benar
     const handleIncomingCall = (event: any) => {
+        console.log('🔔 handleIncomingCall dipanggil dengan event:', event);
+        console.log('🔔 Event.call:', event.call);
+        console.log('🔔 Store isInCall sebelum:', store.isInCall);
+        
         if (!store.isInCall) {
-            store.setIncomingCall(event.call);
-        } 
+            // ✅ Pastikan event.call ada dan valid
+            if (event && event.call) {
+                console.log('✅ Setting incoming call ke store...');
+                store.setIncomingCall(event.call);
+                console.log('✅ Incoming call berhasil di-set:', store.incomingCall);
+            } else {
+                console.error('❌ Event atau event.call tidak valid!');
+            }
+        } else {
+            console.log('⚠️ Sudah ada panggilan aktif, incoming call diabaikan');
+        }
     };
 
     const handleCallAccepted = async (event: any) => {
+        console.log('✅ handleCallAccepted dipanggil:', event);
+        
         if (store.currentCall && store.currentCall.id === event.call.id) {
             store.updateCallStatus('ongoing');
 
-            if (authStore.user && authStore.user.id && event.call.token) {
-                await joinChannel(appId, event.call.channel, event.call.token, authStore.user.id);
-                await toggleVideo(true); 
+            if (authStore.user && authStore.user.id && event.call.agora_token) {
+                await joinChannel(
+                    appId, 
+                    event.call.channel_name, 
+                    event.call.agora_token, 
+                    authStore.user.id
+                );
+                await toggleAudio(false); // Unmute audio
             }
         }
     };
 
     const handleCallRejected = () => {
+        console.log('🚫 handleCallRejected dipanggil');
         toast.info("Panggilan suara ditolak");
         store.clearCurrentCall();
     };
 
     const handleCallEnded = async () => {
+        console.log('❌ handleCallEnded dipanggil');
         await leaveChannel();
         store.clearCurrentCall();
         toast.info("Panggilan berakhir");

@@ -8,6 +8,8 @@ import { id } from 'date-fns/locale';
 import { Phone, Video } from 'lucide-vue-next';
 import VoiceCallModal from '@/components/call/voice/VoiceCallModal.vue';
 import VoiceFloating from '@/components/call/voice/VoiceFloating.vue';
+import VoiceIncomingModal from '@/components/call/voice/VoiceIncomingModal.vue';
+import VoiceCallingModal from '@/components/call/voice/VoiceCallingModal.vue';
 
 // Component Form Kontak
 import ContactForm from "./Form.vue";
@@ -81,13 +83,44 @@ let onlineRef: any = null;
 
 // --- CALL LOGIC ---
 const callStore = useCallStore();
+// 1. Cek apakah sedang ada panggilan aktif
+const isCallActive = computed(() => !!callStore.currentCall);
+
+// Perbaikan 1: Casting status ke string agar tidak error type mismatch
+const showIncomingModal = computed(() => !!callStore.incomingCall && !callStore.isInCall);
+const showCallingModal = computed(() => isCallActive.value && (callStore.callStatus as string) === 'calling');
+const showOngoingModal = computed(() => isCallActive.value && (callStore.callStatus as string) === 'ongoing' && !callStore.isMinimized);
+const showFloatingModal = computed(() => isCallActive.value && callStore.isMinimized);
+
+// Perbaikan 2: Sesuaikan akses properti (caller.id & receiver)
+const remoteUser = computed(() => {
+    if (!callStore.currentCall) return { name: 'Unknown', avatar: '' };
+
+    const call = callStore.currentCall;
+    const myId = authStore.user?.id;
+
+    // Error log bilang: call.caller.id (bukan call.caller_id)
+    if (call.caller && call.caller.id === myId) {
+        // Error log bilang: propertinya 'receiver', bukan 'callee'
+        // @ts-ignore (jika receiver kadang null di type definition)
+        return call.receiver || { name: 'User', avatar: '' }; 
+    } else {
+        return call.caller || { name: 'User', avatar: '' };
+    }
+});
 
 // Pastikan destructuring ini sekarang sudah cocok dengan export useVoiceCall.ts di atas
 const { 
-    startVoiceCall, 
+    startVoiceCall,
+    acceptVoiceCall,
+    rejectVoiceCall, 
     endVoiceCall, 
     toggleAudio, 
-    // toggleVideo, 
+    // toggleVideo,
+    handleIncomingCall, 
+    handleCallAccepted, 
+    handleCallRejected, 
+    handleCallEnded, 
     processing: voiceProcessing 
 } = useVoiceCall();
 
@@ -101,6 +134,22 @@ const handleVoiceCall = () => {
     
     // Perbaikan: Panggil startVoiceCall
     startVoiceCall(activeContact.value.id);
+};
+
+const handleAcceptCall = async () => {
+    if (!callStore.incomingCall) return;
+    await acceptVoiceCall(String(callStore.incomingCall.id));
+};
+
+const handleRejectCall = async () => {
+    if (!callStore.incomingCall) return;
+    await rejectVoiceCall(String(callStore.incomingCall.id));
+};
+
+const handleCancelCall = async () => {
+    if (!callStore.currentCall) return;
+    await endVoiceCall(callStore.currentCall.id);
+    isMinimized.value = false;
 };
 
 // 1. Logic Speaker (Simulasi Toggle)
@@ -691,6 +740,36 @@ onMounted(async () => {
     }
 
     window.addEventListener('keydown', handleEscKey);
+
+    // Listener for voice call
+    const userId = authStore.user?.id;
+
+    if (userId) {
+        console.log(`📡 Menghubungkan ke channel: users.${userId}`);
+
+        // @ts-ignore (Abaikan error TS jika window.Echo tidak terdeteksi)
+        window.Echo.private(`App.Models.User.${userId}`)
+            // A. Seseorang menelepon saya
+            .listen("IncomingCall", (event: any) => {
+                console.log("🔔 Incoming Call Event:", event);
+                handleIncomingCall(event);
+            })
+            // B. Lawan bicara mengangkat telepon (Untuk sisi penelpon)
+            .listen("CallAccepted", (event: any) => {
+                console.log("✅ Call Accepted:", event);
+                handleCallAccepted(event);
+            })
+            // C. Lawan bicara menolak panggilan
+            .listen("CallRejected", (event: any) => {
+                console.log("🚫 Call Rejected:", event);
+                handleCallRejected();
+            })
+            // D. Panggilan selesai / ditutup
+            .listen("CallEnded", (event: any) => {
+                console.log("❌ Call Ended:", event);
+                handleCallEnded();
+            });
+    }
 });
 
 
@@ -716,6 +795,9 @@ onUnmounted(() => {
 
 <template>
     <div class="d-flex flex-column flex-lg-row h-100">
+        
+        
+
         <div class="flex-column flex-lg-row-auto w-100 w-lg-350px w-xl-400px mb-10 mb-lg-0">
             <div class="card card-flush h-100">
                 <div class="card-header pt-7" id="kt_chat_contacts_header">
@@ -773,6 +855,45 @@ onUnmounted(() => {
             </div>
         </div>
 
+        <Teleport to="body">
+        
+        <VoiceIncomingModal
+            v-if="showIncomingModal"
+            :caller-name="callStore.incomingCall?.caller?.name || 'Unknown'"
+            :caller-photo="callStore.incomingCall?.caller?.avatar || ''" 
+            @accept="acceptVoiceCall"
+            @reject="rejectVoiceCall"
+        />
+
+        <VoiceCallingModal
+            v-if="showCallingModal"
+            :callee-name="remoteUser.name"
+            :callee-photo="remoteUser.avatar || ''" 
+            :call-status="callStore.callStatus || 'calling'" 
+            @cancel="endVoiceCall" 
+        />
+
+        <VoiceCallModal
+            v-if="showOngoingModal"
+            :remote-name="remoteUser.name"
+            :remote-photo="remoteUser.avatar || ''"
+            :is-muted="false" 
+            :is-speaker-on="false"
+            @end-call="endVoiceCall"
+            @minimize="callStore.toggleMinimize"
+        />
+
+        <VoiceFloating
+            v-if="showFloatingModal"
+            :remote-name="remoteUser.name"
+            :remote-photo="remoteUser.avatar || ''"
+            :is-muted="false"
+            @maximize="callStore.toggleMinimize"
+            @end-call="endVoiceCall"
+        />
+
+    </Teleport>
+    
         <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10" style="min-width: 0;">
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
                 <div v-if="!activeContact" class="card-body d-flex flex-column justify-content-center align-items-center h-100">
@@ -815,26 +936,7 @@ onUnmounted(() => {
                         <button @click="handleVoiceCall" :disabled="voiceProcessing" class="btn btn-icon btn-sm text-gray-500"><Phone class="w-20px h-20px" /></button>
                         <button class="btn btn-icon btn-sm text-gray-500"><Video class="w-20px h-20px" /></button>
 
-                        <VoiceCallModal
-                          v-if="callStore.isInCall && callStore.currentCall?.type === 'voice' && !isMinimized"
-                          :remote-name="activeContact?.name || 'Unknown'"
-                          :remote-photo="activeContact?.avatar || 'default-avatar.png'"
-                          :is-muted="false" 
-                          :is-speaker-on="isSpeakerOn" 
-                          @toggle-mute="toggleAudio"
-                          @toggle-speaker="toggleSpeaker" 
-                          @end-call="handleEndVoiceCall"  @minimize="handleMinimize" 
-                        />
-
-                        <VoiceFloating
-                          v-if="callStore.isInCall && callStore.currentCall?.type === 'voice' && isMinimized"
-                          :remote-name="activeContact?.name || 'Unknown'"
-                          :remote-photo="activeContact?.avatar || 'default-avatar.png'"
-                          :is-muted="false"
-                          @maximize="handleMaximize"
-                          @toggle-mute="toggleAudio"
-                          @end-call="handleEndVoiceCall" 
-                        />
+                        
                         
                         <div class="position-relative">
                             <button class="btn btn-icon btn-sm text-gray-500" @click.stop="toggleHeaderMenu">

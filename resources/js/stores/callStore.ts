@@ -9,12 +9,14 @@ export const useCallStore = defineStore('call', () => {
     const isInCall = ref<boolean>(false);
     const callStatus = ref<CallStatus | null>(null);
     const remoteUsers = ref<number[]>([]);
+    const isMinimized = ref<boolean>(false);
 
     // Actions
     const setCurrentCall = (call: Call) => {
         currentCall.value = call;
         callStatus.value = call.status;
         isInCall.value = true;
+        isMinimized.value = false;
     };
 
     const clearCurrentCall = () => {
@@ -59,6 +61,11 @@ export const useCallStore = defineStore('call', () => {
         remoteUsers.value = [];
     };
 
+    // fitur voice
+    const toggleMinimize = () => {
+        isMinimized.value = !isMinimized.value;
+    };
+
     return {
         // State
         currentCall,
@@ -66,7 +73,7 @@ export const useCallStore = defineStore('call', () => {
         isInCall,
         callStatus,
         remoteUsers,
-
+        isMinimized,
         // Actions
         setCurrentCall,
         clearCurrentCall,
@@ -77,5 +84,6 @@ export const useCallStore = defineStore('call', () => {
         addRemoteUser,
         removeRemoteUser,
         clearRemoteUsers,
+        toggleMinimize
     }
 });
