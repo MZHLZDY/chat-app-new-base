@@ -14,7 +14,13 @@ use App\Http\Controllers\UserController;
 |
 */
 
-Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
+// -- Channel User Lama --
+// Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
+//     return (int) $user->id === (int) $id;
+// });
+
+// -- Channel User Baru --
+Broadcast::channel('user.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 

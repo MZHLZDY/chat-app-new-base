@@ -93,21 +93,45 @@ export const useVoiceCall = () => {
     
     // ✅ FIX: Tambahkan console.log untuk debug dan pastikan struktur data benar
     const handleIncomingCall = (event: any) => {
-        console.log('🔔 handleIncomingCall dipanggil dengan event:', event);
-        console.log('🔔 Event.call:', event.call);
-        console.log('🔔 Store isInCall sebelum:', store.isInCall);
+        // 🔍 Debug: Pastikan data masuk
+        console.log("📥 Handle Incoming:", event);
+
+        // KARENA BACKEND MENGIRIM DATA FLAT (tanpa wrapper 'call'),
+        // Kita harus mapping manual agar sesuai format Store (Call Interface)
         
+        // Cek struktur IncomingCall.php function broadcastWith()
+        const mappedCall = {
+            id: event.call_id,          // Backend: 'call_id'
+            type: event.call_type,      // Backend: 'call_type'
+            status: 'calling',          // Default status saat masuk
+            channel_name: event.channel_name, // Backend: 'channel_name'
+            agora_token: event.agora_token,   // Backend: 'agora_token'
+            
+            // Backend mengirim object 'caller' berisi {id, name, avatar}
+            caller: {
+                id: event.caller.id,
+                name: event.caller.name,
+                avatar: event.caller.avatar || 'default-avatar.png', // Handle null
+            },
+            
+            // Backend mengirim object 'callee' (penerima)
+            receiver: {
+                id: event.callee?.id,
+                name: event.callee?.name,
+                avatar: event.callee?.avatar || null
+            },
+
+            // Tambahan properti lain jika Store membutuhkannya
+            created_at: new Date().toISOString()
+        };
+
         if (!store.isInCall) {
-            // ✅ Pastikan event.call ada dan valid
-            if (event && event.call) {
-                console.log('✅ Setting incoming call ke store...');
-                store.setIncomingCall(event.call);
-                console.log('✅ Incoming call berhasil di-set:', store.incomingCall);
-            } else {
-                console.error('❌ Event atau event.call tidak valid!');
-            }
+            // Masukkan data hasil mapping ke store
+            store.setIncomingCall(mappedCall as any); 
+            
+            // Opsional: Mainkan ringtone disini jika belum ada
         } else {
-            console.log('⚠️ Sudah ada panggilan aktif, incoming call diabaikan');
+            console.log("⚠️ Sedang dalam panggilan, mengabaikan panggilan baru.");
         }
     };
 

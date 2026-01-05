@@ -46,17 +46,22 @@ class IncomingCall implements ShouldBroadcast
 
     public function broadcastWith()
     {
-        return [
-            'call_id' => $this->callId,
-            'caller' => [
-                'id' => $this->caller->id,
-                'name' => $this->caller->name,
-                'avatar' => $this->caller->avatar_url ?? null,
-            ],
-            'call_type' => $this->callType,
-            'channel' => $this->channel,
-            'token' => $this->token,
-            'timestamp' => now()->toISOString()
-        ];
-    }
+      return [
+          'call_id' => $this->callId,
+          'caller' => [
+              'id' => $this->caller->id,
+              'name' => $this->caller->name,
+              'avatar' => $this->caller->avatar_url ?? null,
+          ],
+          'callee' => [  // ✅ Tambahkan data callee
+              'id' => $this->callee->id,
+              'name' => $this->callee->name,
+              'avatar' => $this->callee->avatar_url ?? null,
+          ],
+          'call_type' => $this->callType,
+          'channel_name' => $this->channel,  // ✅ Ubah ke 'channel_name'
+          'agora_token' => $this->token,     // ✅ Ubah ke 'agora_token'
+          'timestamp' => now()->toISOString()
+      ];
+  }  
 }

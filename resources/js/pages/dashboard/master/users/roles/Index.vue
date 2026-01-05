@@ -756,24 +756,24 @@ onMounted(async () => {
         console.log(`📡 Menghubungkan ke channel: users.${userId}`);
 
         // @ts-ignore (Abaikan error TS jika window.Echo tidak terdeteksi)
-        window.Echo.private(`App.Models.User.${userId}`)
+        window.Echo.private(`user.${userId}`)
             // A. Seseorang menelepon saya
-            .listen("IncomingCall", (event: any) => {
+            .listen(".incoming-call", (event: any) => {
                 console.log("🔔 Incoming Call Event:", event);
                 handleIncomingCall(event);
             })
             // B. Lawan bicara mengangkat telepon (Untuk sisi penelpon)
-            .listen("CallAccepted", (event: any) => {
+            .listen(".call-accepted", (event: any) => {
                 console.log("✅ Call Accepted:", event);
                 handleCallAccepted(event);
             })
             // C. Lawan bicara menolak panggilan
-            .listen("CallRejected", (event: any) => {
+            .listen(".call-rejected", (event: any) => {
                 console.log("🚫 Call Rejected:", event);
                 handleCallRejected();
             })
             // D. Panggilan selesai / ditutup
-            .listen("CallEnded", (event: any) => {
+            .listen(".call-ended", (event: any) => {
                 console.log("❌ Call Ended:", event);
                 handleCallEnded();
             });

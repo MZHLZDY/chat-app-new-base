@@ -95,6 +95,8 @@ class AgoraController extends Controller
                 'started_at' => now(),
             ]);
 
+            // broadcast(new \App\Events\IncomingCall($call));
+
             // Log Event: Initiated
             CallEvent::create([
                 'call_id' => $call->id,
