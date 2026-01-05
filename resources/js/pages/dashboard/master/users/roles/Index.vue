@@ -6,6 +6,7 @@ import { toast } from "vue3-toastify";
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { id } from 'date-fns/locale'; 
 import { Phone, Video } from 'lucide-vue-next';
+import { useGlobalChatStore } from "@/stores/globalChat";
 import VoiceCallModal from '@/components/call/voice/VoiceCallModal.vue';
 import VoiceFloating from '@/components/call/voice/VoiceFloating.vue';
 import VoiceIncomingModal from '@/components/call/voice/VoiceIncomingModal.vue';
@@ -53,6 +54,7 @@ const chatBodyRef = ref<HTMLElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 
 // --- STATE MODAL ---
+const globalChatStore = useGlobalChatStore();
 const isAddContactOpen = ref(false);
 const isEditContactOpen = ref(false);
 const contactIdToEdit = ref<string | number | undefined>(undefined);
@@ -253,6 +255,7 @@ const fetchContacts = async () => {
 
 const selectContact = async (contact: any) => {
     activeContact.value = contact;
+    globalChatStore.setActiveChat(contact.id);
     messages.value = [];
     
     const contactIndex = contacts.value.findIndex(c => c.id === contact.id);
@@ -536,18 +539,18 @@ const listenToTypingStatus = (friendId: number) => {
     });
 };
 
-const notificationSound = new Audio('/media/preview.mp3');
-notificationSound.volume = 0.5;
-const playNotificationSound = async () => {
-    if (isMuted.value) return;
+// const notificationSound = new Audio('/media/preview.mp3');
+// notificationSound.volume = 0.5;
+// const playNotificationSound = async () => {
+//     if (isMuted.value) return;
     
-    try {
-        notificationSound.currentTime = 0; 
-        await notificationSound.play();
-    } catch (error) {
-        console.warn("Gagal memutar notifikasi suara:", error);
-    }
-};
+//     try {
+//         notificationSound.currentTime = 0; 
+//         await notificationSound.play();
+//     } catch (error) {
+//         console.warn("Gagal memutar notifikasi suara:", error);
+//     }
+// };
 
 const requestNotificationPermission = async () => {
     if ("Notification" in window && Notification.permission !== "granted") {
@@ -615,9 +618,9 @@ const setupFirebaseListeners = () => {
             return;
         }
 
-        if (incomingMsg.sender_id !== currentUser.value?.id) {
-            playNotificationSound();
-        }
+        // if (incomingMsg.sender_id !== currentUser.value?.id) {
+        //     playNotificationSound();
+        // }
         
         if (activeContact.value && incomingMsg.sender_id === activeContact.value.id) {
             const exists = messages.value.some((m: any) => m.id === incomingMsg.id);

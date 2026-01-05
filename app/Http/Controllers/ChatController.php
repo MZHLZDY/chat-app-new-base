@@ -29,6 +29,22 @@ class ChatController extends Controller
     }
     
     /**
+     * 🆕 SEND NOTIFICATION TO FIREBASE
+     */
+    protected function sendNotification($receiverId, $senderId, $senderName, $message, $messageType = 'text')
+    {
+        $this->database->getReference('notifications/' . $receiverId)->push([
+            'type' => 'new_message',
+            'sender_id' => $senderId,
+            'sender_name' => $senderName,
+            'message' => $message,
+            'message_type' => $messageType,
+            'chat_id' => ($senderId < $receiverId) ? $senderId.'_'.$receiverId : $receiverId.'_'.$senderId, // Helper untuk redirect nanti
+            'created_at' => now()->toIso8601String()
+        ]);
+    }
+    
+    /**
      * 1. GET CONTACTS LIST
      */
     public function getContacts()
@@ -184,7 +200,7 @@ class ChatController extends Controller
     }
 
     /**
-     * 4. SEND MESSAGE (TEXT & FILE) - FIREBASE INTEGRATION
+     * 4. SEND MESSAGE (TEXT & FILE)
      */
     public function sendMessage(Request $request)
     {
@@ -206,6 +222,7 @@ class ChatController extends Controller
             DB::beginTransaction();
 
             $senderId = Auth::id();
+            $sender = Auth::user();
             
             $filePath = null;
             $fileName = null;
@@ -253,22 +270,31 @@ class ChatController extends Controller
             $message->load(['sender', 'replyTo.sender']);
 
             $firebaseData = [
-            'id'             => $message->id,
-            'sender_id'      => $message->sender_id,
-            'receiver_id'    => $message->receiver_id,
-            'message'        => $message->message,
-            'file_path'      => $message->file_path,
-            'file_name'      => $message->file_name,
-            'type'           => $message->type,
-            'created_at'     => $message->created_at->toIso8601String(),
-            'reply_to'       => $message->replyTo ? [
-                'id'        => $message->replyTo->id,
-                'message'   => $message->replyTo->message,
-                'sender_id' => $message->replyTo->sender_id,
-                'type'      => $message->replyTo->type
-            ] : null,
-        ];
-        $this->database->getReference('chats/' . $request->receiver_id)->push($firebaseData);
+                'id'             => $message->id,
+                'sender_id'      => $message->sender_id,
+                'receiver_id'    => $message->receiver_id,
+                'message'        => $message->message,
+                'file_path'      => $message->file_path,
+                'file_name'      => $message->file_name,
+                'type'           => $message->type,
+                'created_at'     => $message->created_at->toIso8601String(),
+                'reply_to'       => $message->replyTo ? [
+                    'id'        => $message->replyTo->id,
+                    'message'   => $message->replyTo->message,
+                    'sender_id' => $message->replyTo->sender_id,
+                    'type'      => $message->replyTo->type
+                ] : null,
+            ];
+            $this->database->getReference('chats/' . $request->receiver_id)->push($firebaseData);
+
+            $this->sendNotification(
+                $request->receiver_id,
+                $sender->id,
+                $sender->name,
+                $request->message ?? '',
+                $msgType
+            );
+
             return response()->json([
                 'status' => 'success',
                 'data'   => $message

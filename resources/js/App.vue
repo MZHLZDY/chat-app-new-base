@@ -6,28 +6,22 @@ import { useThemeStore } from "@/stores/theme";
 import { useBodyStore } from "@/stores/body";
 import { themeConfigValue } from "@/layouts/default-layout/config/helper";
 import { initializeComponents } from "@/core/plugins/keenthemes";
+import { useAuthStore } from "@/stores/auth";
+import GlobalChatListener from "@/components/GlobalChatListener.vue";
 
 const configStore = useConfigStore();
 const themeStore = useThemeStore();
 const bodyStore = useBodyStore();
+const authStore = useAuthStore();
 
 onBeforeMount(() => {
-    /**
-     * Overrides the layout config using saved data from localStorage
-     * remove this to use static config (@/layouts/default-layout/config/DefaultLayoutConfig.ts)
-     */
     configStore.overrideLayoutConfig();
-
-    /**
-     *  Sets a mode from configuration
-     */
     themeStore.setThemeMode(themeConfigValue.value);
 });
 
 onMounted(() => {
     nextTick(() => {
         initializeComponents();
-
         bodyStore.removeBodyClassName("page-loading");
     });
 });
@@ -35,6 +29,8 @@ onMounted(() => {
 
 <template>
     <RouterView />
+
+    <GlobalChatListener v-if="authStore.user" />
 </template>
 
 <style lang="scss">
@@ -49,6 +45,7 @@ onMounted(() => {
 @import "@vueform/multiselect/themes/default.css";
 @import "prism-themes/themes/prism-shades-of-purple.css";
 @import "element-plus/dist/index.css";
+@import "vue3-toastify/dist/index.css";
 
 // Main demo style scss
 @import "assets/keenicons/duotone/style.css";
