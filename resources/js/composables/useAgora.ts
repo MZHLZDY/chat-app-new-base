@@ -1,9 +1,9 @@
 import { ref } from "vue";
 import AgoraRTC, {
-    IAgoraRTCClient,
-    ICameraVideoTrack,
-    IMicrophoneAudioTrack,
-    IAgoraRTCRemoteUser
+    type IAgoraRTCClient,
+    type ICameraVideoTrack,
+    type IMicrophoneAudioTrack,
+    type IAgoraRTCRemoteUser
 } from "agora-rtc-sdk-ng";
 import { useCallStore } from "@/stores/callStore";
 
@@ -14,6 +14,12 @@ export const useAgora = () => {
     const localAudioTrack = ref<IMicrophoneAudioTrack | null>(null);
     const remoteUsers = ref<IAgoraRTCRemoteUser[]>([]);
     const isJoined = ref(false);
+    
+    // State baru untuk track status
+    const isAudioEnabled = ref(true);
+    const isVideoEnabled = ref(true);
+    const remoteAudioTracks = ref(new Map());
+    const remoteVideoTracks = ref(new Map());
 
     // Inisialisasi Klien Agora
     const initializeClient = () => {
@@ -42,12 +48,28 @@ export const useAgora = () => {
                 remoteUsers.value.push(user);
             }
 
+            // Simpan tracks ke Map
+            if (mediaType === 'video') {
+                remoteVideoTracks.value.set(user.uid, user.videoTrack);
+            }
+            if (mediaType === 'audio') {
+                remoteAudioTracks.value.set(user.uid, user.audioTrack);
+            }
+
             callStore.addRemoteUser(user.uid as number);
         });
 
         // Remote user unpublished
         client.value.on('user-unpublished', (user, mediaType) => {
             console.log('Remote user belum diterbitkan:', user.uid, mediaType);
+            
+            // Hapus tracks dari Map
+            if (mediaType === 'video') {
+                remoteVideoTracks.value.delete(user.uid);
+            }
+            if (mediaType === 'audio') {
+                remoteAudioTracks.value.delete(user.uid);
+            }
         });
 
         // Remote user left
@@ -125,6 +147,8 @@ export const useAgora = () => {
             }
 
             remoteUsers.value = [];
+            remoteAudioTracks.value.clear();
+            remoteVideoTracks.value.clear();
 
             const callStore = useCallStore();
             callStore.clearRemoteUsers();
@@ -139,6 +163,7 @@ export const useAgora = () => {
     const toggleAudio = async (muted: boolean) => {
         if (localAudioTrack.value) {
             await localAudioTrack.value.setEnabled(!muted);
+            isAudioEnabled.value = !muted;
         }
     };
 
@@ -146,6 +171,7 @@ export const useAgora = () => {
     const toggleVideo = async (muted: boolean) => {
         if (localVideoTrack.value) {
             await localVideoTrack.value.setEnabled(!muted);
+            isVideoEnabled.value = !muted;
         }
     };
 
@@ -156,6 +182,10 @@ export const useAgora = () => {
         localAudioTrack,
         remoteUsers,
         isJoined,
+        isAudioEnabled,
+        isVideoEnabled,
+        remoteAudioTracks,
+        remoteVideoTracks,
 
         // Actions
         joinChannel,
