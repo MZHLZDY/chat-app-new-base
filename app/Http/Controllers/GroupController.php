@@ -405,4 +405,45 @@ class GroupController extends Controller
 
         return response()->json(['success' => true]);
     }
+
+    // CLEAR GROUP CHAT
+    public function clearChat($groupId)
+    {
+        $user = Auth::user();
+        $group = Group::findOrFail($groupId);
+        $isMember = $group->members()->where('user_id', $user->id)->exists();
+        if (!$isMember) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $messagesWithFiles = GroupMessage::where('group_id', $groupId)
+                                ->whereNotNull('file_path')
+                                ->get();
+            foreach ($messagesWithFiles as $msg) {
+                if ($msg->file_path && Storage::disk('public')->exists($msg->file_path)) {
+                    Storage::disk('public')->delete($msg->file_path);
+                }
+            }
+
+            GroupMessage::where('group_id', $groupId)->delete();
+            $this->database->getReference('group_messages/' . $groupId)->remove();
+
+            DB::commit();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Riwayat chat berhasil dibersihkan'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => false,
+                'message' => 'Gagal: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
