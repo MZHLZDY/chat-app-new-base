@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { useCallStore } from '@/stores/callStore';
 import { useVideoCall } from '@/composables/useVideoCall';
+import { usePersonalCall } from '@/composables/usePersonalCall';
 import CallAvatar from '../shared/CallAvatar.vue';
 import { Video, X, Check } from 'lucide-vue-next';
 
 const store = useCallStore();
-const { acceptCall, rejectCall } = useVideoCall();
+const { answerCall, rejectCall } = usePersonalCall();
 
 const incomingCall = computed(() => store.incomingCall);
+const backendCall = computed(() => store.backendCall);
 const caller = computed(() => incomingCall.value?.caller);
 
 // Filter penting: cuman muncul kalau tipe call nya 'video'
@@ -16,17 +18,36 @@ const isVideoCallIncoming = computed(() =>
     incomingCall.value !== null && incomingCall.value.type === 'video'
 );
 
-const handleAccept = () => {
-    if (incomingCall.value) {
-        acceptCall(incomingCall.value.id);
+const handleAccept = async () => {
+    if (backendCall.value) {
+        try {
+            await answerCall(backendCall.value.id) // Panggil API untuk menjawab panggilan
+            // modal otomatis close karena answercall() update status ke 'ongoing' lalu redirect ke VideoCallModal
+        } catch (error) {
+            console.error('Gagal untuk menjawab panggilan:', error);
+        }
     }
 };
 
-const handleReject = () => {
-    if (incomingCall.value) {
-        rejectCall(incomingCall.value.id);
+const handleReject = async () => {
+    if (backendCall.value) {
+        try {
+            await rejectCall(backendCall.value.id); // Panggil API untuk menolak panggilan
+        } catch (error) {
+            console.error('Gagal untuk menolak panggilan:', error);
+        }
     }
 };
+
+watch(() => store.callStatus, (newStatus) => {
+    if (newStatus === 'cancelled') {
+        // Penelpon membatalkan panggilan sebelum kita (callee / penerima) jawab
+        setTimeout(() => {
+            store.clearIncomingCall();
+            store.clearCurrentCall();
+        }, 2000);
+    }
+});
 </script>
 
 <template>
@@ -48,13 +69,21 @@ const handleReject = () => {
                 <!-- Info caller -->
                 <h3 class="caller-name">{{ caller?.name }}</h3>
 
+                <!-- Status message -->
+                <p class="call-status">
+                    {{  
+                        store.callStatus === 'cancelled' ? 'panggilan dibatalkan' :
+                        'Panggilan video masuk....'
+                    }}
+                </p>
+
                 <div class="call-type-badge">
                     <Video :size="18" />
                     <span>Panggilan video masuk</span>
                 </div>
 
                 <!-- Tombol aksi -->
-                <div class="d-flex gap-4 justify-content-center mt-5">
+                <div v-if="store.callStatus !== 'cancelled'" class="d-flex gap-4 justify-content-center mt-5">
                     <!-- Tombol tolak panggilan (warna merah) -->
                     <button @click="handleReject" class="btn-action btn-reject">
                         <X :size="28"/>
@@ -103,6 +132,13 @@ const handleReject = () => {
     font-weight: 700;
     font-size: 1.5rem;
     margin-bottom: 8px;
+}
+
+/* style untuk status message */
+.call-status {
+    color: #a1a5b7;
+    font-size: 0.95rem;
+    margin-bottom: 16px;
 }
 
 .call-type-badge {

@@ -106,7 +106,6 @@ export const useAgora = () => {
 
     // Join channel
     const joinChannel = async (
-        appId: string,
         channel: string,
         token: string,
         uid: number
@@ -115,6 +114,8 @@ export const useAgora = () => {
             if (!client.value) {
                 initializeClient();
             }
+
+            const appId = import.meta.env.VITE_APP_AGORA_ID || '';
 
             await client.value!.join(appId, channel, token, uid);
             isJoined.value = true;
