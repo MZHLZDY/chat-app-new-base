@@ -13,14 +13,17 @@ const authStore = useAuthStore();
 const globalChatStore = useGlobalChatStore();
 const route = useRoute();
 const router = useRouter(); 
+
+// --- RESETTER (Satpam Route) ---
 watch(() => route.path, (newPath) => {
-    const isChatPage = newPath.includes('/chat') || newPath.includes('/messages');
+    const isChatPage = newPath.includes('/chat') || newPath.includes('/messages') || newPath.includes('/group');
     
     if (!isChatPage) {
-        console.log("User pindah ke halaman lain, reset Active Chat.");
         globalChatStore.setActiveChat(null);
+        globalChatStore.setActiveGroup(null);
     }
 }, { immediate: true });
+
 // --- STATE LISTENER ---
 let notificationCallback: ((snapshot: any) => void) | null = null;
 let notificationDbRef: any = null;
@@ -33,7 +36,7 @@ const playSound = async () => {
     } catch (e) { console.log("Audio blocked auto-play"); }
 };
 
-// --- 2. INIT LISTENER (DENGAN CLEANUP) ---
+// --- 2. INIT LISTENER ---
 const initNotificationListener = () => {
     const userId = authStore.user?.id;
     if (!userId) return;
@@ -59,27 +62,58 @@ const initNotificationListener = () => {
     console.log("GlobalChat: Listening initialized for user", userId);
 };
 
-// --- 3. HANDLE NOTIFIKASI ---
+// --- 3. HANDLE NOTIFIKASI (LOGIKA UTAMA) ---
 const handleNotification = (data: any) => {
-    if (data.type !== 'new_message') return;
-    // Cek apakah chat sedang aktif
-    const isActiveChat = globalChatStore.activeChatId && 
-                         String(globalChatStore.activeChatId) === String(data.sender_id);
-    if (isActiveChat && !document.hidden) {
-        return; 
-    }
-
-    let text = data.message;
-    if (data.message_type === 'image') text = '📷 Mengirim gambar';
     
-    triggerToast(data, text);
+    // === A. PRIVATE CHAT ===
+    if (data.type === 'new_message') {
+        const isActiveChat = globalChatStore.activeChatId && 
+                             String(globalChatStore.activeChatId) === String(data.sender_id);
+        if (isActiveChat && !document.hidden) return; 
+
+        let text = data.message;
+        if (data.message_type === 'image') text = '📷 Mengirim gambar';
+        if (data.message_type === 'file') text = 'ats Berkas';
+
+        triggerToast(data, text, 'private');
+    } 
+    // === B. GROUP CHAT ===
+    else if (data.type === 'new_group_message') {
+        if (String(data.sender_id) === String(authStore.user?.id)) return;
+
+        const isActiveGroup = globalChatStore.activeGroupId && 
+                              String(globalChatStore.activeGroupId) === String(data.group_id);
+        if (isActiveGroup && !document.hidden) return;
+
+        let text = data.message;
+        if (data.message_type === 'image') text = '📷 Mengirim gambar';
+        if (data.message_type === 'file') text = '📁 Mengirim berkas';
+
+        triggerToast(data, text, 'group');
+    }
 };
 
 // --- 4. OUTPUT TOAST ---
-const triggerToast = (data: any, text: string) => {
+const triggerToast = (data: any, text: string, type: 'private' | 'group') => {
     playSound(); 
 
-    toast.info(`💬 ${data.sender_name}: ${text}`, {
+    let title = "";
+    let routeName = "";
+    let routeParams = {};
+
+    if (type === 'private') {
+        title = `💬 ${data.sender_name}`;
+        routeName = 'dashboard.private-chat';
+        routeParams = { id: data.sender_id };
+    } else {
+        const groupName = data.group_name || 'Grup';
+        title = `👥 ${groupName}: ${data.sender_name}`;
+        
+        routeName = 'dashboard.group-chat'; 
+        routeParams = { id: data.group_id }; 
+    }
+
+    toast.info(`${title}: ${text}`, {
         autoClose: 5000,
         theme: "colored",
         position: toast.POSITION.TOP_RIGHT,
@@ -87,8 +121,8 @@ const triggerToast = (data: any, text: string) => {
         onClick: () => {
             window.focus();
             router.push({ 
-                name: 'dashboard.private-chat',
-                params: { id: data.sender_id } 
+                name: routeName,
+                params: routeParams 
             });
         }
     });

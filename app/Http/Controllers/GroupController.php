@@ -20,6 +20,25 @@ class GroupController extends Controller
         $this->database = $database;
     }
 
+    // FUNGSI UNTUK KIRIM NOTIFIKASI KE ANGGOTA GRUP
+    protected function sendGroupNotification($receiverId, $group, $sender, $message, $messageType = 'text')
+    {
+        $previewMessage = $message;
+        if ($messageType === 'image') $previewMessage = '📷 Mengirim gambar';
+        if ($messageType === 'file') $previewMessage = '📁 Mengirim berkas';
+
+        $this->database->getReference('notifications/' . $receiverId)->push([
+            'type' => 'new_group_message',     
+            'group_id' => $group->id,            
+            'group_name' => $group->name,       
+            'sender_id' => $sender->id,
+            'sender_name' => $sender->name,      
+            'message' => $previewMessage,        
+            'message_type' => $messageType,
+            'created_at' => now()->timestamp
+        ]);
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -63,17 +82,32 @@ class GroupController extends Controller
         $groups = Group::whereHas('members', function ($query) use ($userId) {
             $query->where('user_id', $userId);
         })
+        ->with(['members' => function($q) use ($userId) {
+            $q->where('user_id', $userId);
+        }])
         ->withCount('members') 
         ->with(['latestMessage.sender']) 
         ->get()
         ->map(function ($group) use ($userId) {
             $latestMsg = $group->latestMessage;
+            // --- LOGIKA UNREAD COUNT ---
+            $currentUserPivot = $group->members->first(); 
+            $lastReadAt = $currentUserPivot ? $currentUserPivot->pivot->last_read_at : null;
+            $unreadCount = 0;
+            if ($lastReadAt) {
+                $unreadCount = GroupMessage::where('group_id', $group->id)
+                    ->where('created_at', '>', $lastReadAt)
+                    ->count();
+            } else {
+                $unreadCount = GroupMessage::where('group_id', $group->id)->count();
+            }
+
             return [
                 'id' => $group->id,
                 'name' => $group->name,
                 'photo' => $group->photo, 
                 'members_count' => $group->members_count,
-                'unread_count' => 0, 
+                'unread_count' => $unreadCount, 
                 'last_message_sender_id' => $latestMsg ? $latestMsg->sender_id : null,
                 'last_message_sender_name' => $latestMsg && $latestMsg->sender ? $latestMsg->sender->name : null,
                 'last_message_preview' => $latestMsg ? ($latestMsg->message ?? ($latestMsg->type == 'image' ? 'Foto' : 'File')) : 'Belum ada pesan',
@@ -131,6 +165,7 @@ class GroupController extends Controller
             $filePath = $file->store('chat_files', 'public');
         }
 
+        // Simpan ke MySQL
         $message = GroupMessage::create([
             'group_id' => $request->group_id,
             'sender_id' => Auth::id(),
@@ -143,23 +178,27 @@ class GroupController extends Controller
             'reply_to_id' => $request->reply_to_id,
         ]);
 
-        Group::where('id', $request->group_id)->update(['updated_at' => now()]);
+        // Load Group & Members
+        $group = Group::with('members')->find($request->group_id);
+        $group->update(['updated_at' => now()]);
         
         $message->load(['sender', 'replyTo.sender']);
+        $sender = Auth::user();
+
         $this->database->getReference('group_messages/' . $request->group_id)
             ->push([
                 'id' => $message->id,
                 'sender_id' => $message->sender_id,
                 'message' => $message->message,
                 'type' => $message->type,
-                'file_path' => $message->file_path,
+                'file_path' => $message->file_path, 
                 'file_name' => $message->file_name,
                 'file_size' => $message->file_size,
                 'created_at' => $message->created_at->toIso8601String(),
                 'sender' => [
-                    'id' => $message->sender->id,
-                    'name' => $message->sender->name,
-                    'photo' => $message->sender->photo,
+                    'id' => $sender->id,
+                    'name' => $sender->name,
+                    'photo' => $sender->photo,
                 ],
                 'reply_to' => $message->replyTo ? [
                     'id' => $message->replyTo->id,
@@ -169,6 +208,17 @@ class GroupController extends Controller
                     ]
                 ] : null
             ]);
+
+        foreach ($group->members as $member) {
+            if ($member->id == $sender->id) continue;
+            $this->sendGroupNotification(
+                $member->id, 
+                $group, 
+                $sender, 
+                $message->message, 
+                $type
+            );
+        }
 
         return response()->json(['data' => $message]);
     }
@@ -341,5 +391,18 @@ class GroupController extends Controller
         $users = $query->limit(10)->get();
 
         return response()->json(['data' => $users]);
+    }
+
+    // MARK GROUP AS READ
+    public function markAsRead($groupId)
+    {
+        $userId = Auth::id();
+        
+        DB::table('group_user')
+            ->where('group_id', $groupId)
+            ->where('user_id', $userId)
+            ->update(['last_read_at' => now()]);
+
+        return response()->json(['success' => true]);
     }
 }

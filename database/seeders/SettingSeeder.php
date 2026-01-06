@@ -17,12 +17,12 @@ class SettingSeeder extends Seeder
         DB::table('settings')->truncate();
 
         Setting::create([
-            'app' => 'Chat App',
-            'description' =>  'Aplikasi Chat sederhana',
-            'logo' =>  '/media/logo.png',
-            'bg_auth' =>  '/media/misc/bg.jpg',
-            'banner' =>  '/media/misc/banner.jpg',
-            'email' =>  '',
+            // 'app' => 'Chat App',
+            // 'description' =>  'Aplikasi Chat sederhana',
+            // 'logo' =>  '/media/logo.png',
+            // 'bg_auth' =>  '/media/misc/bg.jpg',
+            // 'banner' =>  '/media/misc/banner.jpg',
+            // 'email' =>  '',
         ]);
     }
 }

@@ -5,9 +5,9 @@ import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { id } from 'date-fns/locale'; 
-import { Phone, Video, Users } from 'lucide-vue-next'; // Tambah icon Users
-
-// Component Form (Asumsi Anda punya form untuk buat grup)
+import { Phone, Video, Users } from 'lucide-vue-next';
+import { useGlobalChatStore } from "@/stores/globalChat";
+import { onBeforeRouteLeave } from "vue-router";
 import GroupForm from "./Form.vue";
 import GroupEdit from "./EditGroup.vue";
 
@@ -31,19 +31,19 @@ import { onAuthStateChanged } from "firebase/auth";
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
-const groups = ref<any[]>([]); // Ganti contacts jadi groups
+const groups = ref<any[]>([]);
 const messages = ref<any[]>([]);
-const activeGroup = ref<any>(null); // Ganti activeContact
+const activeGroup = ref<any>(null); 
 const newMessage = ref("");
 const isLoadingGroups = ref(false);
 const isLoadingMessages = ref(false);
-
+const globalChatStore = useGlobalChatStore();
 // Refs DOM
 const chatBodyRef = ref<HTMLElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 
 // --- STATE MODAL ---
-const isCreateGroupOpen = ref(false); // Ganti isAddContactOpen
+const isCreateGroupOpen = ref(false);
 const isEditGroupOpen = ref(false);
 const groupIdToEdit = ref<string | number | undefined>(undefined);
 const editModalTitle = ref("Edit Info Grup");
@@ -58,7 +58,7 @@ const isInfoModalOpen = ref(false);
 const searchQuery = ref("");
 const chatDrafts = ref<Record<string, string>>({});
 
-// Typing State untuk Group (Bisa banyak orang)
+// Typing State untuk Group
 const typingUsers = ref<string[]>([]); 
 let typingTimeout: ReturnType<typeof setTimeout> | null = null;
 let groupTypingListenerOff: Unsubscribe | null = null;
@@ -115,6 +115,42 @@ const shouldShowDateDivider = (index: number) => {
     return !isSameDay(currentMsgDate, prevMsgDate);
 };
 
+// const initSidebarUnreadListener = () => {
+//     const userId = authStore.user?.id;
+//     if (!userId) return;
+//     const notifPath = `notifications/${userId}`;
+//     const notifRef = firebaseRef(db, notifPath);
+
+//     onChildAdded(notifRef, (snapshot) => {
+//         const data = snapshot.val();
+//         if (!data) return;
+
+//         if (data.type === 'new_group_message') {
+            
+//             const groupIndex = groups.value.findIndex(g => g.id == data.group_id);
+
+//             if (groupIndex !== -1) {
+//                 const isOpeningThisGroup = activeGroup.value?.id == data.group_id;
+//                 if (!isOpeningThisGroup) {
+//                     const currentCount = groups.value[groupIndex].unread_count || 0;
+//                     groups.value[groupIndex].unread_count = currentCount + 1;
+
+//                     let preview = data.message;
+//                     if (data.message_type === 'image') preview = '📷 Foto';
+//                     if (data.message_type === 'file') preview = '📁 Berkas';
+//                     groups.value[groupIndex].last_message_preview = preview;
+                    
+//                     const updatedGroup = groups.value[groupIndex];
+//                     updatedGroup.updated_at = new Date().toISOString(); 
+                    
+//                     groups.value.splice(groupIndex, 1);
+//                     groups.value.unshift(updatedGroup); 
+//                 } 
+//             }
+//         }
+//     });
+// };
+
 // --- FETCH GROUPS ---
 const fetchGroups = async () => {
     isLoadingGroups.value = true;
@@ -137,6 +173,7 @@ const selectGroup = async (group: any) => {
     
     activeGroup.value = group;
     messages.value = [];
+    globalChatStore.setActiveGroup(group.id);
     
     newMessage.value = chatDrafts.value[group.id] || "";
     const idx = groups.value.findIndex(g => g.id === group.id);
@@ -152,6 +189,11 @@ const selectGroup = async (group: any) => {
         if (inputEl) (inputEl as HTMLElement).focus();
     });
 };
+
+onBeforeRouteLeave((to, from, next) => {
+    globalChatStore.setActiveGroup(null);
+    next();
+});
 
 const filteredGroups = computed(() => {
     if (!searchQuery.value) {
@@ -516,6 +558,7 @@ onUnmounted(() => {
          const myRef = firebaseRef(db, `typing_status_groups/${activeGroup.value.id}/${currentUser.value.id}`);
          set(myRef, null);
     }
+    globalChatStore.setActiveGroup(null);
 
     window.removeEventListener('keydown', handleEscKey);
 });
