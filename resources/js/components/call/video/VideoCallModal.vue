@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'; 
+import { computed, watch, onMounted } from 'vue'; 
 import { useCallStore } from '@/stores/callStore';
 import { useVideoCall } from '@/composables/useVideoCall';
+import { usePersonalCall } from '@/composables/usePersonalCall';
 import { useAgora } from '@/composables/useAgora';
 import VideoPlayer from './VideoPlayer.vue';
 import CallTimer from '../shared/CallTimer.vue';
@@ -12,11 +13,12 @@ const store = useCallStore();
 const page = usePage();
 const currentUser = (page.props.auth as any)?.user;
 
-const {
-    endCall, toggleAudio, toggleVideo
-} = useVideoCall();
+const { toggleAudio, toggleVideo } = useVideoCall();
+const { endCall } = usePersonalCall();
 
 const {
+    joinChannel,
+    leaveChannel,
     localAudioTrack,
     localVideoTrack,
     remoteUsers, // Array UID remote user
@@ -27,6 +29,7 @@ const {
 } = useAgora();
 
 const currentCall = computed(() => store.currentCall);
+const backendCall = computed(() => store.backendCall);
 
 // Video call aktif ketika panggilan dalam status 'ongoing' dan tipe nya video
 const isVideoCallActive = computed(() => 
@@ -49,11 +52,54 @@ const remoteUser = computed(() => {
     return null;
 });
 
-const handleEndCall = () => {
-    if (currentCall.value) {
-        endCall(currentCall.value.id);
+// join agora channel saat modal muncul
+onMounted(async () => {
+    if (isVideoCallActive.value && store.agoraToken && store.channelName) {
+        try {
+            await joinChannel(
+                store.channelName,
+                store.agoraToken,
+                currentUser?.id || 0
+            );
+        } catch (error) {
+            console.error('Gagal bergabung ke channel Agora:', error);
+        }
     }
-}
+});
+
+const handleEndCall = async () => {
+    if (backendCall.value) {
+        try {
+            await endCall(backendCall.value.id) // Panggil API untuk mengakhiri panggilan
+            await leaveChannel(); // Keluar dari channel Agora
+        } catch (error) {
+            console.error('Gagal untuk mengakhiri panggilan:', error);
+        }
+    }
+};
+
+// watch status 'ended' dari backend
+watch(() => store.callStatus, (newStatus) => {
+    if (newStatus === 'ended') {
+        // Panggilan diakhiri oleh salah satu pihak
+        leaveChannel();
+        setTimeout(() => {
+            store.clearCurrentCall();
+        }, 2000); // Muncul pesan "Panggilan berakhir" selama 2 detik lalu hilang
+    }
+});
+
+// watch remote user (auto end klo remote disconnect)
+watch(() => remoteUsers.value.length, (count, oldCount) => {
+    if (oldCount > 0 && count === 0 && isVideoCallActive.value) {
+        console.log('Remote user disconnect, panggilan otomatis ditutup dalam 5 detik...');
+        setTimeout(() => {
+            if (remoteUsers.value.length === 0) {
+                handleEndCall(); // otomatis menutup panggilan
+            }
+        }, 5000);
+    }
+});
 </script>
 
 <template>
@@ -65,8 +111,8 @@ const handleEndCall = () => {
                 <VideoPlayer
                     v-if="remoteUser"
                     :video-track="remoteUser.videoTrack"
-                    :auido-track="remoteUser.audioTrack"
-                    :uid="remoteUser.uid"
+                    :audio-track="remoteUser.audioTrack"
+                    :uid="Number(remoteUser.uid)"
                     :user-name="remoteUser.name || 'User'"
                     :is-local="false"
                 />
@@ -99,11 +145,12 @@ const handleEndCall = () => {
                 <!-- kontrol dibawah (seperti button camera, mic, dll yang ada di dock bawah) -->
                 <div class="bottom-bar">
                     <CallControls
-                        :audio-enabled="isAudioEnabled"
-                        :video-enabled="isVideoEnabled"
-                        :has-video="true"
-                        @toggle-audio="toggleAudio"
-                        @toggle-video="toggleVideo"
+                        :is-muted="!isAudioEnabled"
+                        :is-speaker-on="!isVideoEnabled"
+                        :is-camera-on="!isVideoCallActive"
+                        @toggle-mute="toggleAudio"
+                        @toggle-speaker="() => {}"
+                        @toggle-camera="toggleVideo"
                         @end-call="handleEndCall"
                     />
                 </div>

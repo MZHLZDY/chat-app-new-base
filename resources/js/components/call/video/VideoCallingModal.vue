@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, watch } from 'vue';
 import { useCallStore } from '@/stores/callStore';
 import { useVideoCall } from '@/composables/useVideoCall';
+import { usePersonalCall } from '@/composables/usePersonalCall';
 import CallAvatar from '../shared/CallAvatar.vue';
 import { X, Video } from 'lucide-vue-next';
 
 const store = useCallStore();
-const { endCall } = useVideoCall(); // cuman butuh fungsi end call buat channel
+const { cancelCall } = usePersonalCall();
 
 const currentCall = computed(() => store.currentCall);
+const backendCall = computed(() => store.backendCall);
 const recipient = computed(() => currentCall.value?.receiver);
 
 // Status berdering / 'ringing' di pov caller ketika kita menelpon seseorang
@@ -16,11 +18,33 @@ const isCallingVideo = computed(() =>
     currentCall.value?.status === 'ringing' && currentCall.value?.type === 'video'
 );
 
-const handleCancel = () => {
-    if (currentCall.value) {
-        endCall(currentCall.value.id);
+const handleCancel = async () => {
+    if (backendCall.value) {
+        try {
+            await cancelCall(backendCall.value.id); // Panggil API untuk membatalkan panggilan
+        } catch (error) {
+            console.error('Gagal untuk membatalkan panggilan:', error);
+        }
     }
 };
+
+// watch status changes dari backend (rejected, cancelled, missed)
+watch(() => store.callStatus, (newStatus) => {
+    if (newStatus === 'rejected') {
+        // Penerima menolak panggilan
+        setTimeout(() => {
+            store.clearCurrentCall();
+        }, 2000); // Muncul pesan "Panggilan ditolak" selama 2 detik lalu hilang
+    } else if (newStatus === 'cancelled') {
+        // Penelpon membatalkan panggilan
+        store.clearCurrentCall();
+    } else if (newStatus === 'missed') {
+        // Tidak ada jawaban (timeout 30dtk)
+        setTimeout(() => {
+            store.clearCurrentCall();
+        }, 2000)
+    }
+});
 </script>
 
 <template>
@@ -41,13 +65,22 @@ const handleCancel = () => {
                 <!-- Info penerima -->
                 <h3 class="caller-name">{{ recipient?.name }}...</h3>
 
+                <!-- Status panggilan -->
+                <p class="call-status">
+                    {{ 
+                        store.callStatus === 'rejected' ? 'Panggilan Ditolak' :
+                        store.callStatus === 'missed' ? 'Tidak ada jawaban' :
+                        'Memanggil...'
+                    }}
+                </p>
+
                 <div class="call-type-badge mb-5">
                     <Video :size="18"/>
                     <span>Panggilan video</span>
                 </div>
 
                 <!-- Tombol cancel -->
-                <div class="d-flex justify-content-center mt-5">
+                <div v-if="store.callStatus === 'ringing'" class="d-flex justify-content-center mt-5">
                     <button @click="handleCancel" class="btn-action btn-reject">
                         <X :size="32"/>
                     </button>
@@ -90,6 +123,13 @@ const handleCancel = () => {
     font-weight: 700;
     font-size: 1.5rem;
     margin-bottom: 8px;
+}
+
+/* Style untuk status panggilan */
+.call-status {
+    color: #a1a5b7;
+    font-size: 0.95rem;
+    margin-bottom: 16px;
 }
 
 .call-type-badge {

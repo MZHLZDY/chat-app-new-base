@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { Call, CallStatus } from "@/types/call";
+import type { Call, CallStatus, PersonalCall } from "@/types/call";
 
 export const useCallStore = defineStore('call', () => {
     // State
@@ -10,6 +10,9 @@ export const useCallStore = defineStore('call', () => {
     const callStatus = ref<CallStatus | null>(null);
     const remoteUsers = ref<number[]>([]);
     const isMinimized = ref<boolean>(false);
+    const backendCall = ref<PersonalCall | null>(null); // Data dari backend
+    const agoraToken = ref<string | null>(null); // token agora dari backend
+    const channelName = ref<string | null>(null); // channel name dari backend
 
     // Actions
     const setCurrentCall = (call: Call) => {
@@ -23,6 +26,10 @@ export const useCallStore = defineStore('call', () => {
         currentCall.value = null;
         callStatus.value = null;
         isInCall.value = false;
+        backendCall.value = null;
+        agoraToken.value = null;
+        channelName.value = null;
+        remoteUsers.value = [];
     };
 
     const setIncomingCall = (call: Call) => {
@@ -61,6 +68,19 @@ export const useCallStore = defineStore('call', () => {
         remoteUsers.value = [];
     };
 
+    const setBackendCall = (call: PersonalCall, token: string, channel: string) => {
+        backendCall.value = call;
+        agoraToken.value = token;
+        channelName.value = channel;
+    };
+
+    const updateBackendCall = (call: PersonalCall) => {
+        backendCall.value = call;
+        if (call.status) {
+            callStatus.value = call.status;
+        }
+    };
+
     // fitur voice
     const toggleMinimize = () => {
         isMinimized.value = !isMinimized.value;
@@ -74,6 +94,9 @@ export const useCallStore = defineStore('call', () => {
         callStatus,
         remoteUsers,
         isMinimized,
+        backendCall,
+        agoraToken,
+        channelName,
         // Actions
         setCurrentCall,
         clearCurrentCall,
@@ -84,6 +107,8 @@ export const useCallStore = defineStore('call', () => {
         addRemoteUser,
         removeRemoteUser,
         clearRemoteUsers,
-        toggleMinimize
+        toggleMinimize,
+        setBackendCall,
+        updateBackendCall
     }
 });

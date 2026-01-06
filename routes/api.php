@@ -94,6 +94,7 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::get('users/search', [GroupController::class, 'searchUsers']); 
         Route::post('groups/{id}/members', [GroupController::class, 'addMembers']);
         Route::delete('groups/{id}/members/{userId}', [GroupController::class, 'removeMember']);
+        Route::delete('group/{id}/clear', [GroupController::class, 'clearChat']);
     });
 
     Route::prefix('call')->group(function () {

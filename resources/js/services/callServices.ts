@@ -20,7 +20,7 @@ export const inviteCall = async (receiverId: number, type: CallType) => {
 };
 
 // Menjawab panggilan masuk
-export const answerCall = async (callId: string) => {
+export const answerCall = async (callId: number) => {
     const response = await axios.post('/call/answer', {
         call_id: callId
     });
@@ -28,17 +28,33 @@ export const answerCall = async (callId: string) => {
 };
 
 // Menolak panggilan masuk
-export const rejectCall = async (callId: string) => {
+export const rejectCall = async (callId: number) => {
     const response = await axios.post('/call/reject', {
         call_id: callId
     });
     return response.data;
 };
 
+// cancel panggilan
+export const cancelCall = async (callId: number) => {
+    const response = await axios.post('/call/cancel', {
+        call_id: callId
+    });
+    return response.data;
+};
+
 // Mengakhiri panggilan
-export const endCall = async (callId: string) => {
+export const endCall = async (callId: number) => {
     const response = await axios.post('/call/end', {
         call_id: callId
+    });
+    return response.data;
+};
+
+// Mendapatkan histori panggilan
+export const getCallHistory = async (page: number = 1) => {
+    const response = await axios.get('/call/history', {
+        params: { page }
     });
     return response.data;
 };

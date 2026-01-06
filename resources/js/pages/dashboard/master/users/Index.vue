@@ -48,6 +48,8 @@ const isEditGroupOpen = ref(false);
 const groupIdToEdit = ref<string | number | undefined>(undefined);
 const editModalTitle = ref("Edit Info Grup");
 const isDeleteModalOpen = ref(false);
+const isLeaveGroupModalOpen = ref(false);
+const isClearChatModalOpen = ref(false);
 const messageToDelete = ref<any>(null);
 const isLightboxOpen = ref(false);
 const activeLightboxUrl = ref("");
@@ -114,42 +116,6 @@ const shouldShowDateDivider = (index: number) => {
     const prevMsgDate = new Date(messages.value[index - 1].created_at);
     return !isSameDay(currentMsgDate, prevMsgDate);
 };
-
-// const initSidebarUnreadListener = () => {
-//     const userId = authStore.user?.id;
-//     if (!userId) return;
-//     const notifPath = `notifications/${userId}`;
-//     const notifRef = firebaseRef(db, notifPath);
-
-//     onChildAdded(notifRef, (snapshot) => {
-//         const data = snapshot.val();
-//         if (!data) return;
-
-//         if (data.type === 'new_group_message') {
-            
-//             const groupIndex = groups.value.findIndex(g => g.id == data.group_id);
-
-//             if (groupIndex !== -1) {
-//                 const isOpeningThisGroup = activeGroup.value?.id == data.group_id;
-//                 if (!isOpeningThisGroup) {
-//                     const currentCount = groups.value[groupIndex].unread_count || 0;
-//                     groups.value[groupIndex].unread_count = currentCount + 1;
-
-//                     let preview = data.message;
-//                     if (data.message_type === 'image') preview = '📷 Foto';
-//                     if (data.message_type === 'file') preview = '📁 Berkas';
-//                     groups.value[groupIndex].last_message_preview = preview;
-                    
-//                     const updatedGroup = groups.value[groupIndex];
-//                     updatedGroup.updated_at = new Date().toISOString(); 
-                    
-//                     groups.value.splice(groupIndex, 1);
-//                     groups.value.unshift(updatedGroup); 
-//                 } 
-//             }
-//         }
-//     });
-// };
 
 // --- FETCH GROUPS ---
 const fetchGroups = async () => {
@@ -385,6 +351,29 @@ const openCreateGroupModal = () => {
     isCreateGroupOpen.value = true;
 };
 
+const openClearChatModal = () => {
+    isHeaderMenuOpen.value = false;
+    if (!activeGroup.value) return;
+    isClearChatModalOpen.value = true;
+};
+
+
+const processClearChat = async () => {
+    if (!activeGroup.value) return;
+
+    try {
+        await axios.delete(`/chat/group/${activeGroup.value.id}/clear`);
+        messages.value = [];
+        
+        isClearChatModalOpen.value = false;
+        toast.success("Riwayat chat berhasil dibersihkan");
+    } catch (error) {
+        console.error("Gagal clear chat", error);
+        toast.error("Gagal membersihkan chat");
+        isClearChatModalOpen.value = false;
+    }
+};
+
 const openEditGroupModal = () => {
     isHeaderMenuOpen.value = false;
     if (!activeGroup.value) return;
@@ -412,18 +401,27 @@ const openInfoModal = () => {
     isInfoModalOpen.value = true;
 };
 
-const handleExitGroup = async () => {
+const handleExitGroup = () => {
     if (!activeGroup.value) return;
-    if (!confirm("Keluar dari grup ini?")) return;
+    isHeaderMenuOpen.value = false;
+    isLeaveGroupModalOpen.value = true;
+};
+
+const processLeaveGroup = async () => {
+    if (!activeGroup.value) return;
 
     try {
         await axios.post(`/chat/group/${activeGroup.value.id}/leave`);
+        
         activeGroup.value = null;
         messages.value = [];
+        isLeaveGroupModalOpen.value = false; 
+        
         await fetchGroups();
         toast.success("Berhasil keluar grup");
     } catch (error) {
         toast.error("Gagal keluar grup");
+        isLeaveGroupModalOpen.value = false;
     }
 };
 
@@ -483,6 +481,14 @@ const handleEscKey = (e: KeyboardEvent) => {
         }
         if (activeGroup.value) {
             activeGroup.value = null;
+        }
+        if (isLeaveGroupModalOpen.value) {
+            isLeaveGroupModalOpen.value = false;
+            return;
+        }
+        if (isClearChatModalOpen.value) {
+            isClearChatModalOpen.value = false;
+            return;
         }
     }
 };
@@ -669,6 +675,11 @@ onUnmounted(() => {
                                             <i class="fas fa-edit me-2"></i> Edit Grup
                                         </a>
                                     </div>
+                                    <div class="menu-item px-3">
+                                        <a href="#" class="menu-link px-3" @click.prevent="openClearChatModal">
+                                            <i class="fas fa-trash-alt me-2"></i> Bersihkan Chat
+                                        </a>
+                                    </div>
                                     <div class="separator my-2"></div>
                                     <div class="menu-item px-3">
                                         <a href="#" class="menu-link px-3 text-danger" @click.prevent="handleExitGroup">
@@ -825,27 +836,27 @@ onUnmounted(() => {
             </div>
         </div>
     </div>
-
+    <!-- create group -->
     <div v-if="isCreateGroupOpen" class="modal-overlay">
         <div class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden" style="max-width: 500px; width: 100%;">
             <GroupForm @close="isCreateGroupOpen = false" @refresh="fetchGroups" />
         </div>
     </div>
-
+    <!-- edit group modal -->
     <div v-if="isEditGroupOpen" class="modal-overlay">
         <div class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden" style="max-width: 500px; width: 100%;">
             <GroupEdit v-if="isEditGroupOpen" :groupId="groupIdToEdit" :title="editModalTitle"  @close="isEditGroupOpen = false" @refresh="fetchGroups" @group-updated="handleGroupUpdated" />
         </div>
     </div>
-
+    <!-- lightbox modal -->
     <div v-if="isLightboxOpen" class="lightbox-overlay" @click.self="closeLightbox">
         <div class="lightbox-content position-relative text-center">
             <button @click="closeLightbox" class="btn btn-icon btn-sm btn-dark position-absolute top-0 end-0 m-3 shadow z-index-10"><i class="fas fa-times fs-2"></i></button>
             <img :src="activeLightboxUrl" class="img-fluid rounded shadow-lg" style="max-height: 85vh; max-width: 90vw;" />
         </div>
     </div>
-
-        <div v-if="isDeleteModalOpen" class="modal-overlay">
+    <!-- delete message modal -->
+    <div v-if="isDeleteModalOpen" class="modal-overlay">
         <div class="modal-content bg-white rounded shadow p-5 text-center" style="width: 350px;">
             <div class="bg-light-danger mb-4"><i class="fas fa-trash fs-2 text-danger p-3"></i></div>
             <h3 class="fw-bold text-gray-800 mb-1">Hapus Pesan?</h3>
@@ -857,7 +868,7 @@ onUnmounted(() => {
             </div>
         </div>
     </div>
-
+    <!-- info group modal -->
     <div v-if="isInfoModalOpen" class="modal-overlay" @click.self="isInfoModalOpen = false">
         <div class="modal-content bg-white rounded shadow p-0 overflow-hidden" style="max-width: 400px; width: 100%;">
             <div class="modal-header p-4 border-bottom d-flex justify-content-between align-items-center">
@@ -884,6 +895,53 @@ onUnmounted(() => {
                         <span v-if="member.is_admin" class="badge badge-light-success ms-auto fs-9">Admin</span>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    <!-- leave gtoup modal -->
+    <div v-if="isLeaveGroupModalOpen" class="modal-overlay">
+        <div class="modal-content bg-white rounded shadow p-5 text-center" style="width: 350px;">
+            <div class="bg-light-warning mb-4 d-flex justify-content-center align-items-center mx-auto rounded-circle" style="width: 60px; height: 60px;">
+                <i class="fas fa-sign-out-alt fs-2 text-danger"></i>
+            </div>
+            
+            <h3 class="fw-bold text-gray-800 mb-1">Keluar Grup?</h3>
+            <p class="text-muted fs-7 mb-4">
+                Anda tidak akan bisa melihat atau mengirim pesan di grup 
+                <span class="fw-bold text-gray-800">"{{ activeGroup?.name }}"</span> lagi.
+            </p>
+            
+            <div class="d-grid gap-2">
+                <button @click="processLeaveGroup" class="btn btn-danger text-white fw-bold">
+                    Ya, Keluar
+                </button>
+                
+                <button @click="isLeaveGroupModalOpen = false" class="btn btn-light btn-active-light-primary">
+                    Batal
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- clear chat modal -->
+    <div v-if="isClearChatModalOpen" class="modal-overlay">
+        <div class="modal-content bg-white rounded shadow p-5 text-center" style="width: 350px;">
+            <div class="bg-light-danger mb-4 d-flex justify-content-center align-items-center mx-auto rounded-circle" style="width: 60px; height: 60px;">
+                <i class="fas fa-eraser fs-2 text-danger"></i>
+            </div>
+            
+            <h3 class="fw-bold text-gray-800 mb-1">Bersihkan Chat?</h3>
+            <p class="text-muted fs-7 mb-4">
+                Semua pesan di grup ini akan dihapus secara permanen. Tindakan ini tidak dapat dibatalkan.
+            </p>
+            
+            <div class="d-grid gap-2">
+                <button @click="processClearChat" class="btn btn-danger fw-bold">
+                    Ya, Bersihkan
+                </button>
+                
+                <button @click="isClearChatModalOpen = false" class="btn btn-light btn-active-light-primary">
+                    Batal
+                </button>
             </div>
         </div>
     </div>
