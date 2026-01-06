@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { Phone, PhoneOff } from 'lucide-vue-next';
+import { themeMode } from "@/layouts/default-layout/config/helper"; 
 import CallAvatar from '../shared/CallAvatar.vue';
 
 interface Props {
@@ -13,10 +15,13 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits(['accept', 'reject']);
+
+const currentThemeMode = computed(() => themeMode.value);
+
 </script>
 
 <template>
-  <div class="incoming-overlay">
+  <div class="incoming-overlay" :class="{ 'dark-mode': currentThemeMode === 'dark' }">
     <div class="glass-card">
       
       <div class="avatar-section">
@@ -63,7 +68,7 @@ const emit = defineEmits(['accept', 'reject']);
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); /* Blue gradient mirip video */
+  background: rgba(255, 255, 255, 0.274) !important; backdrop-filter: blur(1.5px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -75,26 +80,28 @@ const emit = defineEmits(['accept', 'reject']);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 30px;
-  padding: 50px 40px;
-  
-  /* Efek Kaca */
-  background: rgba(255, 255, 255, 0.1);
+  justify-content: center;
+  gap: 30px; /* Jarak antar elemen */
+  padding: 140px 300px;
+  background: rgba(255, 255, 255, 0.600);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-  
   min-width: 320px;
   max-width: 90%;
   animation: slide-up-fade 0.5s ease-out;
+}
+ 
+.dark-mode .glass-card {
+  background: rgba(105, 104, 104, 0.5);
 }
 
 /* Typography */
 .info-section {
   text-align: center;
-  color: white;
+  color: rgb(134, 129, 129);
 }
 
 .status-text {
@@ -107,8 +114,13 @@ const emit = defineEmits(['accept', 'reject']);
 .caller-name {
   font-size: 1.8rem;
   font-weight: 700;
+  color: #0959ee;
   margin: 0;
   text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.dark-mode .caller-name {
+  color: #10a4fa;
 }
 
 /* Action Buttons Container */

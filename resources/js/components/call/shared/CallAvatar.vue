@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { themeMode } from "@/layouts/default-layout/config/helper"; 
 
 interface Props {
   photoUrl: string;       // URL foto profil
@@ -18,10 +19,13 @@ const avatarStyle = computed(() => ({
   width: props.size,
   height: props.size,
 }));
+
+const currentThemeMode = computed(() => themeMode.value);
+
 </script>
 
 <template>
-  <div class="call-avatar-wrapper" :style="avatarStyle">
+  <div class="call-avatar-wrapper" :class="{ 'dark-mode': currentThemeMode === 'dark' }" :style="avatarStyle">
     
     <div v-if="isCalling" class="pulse-ring delay-1"></div>
     <div v-if="isCalling" class="pulse-ring delay-2"></div>
@@ -72,10 +76,14 @@ const avatarStyle = computed(() => ({
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.4); /* Warna putih transparan */
+  background-color: rgba(177, 173, 173, 0.4); /* Warna gelap transparan */
   opacity: 0;
   z-index: 1; /* Di bawah gambar */
   animation: pulse-animation 2s infinite cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.dark-mode .pulse-ring {
+  background-color: rgba(255, 255, 255, 0.4);
 }
 
 /* Delay agar animasi tidak bertumpuk bersamaan, menciptakan efek gelombang */

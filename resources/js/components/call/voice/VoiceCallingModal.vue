@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { themeMode } from "@/layouts/default-layout/config/helper"; 
 import { PhoneOff } from 'lucide-vue-next'; // Icon telepon tutup
 import CallAvatar from '../shared/CallAvatar.vue';
 
@@ -15,6 +16,8 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits(['cancel']);
+
+const currentThemeMode = computed(() => themeMode.value);
 
 // Logic: Animasi pulse hanya aktif jika status masih calling/ringing
 // Jika ditolak ('rejected') atau sibuk, animasi berhenti.
@@ -42,8 +45,8 @@ const isErrorStatus = computed(() => {
 </script>
 
 <template>
-  <div class="calling-overlay">
-    <div class="glass-card">
+  <div class="calling-overlay" :class="{ 'dark-mode': currentThemeMode === 'dark' }">
+    <div class="glass-card" >
       
       <div class="avatar-container">
         <CallAvatar 
@@ -90,8 +93,8 @@ const isErrorStatus = computed(() => {
   left: 0;
   width: 100vw;
   height: 100vh;
-  /* Gradient biru yang sama */
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  /* Gradient blur yang sama */
+  background: rgba(255, 255, 255, 0.270) !important; backdrop-filter: blur(1.5px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -105,24 +108,26 @@ const isErrorStatus = computed(() => {
   align-items: center;
   justify-content: center;
   gap: 30px; /* Jarak antar elemen */
-  padding: 60px 40px;
-  
-  background: rgba(255, 255, 255, 0.1);
+  padding: 140px 300px;
+  background: rgba(255, 255, 255, 0.600);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-  
   min-width: 320px;
   max-width: 90%;
   animation: zoom-in 0.4s ease-out;
 }
 
+.dark-mode .glass-card {
+  background: rgba(105, 104, 104, 0.5);
+}
+
 /* Typography */
 .info-section {
   text-align: center;
-  color: white;
+  color: rgb(134, 129, 129);
   min-height: 80px; /* Menjaga layout tidak lompat saat teks berubah */
 }
 
@@ -130,15 +135,25 @@ const isErrorStatus = computed(() => {
   font-size: 1.8rem;
   font-weight: 700;
   margin: 0 0 8px 0;
+  color: #0959ee;
   text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.dark-mode .callee-name {
+  color: #10a4fa;
 }
 
 .status-text {
   font-size: 1rem;
   opacity: 0.8;
   letter-spacing: 0.5px;
+  color: grey;
   margin: 0;
   font-weight: 500;
+}
+
+.dark-mode .status-text {
+  color: white;
 }
 
 /* Modifikasi warna teks jika ditolak */
