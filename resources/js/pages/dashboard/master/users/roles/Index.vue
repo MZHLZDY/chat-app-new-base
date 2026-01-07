@@ -2,9 +2,8 @@
 import { ref, onMounted, nextTick, computed, onUnmounted, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import axios from "@/libs/axios";
-import { toast } from "vue3-toastify";
-import { format, isToday, isYesterday, isSameDay } from 'date-fns';
-import { id } from 'date-fns/locale'; 
+import { toast } from "vue3-toastify";import { formatDistanceToNowStrict, format, isToday, isYesterday, isSameDay } from 'date-fns';
+import { id } from 'date-fns/locale';
 import { Phone, Video } from 'lucide-vue-next';
 import { useGlobalChatStore } from "@/stores/globalChat";
 import VoiceCallModal from '@/components/call/voice/VoiceCallModal.vue';
@@ -221,17 +220,41 @@ const handleScroll = () => {
     }
 };
 
-const formatTime = (dateStr: string) => {
-    if (!dateStr) return "";
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const formatTime = (dateString: string | null | undefined): string => {
+  if (!dateString) return new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) throw new Error('Invalid date');
+    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  } catch (error) {
+    return new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  }
 };
 
-const formatDateLabel = (dateStr: string) => {
-    const date = new Date(dateStr);
-    if (isToday(date)) return "Hari Ini";
-    if (isYesterday(date)) return "Kemarin";
-    return format(date, "d MMMM yyyy", { locale: id });
+const formatLastSeen = (dateInput: string | number | null | undefined): string => {
+    if (!dateInput) return 'offline';
+    try {
+        const date = new Date(dateInput);
+        if (isToday(date)) {
+            return `terakhir dilihat pukul ${format(date, 'HH:mm', { locale: id })}`;
+        } 
+        if (isYesterday(date)) {
+            return `terakhir dilihat kemarin pukul ${format(date, 'HH:mm', { locale: id })}`;
+        }
+        return `terakhir dilihat ${format(date, 'd MMM yyyy, HH:mm', { locale: id })}`;
+    } catch (error) {
+        return 'offline';
+    }
+};
+
+const formatDateSeparator = (dateString: string): string => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    
+    if (isToday(date)) return 'Hari Ini';
+    if (isYesterday(date)) return 'Kemarin';
+    
+    return format(date, 'd MMMM yyyy', { locale: id });
 };
 
 const shouldShowDateDivider = (index: number) => {
@@ -931,7 +954,7 @@ onUnmounted(() => {
                                 {{ activeContact.display_name }}
                             </span>
                             <span class="text-muted fs-8">
-                                {{ activeContact.is_online ? 'Online' : (activeContact.last_seen ? 'Terakhir dilihat pada ' + formatTime(activeContact.last_seen) : 'Offline') }}
+                                {{ activeContact.is_online ? 'Online' : formatLastSeen(activeContact.last_seen) }}
                             </span>
                         </div>
                     </div>
@@ -994,7 +1017,7 @@ onUnmounted(() => {
                         <div v-else v-for="(msg, index) in messages" :key="msg.id" :id="'msg-' + msg.id">
                             <div v-if="shouldShowDateDivider(index)" class="d-flex justify-content-center my-4">
                                 <span class="badge badge-light-primary text-primary px-3 py-2 rounded-pill shadow-sm fs-9 fw-bold border">
-                                    {{ formatDateLabel(msg.created_at) }}
+                                    {{ formatDateSeparator(msg.created_at) }}
                                 </span>
                             </div>
                             <div class="d-flex mb-4" :class="msg.sender_id === currentUser?.id ? 'justify-content-end' : 'justify-content-start'">
