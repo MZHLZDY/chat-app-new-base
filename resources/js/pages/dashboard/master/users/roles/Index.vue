@@ -6,10 +6,14 @@ import { toast } from "vue3-toastify";import { formatDistanceToNowStrict, format
 import { id } from 'date-fns/locale';
 import { Phone, Video } from 'lucide-vue-next';
 import { useGlobalChatStore } from "@/stores/globalChat";
+import { usePersonalCall } from '@/composables/usePersonalCall';
 import VoiceCallModal from '@/components/call/voice/VoiceCallModal.vue';
 import VoiceFloating from '@/components/call/voice/VoiceFloating.vue';
 import VoiceIncomingModal from '@/components/call/voice/VoiceIncomingModal.vue';
 import VoiceCallingModal from '@/components/call/voice/VoiceCallingModal.vue';
+import VideoCallingModal from '@/components/call/video/VideoCallingModal.vue';
+import VideoIncomingModal from '@/components/call/video/VideoIncomingModal.vue';
+import VideoCallModal from '@/components/call/video/VideoCallModal.vue';
 
 // Component Form Kontak
 import ContactForm from "./Form.vue";
@@ -36,6 +40,16 @@ import { onAuthStateChanged } from "firebase/auth";
 import { useVoiceCall } from "@/composables/useVoiceCall";
 // import { useVideoCall } from "@/composables/useVideoCall";
 import { useCallStore } from "@/stores/callStore";
+import type { Call, CallStatus, CallType } from "@/types/call";
+
+// State usePersonalCall
+const {
+    initiateCall,
+    answerCall,
+    rejectCall,
+    endCall,
+    isLoading: callProcessing
+} = usePersonalCall();
 
 // --- STATE UTAMA ---
 const authStore = useAuthStore();
@@ -190,6 +204,40 @@ const handleEndVoiceCall = () => {
     // 3. Reset tampilan
     isMinimized.value = false;
 };
+
+// Handler video call
+const handleVideoCall = async () => {
+    if (!activeContact.value) {
+        toast.error('Tidak ada kontak yang dipilih untuk panggilan video.');
+        return;
+    }
+
+    try {
+        await initiateCall(activeContact.value, 'video') // Panggil API /call/invite
+        toast.success('Memanggil...');
+    } catch (error) {
+        console.error('Gagal memulai panggilan video:', error);
+        toast.error('Gagal memulai panggilan video.');
+    }
+};
+
+// Computed untuk modal video call
+const showVideoCallingModal = computed(() => 
+    callStore.currentCall?.type === 'video' &&
+    callStore.callStatus === 'ringing' &&
+    !callStore.isInCall
+);
+
+const showVideoIncomingModal = computed(() =>
+    callStore.incomingCall?.type === 'video' &&
+    !callStore.isInCall
+);
+
+const showVideoCallModal = computed(() => 
+    callStore.currentCall?.type === 'video' &&
+    callStore.callStatus === 'ongoing' &&
+    callStore.isInCall
+);
 
 // --- PRIVATE CHAT LOGIC ---
 const scrollToBottom = () => {
@@ -786,22 +834,89 @@ onMounted(async () => {
             // A. Seseorang menelepon saya
             .listen(".incoming-call", (event: any) => {
                 console.log("🔔 Incoming Call Event:", event);
-                handleIncomingCall(event);
+                if (event.call_type === 'video') {
+                    // Set panggilan video masuk
+                    const incomingCall: Call = {
+                        id: event.call_id,
+                        type: 'video' as CallType,
+                        caller: event.caller,
+                        receiver: {
+                            id: authStore.user!.id!,
+                            name: authStore.user!.name,
+                            email: authStore.user!.email,
+                            avatar: authStore.user!.photo || authStore.user!.profile_photo_url || undefined,
+                        },
+                        status: 'ringing' as CallStatus,
+                        token: event.agora_token,
+                        channel: event.channel_name,
+                    };
+
+                    // Set ke store
+                    callStore.setIncomingCall(incomingCall);
+                    callStore.setBackendCall(event.call, event.agora_token, event.channel_name);
+                } else {
+                    // voice call handle
+                    handleIncomingCall(event);
+                }
             })
+
             // B. Lawan bicara mengangkat telepon (Untuk sisi penelpon)
             .listen(".call-accepted", (event: any) => {
                 console.log("✅ Call Accepted:", event);
-                handleCallAccepted(event);
+
+                // Update status untuk video dan voice call
+                callStore.updateCallStatus('ongoing');
+                callStore.setInCall(true);
+
+                if (event.call) {
+                    callStore.updateBackendCall(event.call);
+                }
+
+                if (event.call_type !== 'video') {
+                    handleCallAccepted(event);
+                }
             })
+
             // C. Lawan bicara menolak panggilan
             .listen(".call-rejected", (event: any) => {
                 console.log("🚫 Call Rejected:", event);
-                handleCallRejected();
+                callStore.updateCallStatus('rejected');
+
+                setTimeout(() => {
+                    callStore.clearCurrentCall();
+                    callStore.clearIncomingCall();
+                }, 2000);
+
+                // voice call handler
+                if (event.call_type !== 'video') {
+                    handleCallRejected();
+                }
             })
-            // D. Panggilan selesai / ditutup
+
+            // D. Panggilan dibatalkan
+            .listen(".call-cancelled", (event: any) => {
+                console.log("❌ Call Cancelled:", event);
+                callStore.updateCallStatus('cancelled');
+
+                setTimeout(() => {
+                    callStore.clearCurrentCall();
+                    callStore.clearIncomingCall();
+                }, 2000);
+            })
+
+            // E. Panggilan selesai / ditutup
             .listen(".call-ended", (event: any) => {
                 console.log("❌ Call Ended:", event);
-                handleCallEnded();
+                callStore.updateCallStatus('ended');
+
+                setTimeout(() => {
+                    callStore.clearCurrentCall();
+                }, 2000);
+
+                // Voice call handler
+                if (event.call_type !== 'video') {
+                    handleCallEnded();
+                }
             });
     }
 });
@@ -891,42 +1006,47 @@ onUnmounted(() => {
 
         <Teleport to="body">
         
-        <VoiceIncomingModal
-            v-if="showIncomingModal"
-            :caller-name="callStore.incomingCall?.caller?.name || 'Unknown'"
-            :caller-photo="callStore.incomingCall?.caller?.avatar || ''" 
-            @accept="acceptVoiceCall"
-            @reject="rejectVoiceCall"
-        />
+            <VoiceIncomingModal
+                v-if="showIncomingModal"
+                :caller-name="callStore.incomingCall?.caller?.name || 'Unknown'"
+                :caller-photo="callStore.incomingCall?.caller?.avatar || ''" 
+                @accept="acceptVoiceCall"
+                @reject="rejectVoiceCall"
+            />
 
-        <VoiceCallingModal
-            v-if="showCallingModal"
-            :callee-name="remoteUser.name"
-            :callee-photo="remoteUser.avatar || ''" 
-            :call-status="callStore.callStatus || 'calling'" 
-            @cancel="endVoiceCall" 
-        />
+            <VoiceCallingModal
+                v-if="showCallingModal"
+                :callee-name="remoteUser.name"
+                :callee-photo="remoteUser.avatar || ''" 
+                :call-status="callStore.callStatus || 'calling'" 
+                @cancel="endVoiceCall" 
+            />
 
-        <VoiceCallModal
-            v-if="showOngoingModal"
-            :remote-name="remoteUser.name"
-            :remote-photo="remoteUser.avatar || ''"
-            :is-muted="false" 
-            :is-speaker-on="false"
-            @end-call="endVoiceCall"
-            @minimize="callStore.toggleMinimize"
-        />
+            <VoiceCallModal
+                v-if="showOngoingModal"
+                :remote-name="remoteUser.name"
+                :remote-photo="remoteUser.avatar || ''"
+                :is-muted="false" 
+                :is-speaker-on="false"
+                @end-call="endVoiceCall"
+                @minimize="callStore.toggleMinimize"
+            />
 
-        <VoiceFloating
-            v-if="showFloatingModal"
-            :remote-name="remoteUser.name"
-            :remote-photo="remoteUser.avatar || ''"
-            :is-muted="false"
-            @maximize="callStore.toggleMinimize"
-            @end-call="endVoiceCall"
-        />
+            <VoiceFloating
+                v-if="showFloatingModal"
+                :remote-name="remoteUser.name"
+                :remote-photo="remoteUser.avatar || ''"
+                :is-muted="false"
+                @maximize="callStore.toggleMinimize"
+                @end-call="endVoiceCall"
+            />
 
-    </Teleport>
+            <VideoCallingModal v-if="showVideoCallingModal"/>
+            <VideoIncomingModal v-if="showVideoIncomingModal"/>
+            <VideoCallModal v-if="showVideoCallModal"/>
+
+        </Teleport>
+        
     
         <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10" style="min-width: 0;">
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
@@ -967,8 +1087,8 @@ onUnmounted(() => {
                             <i class="fas fa-user-plus fs-7 me-1"></i> Simpan
                         </button>
 
-                        <button @click="handleVoiceCall" :disabled="voiceProcessing" class="btn btn-icon btn-sm text-gray-500"><Phone class="w-20px h-20px" /></button>
-                        <button class="btn btn-icon btn-sm text-gray-500"><Video class="w-20px h-20px" /></button>
+                        <button @click="handleVoiceCall" :disabled="voiceProcessing || callProcessing" class="btn btn-icon btn-sm text-gray-500"><Phone class="w-20px h-20px" /></button>
+                        <button @click="handleVideoCall" :disabled="voiceProcessing || callProcessing" class="btn btn-icon btn-sm text-gray-500"><Video class="w-20px h-20px" /></button>
 
                         
                         

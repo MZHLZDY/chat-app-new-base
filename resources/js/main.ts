@@ -23,7 +23,7 @@ import { initKtIcon } from "@/core/plugins/keenthemes";
 import { vue3Debounce } from "vue-debounce";
 import { VueQueryPlugin, QueryClient } from "@tanstack/vue-query";
 import { useThemeStore } from "./stores/theme";
-import Vue3Toastify, { type ToastContainerOptions } from "vue3-toastify";
+import Vue3Toastify, { type ToastContainerOptions } from "vue3-toastify/dist/index.mjs";
 import "vue3-toastify/dist/index.css";
 
 import "@/core/plugins/prismjs";

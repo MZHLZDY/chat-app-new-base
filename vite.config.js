@@ -37,6 +37,7 @@ export default defineConfig(({ mode }) => {
             esbuildOptions: {
                 target: ["es2020", "safari14"],
             },
+            include: ['vue3-toastify']
         },
         build: {
             chunkSizeWarningLimit: 3000,
