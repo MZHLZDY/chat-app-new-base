@@ -13,14 +13,14 @@ import {
 import { id } from "date-fns/locale";
 import { Phone, Video, Download } from "lucide-vue-next";
 import { useGlobalChatStore } from "@/stores/globalChat";
-import { usePersonalCall } from '@/composables/usePersonalCall';
-import VoiceCallModal from '@/components/call/voice/VoiceCallModal.vue';
-import VoiceFloating from '@/components/call/voice/VoiceFloating.vue';
-import VoiceIncomingModal from '@/components/call/voice/VoiceIncomingModal.vue';
-import VoiceCallingModal from '@/components/call/voice/VoiceCallingModal.vue';
-import VideoCallingModal from '@/components/call/video/VideoCallingModal.vue';
-import VideoIncomingModal from '@/components/call/video/VideoIncomingModal.vue';
-import VideoCallModal from '@/components/call/video/VideoCallModal.vue';
+import { usePersonalCall } from "@/composables/usePersonalCall";
+import VoiceCallModal from "@/components/call/voice/VoiceCallModal.vue";
+import VoiceFloating from "@/components/call/voice/VoiceFloating.vue";
+import VoiceIncomingModal from "@/components/call/voice/VoiceIncomingModal.vue";
+import VoiceCallingModal from "@/components/call/voice/VoiceCallingModal.vue";
+import VideoCallingModal from "@/components/call/video/VideoCallingModal.vue";
+import VideoIncomingModal from "@/components/call/video/VideoIncomingModal.vue";
+import VideoCallModal from "@/components/call/video/VideoCallModal.vue";
 
 // Component Form Kontak
 import ContactForm from "./Form.vue";
@@ -55,7 +55,7 @@ const {
     answerCall,
     rejectCall,
     endCall,
-    isLoading: callProcessing
+    isLoading: callProcessing,
 } = usePersonalCall();
 
 // --- STATE UTAMA ---
@@ -226,35 +226,36 @@ const handleEndVoiceCall = () => {
 // Handler video call
 const handleVideoCall = async () => {
     if (!activeContact.value) {
-        toast.error('Tidak ada kontak yang dipilih untuk panggilan video.');
+        toast.error("Tidak ada kontak yang dipilih untuk panggilan video.");
         return;
     }
 
     try {
-        await initiateCall(activeContact.value, 'video') // Panggil API /call/invite
-        toast.success('Memanggil...');
+        await initiateCall(activeContact.value, "video"); // Panggil API /call/invite
+        toast.success("Memanggil...");
     } catch (error) {
-        console.error('Gagal memulai panggilan video:', error);
-        toast.error('Gagal memulai panggilan video.');
+        console.error("Gagal memulai panggilan video:", error);
+        toast.error("Gagal memulai panggilan video.");
     }
 };
 
 // Computed untuk modal video call
-const showVideoCallingModal = computed(() => 
-    callStore.currentCall?.type === 'video' &&
-    callStore.callStatus === 'ringing' &&
-    !callStore.isInCall
+const showVideoCallingModal = computed(
+    () =>
+        callStore.currentCall?.type === "video" &&
+        callStore.callStatus === "ringing" &&
+        !callStore.isInCall
 );
 
-const showVideoIncomingModal = computed(() =>
-    callStore.incomingCall?.type === 'video' &&
-    !callStore.isInCall
+const showVideoIncomingModal = computed(
+    () => callStore.incomingCall?.type === "video" && !callStore.isInCall
 );
 
-const showVideoCallModal = computed(() => 
-    callStore.currentCall?.type === 'video' &&
-    callStore.callStatus === 'ongoing' &&
-    callStore.isInCall
+const showVideoCallModal = computed(
+    () =>
+        callStore.currentCall?.type === "video" &&
+        callStore.callStatus === "ongoing" &&
+        callStore.isInCall
 );
 
 // --- PRIVATE CHAT LOGIC ---
@@ -952,26 +953,33 @@ onMounted(async () => {
             // A. Seseorang menelepon saya
             .listen(".incoming-call", (event: any) => {
                 console.log("🔔 Incoming Call Event:", event);
-                if (event.call_type === 'video') {
+                if (event.call_type === "video") {
                     // Set panggilan video masuk
                     const incomingCall: Call = {
                         id: event.call_id,
-                        type: 'video' as CallType,
+                        type: "video" as CallType,
                         caller: event.caller,
                         receiver: {
                             id: authStore.user!.id!,
                             name: authStore.user!.name,
                             email: authStore.user!.email,
-                            avatar: authStore.user!.photo || authStore.user!.profile_photo_url || undefined,
+                            avatar:
+                                authStore.user!.photo ||
+                                authStore.user!.profile_photo_url ||
+                                undefined,
                         },
-                        status: 'ringing' as CallStatus,
+                        status: "ringing" as CallStatus,
                         token: event.agora_token,
                         channel: event.channel_name,
                     };
 
                     // Set ke store
                     callStore.setIncomingCall(incomingCall);
-                    callStore.setBackendCall(event.call, event.agora_token, event.channel_name);
+                    callStore.setBackendCall(
+                        event.call,
+                        event.agora_token,
+                        event.channel_name
+                    );
                 } else {
                     // voice call handle
                     handleIncomingCall(event);
@@ -983,14 +991,14 @@ onMounted(async () => {
                 console.log("✅ Call Accepted:", event);
 
                 // Update status untuk video dan voice call
-                callStore.updateCallStatus('ongoing');
+                callStore.updateCallStatus("ongoing");
                 callStore.setInCall(true);
 
                 if (event.call) {
                     callStore.updateBackendCall(event.call);
                 }
 
-                if (event.call_type !== 'video') {
+                if (event.call_type !== "video") {
                     handleCallAccepted(event);
                 }
             })
@@ -998,7 +1006,7 @@ onMounted(async () => {
             // C. Lawan bicara menolak panggilan
             .listen(".call-rejected", (event: any) => {
                 console.log("🚫 Call Rejected:", event);
-                callStore.updateCallStatus('rejected');
+                callStore.updateCallStatus("rejected");
 
                 setTimeout(() => {
                     callStore.clearCurrentCall();
@@ -1006,7 +1014,7 @@ onMounted(async () => {
                 }, 2000);
 
                 // voice call handler
-                if (event.call_type !== 'video') {
+                if (event.call_type !== "video") {
                     handleCallRejected();
                 }
             })
@@ -1014,7 +1022,7 @@ onMounted(async () => {
             // D. Panggilan dibatalkan
             .listen(".call-cancelled", (event: any) => {
                 console.log("❌ Call Cancelled:", event);
-                callStore.updateCallStatus('cancelled');
+                callStore.updateCallStatus("cancelled");
 
                 setTimeout(() => {
                     callStore.clearCurrentCall();
@@ -1025,14 +1033,14 @@ onMounted(async () => {
             // E. Panggilan selesai / ditutup
             .listen(".call-ended", (event: any) => {
                 console.log("❌ Call Ended:", event);
-                callStore.updateCallStatus('ended');
+                callStore.updateCallStatus("ended");
 
                 setTimeout(() => {
                     callStore.clearCurrentCall();
                 }, 2000);
 
                 // Voice call handler
-                if (event.call_type !== 'video') {
+                if (event.call_type !== "video") {
                     handleCallEnded();
                 }
             });
@@ -1197,11 +1205,10 @@ onUnmounted(() => {
         </div>
 
         <Teleport to="body">
-        
             <VoiceIncomingModal
                 v-if="showIncomingModal"
                 :caller-name="callStore.incomingCall?.caller?.name || 'Unknown'"
-                :caller-photo="callStore.incomingCall?.caller?.avatar || ''" 
+                :caller-photo="callStore.incomingCall?.caller?.avatar || ''"
                 @accept="acceptVoiceCall"
                 @reject="rejectVoiceCall"
             />
@@ -1209,16 +1216,16 @@ onUnmounted(() => {
             <VoiceCallingModal
                 v-if="showCallingModal"
                 :callee-name="remoteUser.name"
-                :callee-photo="remoteUser.avatar || ''" 
-                :call-status="callStore.callStatus || 'calling'" 
-                @cancel="endVoiceCall" 
+                :callee-photo="remoteUser.avatar || ''"
+                :call-status="callStore.callStatus || 'calling'"
+                @cancel="endVoiceCall"
             />
 
             <VoiceCallModal
                 v-if="showOngoingModal"
                 :remote-name="remoteUser.name"
                 :remote-photo="remoteUser.avatar || ''"
-                :is-muted="false" 
+                :is-muted="false"
                 :is-speaker-on="false"
                 @end-call="endVoiceCall"
                 @minimize="callStore.toggleMinimize"
@@ -1233,14 +1240,12 @@ onUnmounted(() => {
                 @end-call="endVoiceCall"
             />
 
-            <VideoCallingModal v-if="showVideoCallingModal"/>
-            <VideoIncomingModal v-if="showVideoIncomingModal"/>
-            <VideoCallModal v-if="showVideoCallModal"/>
-
+            <VideoCallingModal v-if="showVideoCallingModal" />
+            <VideoIncomingModal v-if="showVideoIncomingModal" />
+            <VideoCallModal v-if="showVideoCallModal" />
         </Teleport>
-        
-    
-        <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10" style="min-width: 0;">
+
+        <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10" style="min-width: 0">
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
                 <div
                     v-if="!activeContact"
@@ -1259,42 +1264,17 @@ onUnmounted(() => {
                 </div>
 
                 <div v-else class="d-flex flex-column h-100">
-                    <div class="card-header d-flex align-items-center p-3 border-bottom" style="min-height: 70px;" v-if="activeContact">
-                    <div class="d-flex align-items-center flex-grow-1">
-                        <button class="btn btn-icon btn-sm btn-active-light-primary d-lg-none me-3" @click="activeContact = null">
-                            <i class="fas fa-arrow-left fs-2"></i>
-                        </button>
-                        
-                        <div class="symbol symbol-40px symbol-circle me-3">
-                            <img :src="activeContact.photo ? `/storage/${activeContact.photo}` : '/media/avatars/blank.png'" alt="image">
-                        </div>
-                        
-                        <div class="d-flex flex-column">
-                            <span class="fw-bold text-gray-800 fs-6">
-                                {{ activeContact.display_name }}
-                            </span>
-                            <span class="text-muted fs-8">
-                                {{ activeContact.is_online ? 'Online' : formatLastSeen(activeContact.last_seen) }}
-                            </span>
-                        </div>
-                    </div>
-                    <div class="d-flex align-items-center gap-2">
-                        <button 
-                            v-if="!activeContact.is_saved"
-                            @click="openSaveContactModal(activeContact)" 
-                            class="btn btn-sm btn-light-primary d-none d-sm-inline-flex align-items-center"
-                        >
-                            <i class="fas fa-user-plus fs-7 me-1"></i> Simpan
-                        </button>
-
-                        <button @click="handleVoiceCall" :disabled="voiceProcessing || callProcessing" class="btn btn-icon btn-sm text-gray-500"><Phone class="w-20px h-20px" /></button>
-                        <button @click="handleVideoCall" :disabled="voiceProcessing || callProcessing" class="btn btn-icon btn-sm text-gray-500"><Video class="w-20px h-20px" /></button>
-
-                        
-                        
-                        <div class="position-relative">
-                            <button class="btn btn-icon btn-sm text-gray-500" @click.stop="toggleHeaderMenu">
-                                <i class="fas fa-ellipsis-v fs-4"></i>
+                    <div
+                        class="card-header d-flex align-items-center p-3 border-bottom"
+                        style="min-height: 70px"
+                        v-if="activeContact"
+                    >
+                        <div class="d-flex align-items-center flex-grow-1">
+                            <button
+                                class="btn btn-icon btn-sm btn-active-light-primary d-lg-none me-3"
+                                @click="activeContact = null"
+                            >
+                                <i class="fas fa-arrow-left fs-2"></i>
                             </button>
 
                             <div class="symbol symbol-40px symbol-circle me-3">
@@ -1323,6 +1303,7 @@ onUnmounted(() => {
                                 </span>
                             </div>
                         </div>
+
                         <div class="d-flex align-items-center gap-2">
                             <button
                                 v-if="!activeContact.is_saved"
@@ -1335,12 +1316,16 @@ onUnmounted(() => {
 
                             <button
                                 @click="handleVoiceCall"
-                                :disabled="voiceProcessing"
+                                :disabled="voiceProcessing || callProcessing"
                                 class="btn btn-icon btn-sm text-gray-500"
                             >
                                 <Phone class="w-20px h-20px" />
                             </button>
-                            <button class="btn btn-icon btn-sm text-gray-500">
+                            <button
+                                @click="handleVideoCall"
+                                :disabled="voiceProcessing || callProcessing"
+                                class="btn btn-icon btn-sm text-gray-500"
+                            >
                                 <Video class="w-20px h-20px" />
                             </button>
 
@@ -1418,6 +1403,7 @@ onUnmounted(() => {
                                         </a>
                                     </div>
                                 </div>
+
                                 <div
                                     v-if="isHeaderMenuOpen"
                                     @click="isHeaderMenuOpen = false"
