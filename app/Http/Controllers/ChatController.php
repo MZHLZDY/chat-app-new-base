@@ -15,6 +15,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;   
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver; 
+use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
+use FFMpeg\Format\Video\X264;
 use Kreait\Firebase\Contract\Database;
 
 class ChatController extends Controller
@@ -29,7 +31,7 @@ class ChatController extends Controller
     }
     
     /**
-     * 🆕 SEND NOTIFICATION TO FIREBASE
+     *  SEND NOTIFICATION TO FIREBASE
      */
     protected function sendNotification($receiverId, $senderId, $senderName, $message, $messageType = 'text')
     {
@@ -204,10 +206,11 @@ class ChatController extends Controller
      */
     public function sendMessage(Request $request)
     {
+        // 1. Validasi
         $validator = Validator::make($request->all(), [
             'receiver_id' => 'required|exists:users,id',
             'message'     => 'nullable|string',
-            'file'        => 'nullable|file|max:102400', 
+            'file'        => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx,mp4,mov,avi,mkv|max:51200',
             'reply_to_id' => 'nullable|exists:chat_messages,id'
         ]);
 
@@ -229,6 +232,7 @@ class ChatController extends Controller
             $fileMime = null;
             $fileSize = null;
             $msgType  = 'text'; 
+
             if ($request->hasFile('file')) {
                 $file = $request->file('file');
                 
@@ -236,22 +240,64 @@ class ChatController extends Controller
                     return response()->json(['message' => 'File korup atau gagal upload'], 400);
                 }
 
+                // AMBIL DATA ASLI
                 $originalName = $file->getClientOriginalName();
+                $fileName = $originalName; 
                 $fileMime = $file->getMimeType();
-                $fileSize = $file->getSize();
+                $fileSize = $file->getSize(); 
                 
-                $path = $file->storeAs('chat_files', time() . '_' . str_replace(' ', '_', $originalName), 'public');
-                
-                $filePath = $path;
-                $fileName = $originalName;
-                if (str_starts_with($fileMime, 'image/')) {
-                    $msgType = 'image';
-                } elseif (str_starts_with($fileMime, 'video/')) {
+                // --- LOGIKA VIDEO (FFMPEG) ---
+                if (str_starts_with($fileMime, 'video/')) {
+                    $physicalName = 'vid_' . time() . '_' . Str::random(10) . '.mp4';
+                    $tempPath = 'chat_files/temp/' . $physicalName;
+                    $finalPath = 'chat_files/' . $physicalName;
+                    
+                    $file->storeAs('chat_files/temp', $physicalName, 'public');
+
+                    try {
+                        // Proses Kompresi
+                        FFMpeg::fromDisk('public')
+                            ->open($tempPath)
+                            ->export()
+                            ->toDisk('public')
+                            ->inFormat(new X264('aac', 'libx264'))
+                            ->resize(1280, 720) 
+                            ->save($finalPath);
+
+                        // Hapus file mentahan
+                        Storage::disk('public')->delete($tempPath);
+                        
+                        $filePath = $finalPath;
+                        $fileMime = 'video/mp4'; 
+                        
+                        // Update Size
+                        if (Storage::disk('public')->exists($finalPath)) {
+                            $fileSize = Storage::disk('public')->size($finalPath);
+                        }
+
+                    } catch (\Exception $e) {
+                        // Fallback jika gagal kompres
+                        if (Storage::disk('public')->exists($tempPath)) {
+                            Storage::disk('public')->move($tempPath, $finalPath);
+                        }
+                        $filePath = $finalPath;
+                    }
                     $msgType = 'video';
-                } else {
-                    $msgType = 'file';
+                }
+                // --- LOGIKA GAMBAR / FILE LAIN ---
+                else {
+                    $physicalName = time() . '_' . str_replace(' ', '_', $originalName);
+                    $filePath = $file->storeAs('chat_files', $physicalName, 'public');
+                    
+                    if (str_starts_with($fileMime, 'image/')) {
+                        $msgType = 'image';
+                    } else {
+                        $msgType = 'file';
+                    }
                 }
             }
+
+            // Simpan ke DB
             $message = ChatMessage::create([
                 'sender_id'      => $senderId,
                 'receiver_id'    => $request->receiver_id,
@@ -269,6 +315,7 @@ class ChatController extends Controller
 
             $message->load(['sender', 'replyTo.sender']);
 
+            // Push Firebase
             $firebaseData = [
                 'id'             => $message->id,
                 'sender_id'      => $message->sender_id,
@@ -276,6 +323,7 @@ class ChatController extends Controller
                 'message'        => $message->message,
                 'file_path'      => $message->file_path,
                 'file_name'      => $message->file_name,
+                'file_size'      => $message->file_size,
                 'type'           => $message->type,
                 'created_at'     => $message->created_at->toIso8601String(),
                 'reply_to'       => $message->replyTo ? [
@@ -300,7 +348,7 @@ class ChatController extends Controller
                 'data'   => $message
             ]);
 
-        } catch (\Exception $e) {
+        } catch (\Exception $e) { 
             DB::rollBack();
             return response()->json(['message' => 'Server Error: ' . $e->getMessage()], 500);
         }
@@ -309,13 +357,35 @@ class ChatController extends Controller
     /**
      * 4. DOWNLOAD FILE
      */
-    public function downloadFile($id)
+    public function download($id)
     {
         $message = ChatMessage::findOrFail($id);
-        if (!$message->file_path || !Storage::disk('public')->exists($message->file_path)) {
-            return response()->json(['message' => 'File tidak ditemukan'], 404);
+
+        if (Auth::id() !== $message->sender_id && Auth::id() !== $message->receiver_id) {
+            return response()->json(['message' => 'Akses ditolak'], 403);
         }
-        return Storage::disk('public')->download($message->file_path, $message->file_name);
+
+        $relativePath = $message->file_path;
+        $relativePath = ltrim($relativePath, '/'); 
+        
+        $fullPath = storage_path("app/public/{$relativePath}");
+
+        if (!file_exists($fullPath)) {
+            return response()->json([
+                'message' => 'File fisik tidak ditemukan',
+                'searched_path' => $fullPath
+            ], 404);
+        }
+
+        if (ob_get_length()) {
+            ob_end_clean();
+        }
+
+        return response()->download($fullPath, $message->file_name, [
+            'Content-Type' => $message->file_mime_type ?? 'application/octet-stream',
+            'Content-Length' => filesize($fullPath),
+            'Cache-Control' => 'no-cache, private',
+        ]);
     }
 
     /**

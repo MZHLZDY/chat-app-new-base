@@ -2,9 +2,16 @@
 import { ref, onMounted, nextTick, computed, onUnmounted, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import axios from "@/libs/axios";
-import { toast } from "vue3-toastify";import { formatDistanceToNowStrict, format, isToday, isYesterday, isSameDay } from 'date-fns';
-import { id } from 'date-fns/locale';
-import { Phone, Video } from 'lucide-vue-next';
+import { toast } from "vue3-toastify";
+import {
+    formatDistanceToNowStrict,
+    format,
+    isToday,
+    isYesterday,
+    isSameDay,
+} from "date-fns";
+import { id } from "date-fns/locale";
+import { Phone, Video, Download } from "lucide-vue-next";
 import { useGlobalChatStore } from "@/stores/globalChat";
 import { usePersonalCall } from '@/composables/usePersonalCall';
 import VoiceCallModal from '@/components/call/voice/VoiceCallModal.vue';
@@ -20,19 +27,19 @@ import ContactForm from "./Form.vue";
 import EditForm from "./Edit.vue";
 
 // --- FIREBASE IMPORT ---
-import { db, auth } from "@/libs/firebase"; 
-import { 
-    ref as firebaseRef, 
+import { db, auth } from "@/libs/firebase";
+import {
+    ref as firebaseRef,
     onChildAdded,
-    onChildRemoved, 
+    onChildRemoved,
     onValue,
-    off, 
-    remove, 
-    set, 
+    off,
+    remove,
+    set,
     onDisconnect,
     type Unsubscribe,
     query,
-    limitToLast
+    limitToLast,
 } from "firebase/database";
 import { onAuthStateChanged } from "firebase/auth";
 
@@ -94,7 +101,7 @@ let unsubscribeOnlineAdded: Unsubscribe | null = null;
 let unsubscribeOnlineRemoved: Unsubscribe | null = null;
 
 // Ref untuk onValue (karena onValue cara cleanup-nya beda, pakai off)
-let connectedRef: any = null; 
+let connectedRef: any = null;
 let onlineRef: any = null;
 
 // --- CALL LOGIC ---
@@ -103,14 +110,25 @@ const callStore = useCallStore();
 const isCallActive = computed(() => !!callStore.currentCall);
 
 // Perbaikan 1: Casting status ke string agar tidak error type mismatch
-const showIncomingModal = computed(() => !!callStore.incomingCall && !callStore.isInCall);
-const showCallingModal = computed(() => isCallActive.value && (callStore.callStatus as string) === 'calling');
-const showOngoingModal = computed(() => isCallActive.value && (callStore.callStatus as string) === 'ongoing' && !callStore.isMinimized);
-const showFloatingModal = computed(() => isCallActive.value && callStore.isMinimized);
+const showIncomingModal = computed(
+    () => !!callStore.incomingCall && !callStore.isInCall
+);
+const showCallingModal = computed(
+    () => isCallActive.value && (callStore.callStatus as string) === "calling"
+);
+const showOngoingModal = computed(
+    () =>
+        isCallActive.value &&
+        (callStore.callStatus as string) === "ongoing" &&
+        !callStore.isMinimized
+);
+const showFloatingModal = computed(
+    () => isCallActive.value && callStore.isMinimized
+);
 
 // Perbaikan 2: Sesuaikan akses properti (caller.id & receiver)
 const remoteUser = computed(() => {
-    if (!callStore.currentCall) return { name: 'Unknown', avatar: '' };
+    if (!callStore.currentCall) return { name: "Unknown", avatar: "" };
 
     const call = callStore.currentCall;
     const myId = authStore.user?.id;
@@ -119,25 +137,25 @@ const remoteUser = computed(() => {
     if (call.caller && call.caller.id === myId) {
         // Error log bilang: propertinya 'receiver', bukan 'callee'
         // @ts-ignore (jika receiver kadang null di type definition)
-        return call.receiver || { name: 'User', avatar: '' }; 
+        return call.receiver || { name: "User", avatar: "" };
     } else {
-        return call.caller || { name: 'User', avatar: '' };
+        return call.caller || { name: "User", avatar: "" };
     }
 });
 
 // Pastikan destructuring ini sekarang sudah cocok dengan export useVoiceCall.ts di atas
-const { 
+const {
     startVoiceCall,
     acceptVoiceCall,
-    rejectVoiceCall, 
-    endVoiceCall, 
-    toggleAudio, 
+    rejectVoiceCall,
+    endVoiceCall,
+    toggleAudio,
     // toggleVideo,
-    handleIncomingCall, 
-    handleCallAccepted, 
-    handleCallRejected, 
-    handleCallEnded, 
-    processing: voiceProcessing 
+    handleIncomingCall,
+    handleCallAccepted,
+    handleCallRejected,
+    handleCallEnded,
+    processing: voiceProcessing,
 } = useVoiceCall();
 
 const isMinimized = ref(false); // State untuk mode minimize
@@ -147,7 +165,7 @@ const isSpeakerOn = ref(false); // State untuk speaker (UI only)
 
 const handleVoiceCall = () => {
     if (!activeContact.value) return;
-    
+
     // Perbaikan: Panggil startVoiceCall
     startVoiceCall(activeContact.value.id);
 };
@@ -171,7 +189,7 @@ const handleCancelCall = async () => {
 // 1. Logic Speaker (Simulasi Toggle)
 const toggleSpeaker = () => {
     isSpeakerOn.value = !isSpeakerOn.value;
-    // Note: Di browser, mengganti output audio ke speaker/earpiece 
+    // Note: Di browser, mengganti output audio ke speaker/earpiece
     // memerlukan enumerasi device yang kompleks. Untuk UI ini cukup state saja.
 };
 
@@ -245,18 +263,18 @@ const scrollToBottom = () => {
         if (chatBodyRef.value) {
             chatBodyRef.value.scrollTo({
                 top: chatBodyRef.value.scrollHeight,
-                behavior: 'smooth'
+                behavior: "smooth",
             });
         }
     });
 };
 
 const scrollToMessage = (id: number) => {
-    const el = document.getElementById('msg-' + id);
+    const el = document.getElementById("msg-" + id);
     if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.classList.add('bg-light-warning');
-        setTimeout(() => el.classList.remove('bg-light-warning'), 1000);
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+        el.classList.add("bg-light-warning");
+        setTimeout(() => el.classList.remove("bg-light-warning"), 1000);
     }
 };
 
@@ -269,40 +287,58 @@ const handleScroll = () => {
 };
 
 const formatTime = (dateString: string | null | undefined): string => {
-  if (!dateString) return new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) throw new Error('Invalid date');
-    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  } catch (error) {
-    return new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-  }
+    if (!dateString)
+        return new Date().toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    try {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) throw new Error("Invalid date");
+        return date.toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    } catch (error) {
+        return new Date().toLocaleTimeString("id-ID", {
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    }
 };
 
-const formatLastSeen = (dateInput: string | number | null | undefined): string => {
-    if (!dateInput) return 'offline';
+const formatLastSeen = (
+    dateInput: string | number | null | undefined
+): string => {
+    if (!dateInput) return "offline";
     try {
         const date = new Date(dateInput);
         if (isToday(date)) {
-            return `terakhir dilihat pukul ${format(date, 'HH:mm', { locale: id })}`;
-        } 
-        if (isYesterday(date)) {
-            return `terakhir dilihat kemarin pukul ${format(date, 'HH:mm', { locale: id })}`;
+            return `terakhir dilihat pukul ${format(date, "HH:mm", {
+                locale: id,
+            })}`;
         }
-        return `terakhir dilihat ${format(date, 'd MMM yyyy, HH:mm', { locale: id })}`;
+        if (isYesterday(date)) {
+            return `terakhir dilihat kemarin pukul ${format(date, "HH:mm", {
+                locale: id,
+            })}`;
+        }
+        return `terakhir dilihat ${format(date, "d MMM yyyy, HH:mm", {
+            locale: id,
+        })}`;
     } catch (error) {
-        return 'offline';
+        return "offline";
     }
 };
 
 const formatDateSeparator = (dateString: string): string => {
-    if (!dateString) return '';
+    if (!dateString) return "";
     const date = new Date(dateString);
-    
-    if (isToday(date)) return 'Hari Ini';
-    if (isYesterday(date)) return 'Kemarin';
-    
-    return format(date, 'd MMMM yyyy', { locale: id });
+
+    if (isToday(date)) return "Hari Ini";
+    if (isYesterday(date)) return "Kemarin";
+
+    return format(date, "d MMMM yyyy", { locale: id });
 };
 
 const shouldShowDateDivider = (index: number) => {
@@ -328,20 +364,22 @@ const selectContact = async (contact: any) => {
     activeContact.value = contact;
     globalChatStore.setActiveChat(contact.id);
     messages.value = [];
-    
-    const contactIndex = contacts.value.findIndex(c => c.id === contact.id);
+
+    const contactIndex = contacts.value.findIndex((c) => c.id === contact.id);
     if (contactIndex !== -1) {
         contacts.value[contactIndex].unread_count = 0;
     }
 
-    await getMessages(contact.id)
+    await getMessages(contact.id);
 };
 
 const getMessages = async (friendId: any) => {
     isLoadingMessages.value = true;
     try {
         const response = await axios.get(`/chat/messages/${friendId}`);
-        messages.value = response.data.data ? response.data.data : response.data;
+        messages.value = response.data.data
+            ? response.data.data
+            : response.data;
         scrollToBottom();
     } catch (error) {
         console.error(error);
@@ -363,55 +401,60 @@ const sendMessage = async () => {
         sender_id: currentUser.value?.id,
         receiver_id: activeContact.value.id,
         message: textContent,
-        file_path: file ? URL.createObjectURL(file) : null, 
-        type: file ? (file.type.startsWith('image') ? 'image' : 'file') : 'text',
+        file_path: file ? URL.createObjectURL(file) : null,
+        type: file
+            ? file.type.startsWith("image")
+                ? "image"
+                : "file"
+            : "text",
         created_at: new Date().toISOString(),
         read_at: null,
-        reply_to: replyingTo.value ? replyingTo.value : null
+        reply_to: replyingTo.value ? replyingTo.value : null,
     };
 
     messages.value.push(tempMessage);
     scrollToBottom();
     const formData = new FormData();
     formData.append("receiver_id", activeContact.value.id);
-    
+
     if (textContent) formData.append("message", textContent);
     if (file) formData.append("file", file);
-    
+
     if (replyingTo.value) {
         formData.append("reply_to_id", replyingTo.value.id);
     }
 
     const tempReply = replyingTo.value;
     newMessage.value = "";
-    replyingTo.value = null; 
+    replyingTo.value = null;
     if (fileInput.value) fileInput.value.value = "";
 
     try {
         const response = await axios.post("/chat/send", formData, {
-            headers: { "Content-Type": "multipart/form-data" }
+            headers: { "Content-Type": "multipart/form-data" },
         });
-        const realMessage = response.data.data ? response.data.data : response.data;
-        const index = messages.value.findIndex(m => m.id === tempId);
+        const realMessage = response.data.data
+            ? response.data.data
+            : response.data;
+        const index = messages.value.findIndex((m) => m.id === tempId);
         if (index !== -1) {
             messages.value[index] = realMessage;
         }
 
         refreshContactOrder(activeContact.value.id);
-
     } catch (error) {
         console.error("Gagal kirim pesan", error);
         toast.error("Gagal mengirim pesan");
-        messages.value = messages.value.filter(m => m.id !== tempId);
-        replyingTo.value = tempReply; 
+        messages.value = messages.value.filter((m) => m.id !== tempId);
+        replyingTo.value = tempReply;
     }
 };
 
 const setReply = (msg: any) => {
-    replyingTo.value = msg; 
+    replyingTo.value = msg;
     nextTick(() => {
-        const input = document.querySelector('textarea'); 
-        if(input) input.focus();
+        const input = document.querySelector("textarea");
+        if (input) input.focus();
     });
 };
 
@@ -420,31 +463,56 @@ const cancelReply = () => {
 };
 
 const isTempId = (id: any) => {
-    return typeof id === 'number' && id > 1000000000000;
+    return typeof id === "number" && id > 1000000000000;
 };
 
 const triggerFileUpload = () => {
     fileInput.value?.click();
 };
 
-const downloadAttachment = async (msg: any) => {
-    try {
-        const response = await axios.get(`/chat/download/${msg.id}`, { responseType: 'blob' });
-        const url = window.URL.createObjectURL(new Blob([response.data]));
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', msg.file_name || 'download');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    } catch (error) {
-        console.error("Gagal download", error);
-        toast.error("Gagal mengunduh file");
+const STORAGE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+const getFileUrl = (path: string) => {
+    if (!path) return "";
+    if (path.startsWith("http")) return path;
+    return `${STORAGE_URL}/storage/${path}`;
+};
+
+const downloadAttachment = (msg: any) => {
+    if (!msg.file_path) return;
+    let finalUrl = "";
+    const rawPath = msg.file_path;
+
+    const baseUrl = STORAGE_URL.endsWith("/")
+        ? STORAGE_URL.slice(0, -1)
+        : STORAGE_URL;
+
+    if (rawPath.startsWith("http")) {
+        finalUrl = rawPath;
+    } else {
+        let cleanPath = rawPath.startsWith("/")
+            ? rawPath.substring(1)
+            : rawPath;
+        if (cleanPath.startsWith("storage/")) {
+            finalUrl = `${baseUrl}/${cleanPath}`;
+        } else {
+            finalUrl = `${baseUrl}/storage/${cleanPath}`;
+        }
     }
+
+    const link = document.createElement("a");
+    link.href = finalUrl;
+    link.target = "_blank";
+
+    link.setAttribute("download", msg.file_name || "download");
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 };
 
 const refreshContactOrder = (contactId: any) => {
-    const idx = contacts.value.findIndex(c => c.id === contactId);
+    const idx = contacts.value.findIndex((c) => c.id === contactId);
     if (idx !== -1) {
         const contact = contacts.value.splice(idx, 1)[0];
         contacts.value.unshift(contact);
@@ -461,24 +529,30 @@ const closeDeleteModal = () => {
     messageToDelete.value = null;
 };
 
-const confirmDelete = async (type: 'me' | 'everyone') => {
+const confirmDelete = async (type: "me" | "everyone") => {
     if (!messageToDelete.value) return;
-    const isForEveryone = (type === 'everyone');
+    const isForEveryone = type === "everyone";
 
     try {
-        await axios.delete(`/chat/delete/${messageToDelete.value.id}`, { 
-            data: { 
-                delete_for_everyone: isForEveryone 
-            } 
+        await axios.delete(`/chat/delete/${messageToDelete.value.id}`, {
+            data: {
+                delete_for_everyone: isForEveryone,
+            },
         });
-        messages.value = messages.value.filter(m => m.id !== messageToDelete.value.id);
-        
-        toast.success(isForEveryone ? "Pesan dihapus untuk semua orang" : "Pesan dihapus untuk saya");
-        closeDeleteModal();
+        messages.value = messages.value.filter(
+            (m) => m.id !== messageToDelete.value.id
+        );
 
+        toast.success(
+            isForEveryone
+                ? "Pesan dihapus untuk semua orang"
+                : "Pesan dihapus untuk saya"
+        );
+        closeDeleteModal();
     } catch (error: any) {
         console.error("Error delete:", error);
-        const errorMsg = error.response?.data?.message || "Gagal menghapus pesan";
+        const errorMsg =
+            error.response?.data?.message || "Gagal menghapus pesan";
         toast.error(errorMsg);
     }
 };
@@ -513,16 +587,21 @@ const openEditModal = () => {
         toast.error("Tidak ada kontak yang dipilih");
         return;
     }
-    contactIdToEdit.value = activeContact.value.id; 
+    contactIdToEdit.value = activeContact.value.id;
     editModalTitle.value = "Edit Kontak";
-    isEditContactOpen.value = true; 
+    isEditContactOpen.value = true;
 };
 
 const handleContactUpdated = async () => {
     isEditContactOpen.value = false;
-    await fetchContacts(); 
-    if (activeContact.value && contactIdToEdit.value === activeContact.value.id) {
-        const updatedContact = contacts.value.find(c => c.id === activeContact.value.id);
+    await fetchContacts();
+    if (
+        activeContact.value &&
+        contactIdToEdit.value === activeContact.value.id
+    ) {
+        const updatedContact = contacts.value.find(
+            (c) => c.id === activeContact.value.id
+        );
         if (updatedContact) {
             activeContact.value = updatedContact;
         }
@@ -532,7 +611,7 @@ const handleContactUpdated = async () => {
 
 const updateContactStatus = (userId: any, isOnline: boolean) => {
     const strUserId = String(userId);
-    const contact = contacts.value.find(c => String(c.id) === strUserId);
+    const contact = contacts.value.find((c) => String(c.id) === strUserId);
     if (contact) {
         contact.is_online = isOnline;
         if (!isOnline) {
@@ -557,9 +636,9 @@ const openInfoModal = () => {
 };
 
 const openClearChatModal = () => {
-    isHeaderMenuOpen.value = false; 
+    isHeaderMenuOpen.value = false;
     if (!activeContact.value) return;
-    isClearChatModalOpen.value = true; 
+    isClearChatModalOpen.value = true;
 };
 
 const handleClearChat = async () => {
@@ -574,34 +653,42 @@ const handleClearChat = async () => {
         console.error(error);
         toast.error("Gagal membersihkan chat");
     } finally {
-        isClearChatModalOpen.value = false; 
+        isClearChatModalOpen.value = false;
     }
 };
 
 const handleTyping = () => {
     if (!activeContact.value || !currentUser.value) return;
-    const myTypingRef = firebaseRef(db, `typing_status/${currentUser.value.id}`);
+    const myTypingRef = firebaseRef(
+        db,
+        `typing_status/${currentUser.value.id}`
+    );
     set(myTypingRef, {
         is_typing: true,
-        receiver_id: activeContact.value.id
+        receiver_id: activeContact.value.id,
     });
     onDisconnect(myTypingRef).remove();
     if (typingTimeout) clearTimeout(typingTimeout);
     typingTimeout = setTimeout(() => {
-        set(myTypingRef, null); 
+        set(myTypingRef, null);
     }, 2000);
 };
 const listenToTypingStatus = (friendId: number) => {
     if (typingListenerOff) {
-        typingListenerOff(); 
+        typingListenerOff();
         typingListenerOff = null;
     }
 
     const friendTypingRef = firebaseRef(db, `typing_status/${friendId}`);
     typingListenerOff = onValue(friendTypingRef, (snapshot) => {
         const data = snapshot.val();
-        if (data && data.is_typing && data.receiver_id === currentUser.value?.id) {
-            isFriendTyping.value = true;setTimeout(() => {
+        if (
+            data &&
+            data.is_typing &&
+            data.receiver_id === currentUser.value?.id
+        ) {
+            isFriendTyping.value = true;
+            setTimeout(() => {
                 scrollToBottom();
             }, 100);
         } else {
@@ -614,9 +701,9 @@ const listenToTypingStatus = (friendId: number) => {
 // notificationSound.volume = 0.5;
 // const playNotificationSound = async () => {
 //     if (isMuted.value) return;
-    
+
 //     try {
-//         notificationSound.currentTime = 0; 
+//         notificationSound.currentTime = 0;
 //         await notificationSound.play();
 //     } catch (error) {
 //         console.warn("Gagal memutar notifikasi suara:", error);
@@ -630,14 +717,21 @@ const requestNotificationPermission = async () => {
 };
 
 const handleEscKey = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    if (e.key === "Escape") {
         if (isLightboxOpen.value) {
             closeLightbox();
             return;
         }
-        if (isAddContactOpen.value || isEditContactOpen.value || isDeleteModalOpen.value || isInfoModalOpen.value || isHeaderMenuOpen.value || isClearChatModalOpen.value) {
+        if (
+            isAddContactOpen.value ||
+            isEditContactOpen.value ||
+            isDeleteModalOpen.value ||
+            isInfoModalOpen.value ||
+            isHeaderMenuOpen.value ||
+            isClearChatModalOpen.value
+        ) {
             if (isHeaderMenuOpen.value) isHeaderMenuOpen.value = false;
-            if (isClearChatModalOpen.value) isClearChatModalOpen.value = false; 
+            if (isClearChatModalOpen.value) isClearChatModalOpen.value = false;
             return;
         }
         if (activeContact.value) {
@@ -651,40 +745,45 @@ const setupFirebaseListeners = () => {
     if (!currentUser.value) return;
     const myId = currentUser.value.id;
     const chatRefRaw = firebaseRef(db, `chats/${myId}`);
-    const chatQuery = query(chatRefRaw, limitToLast(50)); 
-    
+    const chatQuery = query(chatRefRaw, limitToLast(50));
+
     const processedMessageIds = new Set<number>();
-    
+
     unsubscribeChats = onChildAdded(chatQuery, async (snapshot) => {
         const messageKey = snapshot.key;
         const incomingMsg = snapshot.val();
-        
+
         if (!incomingMsg || !messageKey) {
             return;
         }
-        
+
         if (processedMessageIds.has(incomingMsg.id)) {
             return;
         }
-        
+
         processedMessageIds.add(incomingMsg.id);
-        
-        if (incomingMsg.type === 'delete_notify') {
-        console.log("Menerima perintah hapus untuk ID:", incomingMsg.target_message_id);
-        
-        const index = messages.value.findIndex(m => m.id === incomingMsg.target_message_id);
-        
-        if (index !== -1) {
-            messages.value.splice(index, 1);
-            // messages.value[index].message = "🚫 Pesan ini telah dihapus";
-            // messages.value[index].type = "deleted";
+
+        if (incomingMsg.type === "delete_notify") {
+            console.log(
+                "Menerima perintah hapus untuk ID:",
+                incomingMsg.target_message_id
+            );
+
+            const index = messages.value.findIndex(
+                (m) => m.id === incomingMsg.target_message_id
+            );
+
+            if (index !== -1) {
+                messages.value.splice(index, 1);
+                // messages.value[index].message = "🚫 Pesan ini telah dihapus";
+                // messages.value[index].type = "deleted";
+            }
+            return;
         }
-        return; 
-    }
-        const msgTime = new Date(incomingMsg.created_at).getTime(); 
+        const msgTime = new Date(incomingMsg.created_at).getTime();
         const now = Date.now();
         const ageInSeconds = (now - msgTime) / 1000;
-        
+
         if (ageInSeconds > 60) {
             return;
         }
@@ -692,34 +791,47 @@ const setupFirebaseListeners = () => {
         // if (incomingMsg.sender_id !== currentUser.value?.id) {
         //     playNotificationSound();
         // }
-        
-        if (activeContact.value && incomingMsg.sender_id === activeContact.value.id) {
-            const exists = messages.value.some((m: any) => m.id === incomingMsg.id);
-            
+
+        if (
+            activeContact.value &&
+            incomingMsg.sender_id === activeContact.value.id
+        ) {
+            const exists = messages.value.some(
+                (m: any) => m.id === incomingMsg.id
+            );
+
             if (!exists) {
                 messages.value.push(incomingMsg);
                 scrollToBottom();
-                
+
                 try {
-                        await axios.put(`/chat/message/${incomingMsg.id}/read`);
-                    } catch (error) {
-                }
+                    await axios.put(`/chat/message/${incomingMsg.id}/read`);
+                } catch (error) {}
             }
         }
-        
-        const contactIndex = contacts.value.findIndex(c => c.id === incomingMsg.sender_id);
-        
+
+        const contactIndex = contacts.value.findIndex(
+            (c) => c.id === incomingMsg.sender_id
+        );
+
         if (contactIndex !== -1) {
             const contact = contacts.value[contactIndex];
-            contact.last_message = incomingMsg.message || 
-                (incomingMsg.type === 'image' ? 'Gambar' : 
-                 incomingMsg.type === 'video' ? 'Video' : 'File');
+            contact.last_message =
+                incomingMsg.message ||
+                (incomingMsg.type === "image"
+                    ? "Gambar"
+                    : incomingMsg.type === "video"
+                    ? "Video"
+                    : "File");
             contact.last_message_time = incomingMsg.created_at;
-            
-            if (!activeContact.value || activeContact.value.id !== incomingMsg.sender_id) {
+
+            if (
+                !activeContact.value ||
+                activeContact.value.id !== incomingMsg.sender_id
+            ) {
                 contact.unread_count = (contact.unread_count || 0) + 1;
             }
-            
+
             contacts.value.splice(contactIndex, 1);
             contacts.value.unshift(contact);
         } else {
@@ -729,48 +841,50 @@ const setupFirebaseListeners = () => {
 
     const notifRefRaw = firebaseRef(db, `notifications/${myId}`);
     const processedNotifKeys = new Set<string>();
-    
+
     unsubscribeNotif = onChildAdded(notifRefRaw, (snapshot) => {
         const notifKey = snapshot.key;
         const notif = snapshot.val();
-        
+
         if (!notif || !notifKey || processedNotifKeys.has(notifKey)) {
             return;
         }
-        
+
         processedNotifKeys.add(notifKey);
-        
-        if (notif.type === 'read_receipt') {
-            if (activeContact.value && notif.reader_id === activeContact.value.id) {
+
+        if (notif.type === "read_receipt") {
+            if (
+                activeContact.value &&
+                notif.reader_id === activeContact.value.id
+            ) {
                 messages.value.forEach((msg: any) => {
                     if (msg.sender_id === myId && !msg.read_at) {
                         msg.read_at = notif.read_at;
                     }
                 });
             }
-        } else if (notif.type === 'message_deleted') {
-            messages.value = messages.value.filter((m: any) => m.id !== notif.message_id);
+        } else if (notif.type === "message_deleted") {
+            messages.value = messages.value.filter(
+                (m: any) => m.id !== notif.message_id
+            );
         }
     });
 
     const myOnlineRef = firebaseRef(db, `online_users/${myId}`);
     connectedRef = firebaseRef(db, ".info/connected");
-    
+
     onValue(connectedRef, (snap) => {
         if (snap.val() === true) {
-            
             set(myOnlineRef, true)
-                .then(() => {
-                })
-                .catch((error) => {
-                });
-            
+                .then(() => {})
+                .catch((error) => {});
+
             onDisconnect(myOnlineRef).remove();
         }
     });
 
-    onlineRef = firebaseRef(db, 'online_users');
-    
+    onlineRef = firebaseRef(db, "online_users");
+
     unsubscribeOnlineAdded = onChildAdded(onlineRef, (snapshot) => {
         if (snapshot.key) {
             updateContactStatus(snapshot.key, true);
@@ -784,9 +898,13 @@ const setupFirebaseListeners = () => {
     });
 };
 
-watch(messages, () => {
-    scrollToBottom();
-}, { deep: true });
+watch(
+    messages,
+    () => {
+        scrollToBottom();
+    },
+    { deep: true }
+);
 
 watch(activeContact, (newVal, oldVal) => {
     if (newVal?.id !== oldVal?.id) {
@@ -799,7 +917,7 @@ watch(activeContact, (newVal, oldVal) => {
         typingListenerOff = null;
     }
     if (newVal) {
-        isFriendTyping.value = false; 
+        isFriendTyping.value = false;
         listenToTypingStatus(newVal.id);
     }
 });
@@ -812,16 +930,16 @@ onMounted(async () => {
         onAuthStateChanged(auth, (firebaseUser) => {
             if (firebaseUser) {
                 setupFirebaseListeners();
-                axios.post('/chat/heartbeat').catch(() => {});
+                axios.post("/chat/heartbeat").catch(() => {});
                 heartbeatInterval.value = setInterval(() => {
-                    axios.post('/chat/heartbeat').catch(() => {});
+                    axios.post("/chat/heartbeat").catch(() => {});
                 }, 60000);
             } else {
             }
         });
     }
 
-    window.addEventListener('keydown', handleEscKey);
+    window.addEventListener("keydown", handleEscKey);
 
     // Listener for voice call
     const userId = authStore.user?.id;
@@ -921,7 +1039,6 @@ onMounted(async () => {
     }
 });
 
-
 onUnmounted(() => {
     if (unsubscribeChats) unsubscribeChats();
     if (unsubscribeNotif) unsubscribeNotif();
@@ -930,7 +1047,10 @@ onUnmounted(() => {
     if (connectedRef) off(connectedRef);
     if (onlineRef) off(onlineRef);
     if (currentUser.value) {
-        const myOnlineRef = firebaseRef(db, `online_users/${currentUser.value.id}`);
+        const myOnlineRef = firebaseRef(
+            db,
+            `online_users/${currentUser.value.id}`
+        );
         remove(myOnlineRef);
     }
 
@@ -938,61 +1058,133 @@ onUnmounted(() => {
         clearInterval(heartbeatInterval.value);
     }
 
-    window.removeEventListener('keydown', handleEscKey);
+    window.removeEventListener("keydown", handleEscKey);
 });
 </script>
 
 <template>
     <div class="d-flex flex-column flex-lg-row h-100">
-        
-        
-
-        <div class="flex-column flex-lg-row-auto w-100 w-lg-350px w-xl-400px mb-10 mb-lg-0">
+        <div
+            class="flex-column flex-lg-row-auto w-100 w-lg-350px w-xl-400px mb-10 mb-lg-0"
+        >
             <div class="card card-flush h-100">
                 <div class="card-header pt-7" id="kt_chat_contacts_header">
                     <div class="d-flex align-items-center w-100">
-                        <form class="w-100 position-relative me-3" autocomplete="off">
-                            <KTIcon icon-name="magnifier" icon-class="fs-2 text-lg-1 text-gray-500 position-absolute top-50 ms-5 translate-middle-y" />
-                            <input type="text" class="form-control form-control-solid px-15" placeholder="Cari kontak..." />
+                        <form
+                            class="w-100 position-relative me-3"
+                            autocomplete="off"
+                        >
+                            <KTIcon
+                                icon-name="magnifier"
+                                icon-class="fs-2 text-lg-1 text-gray-500 position-absolute top-50 ms-5 translate-middle-y"
+                            />
+                            <input
+                                type="text"
+                                class="form-control form-control-solid px-15"
+                                placeholder="Cari kontak..."
+                            />
                         </form>
-                        <button class="btn btn-sm btn-light-primary fw-bold" @click="openAddContactModal">
+                        <button
+                            class="btn btn-sm btn-light-primary fw-bold"
+                            @click="openAddContactModal"
+                        >
                             <KTIcon icon-name="plus" icon-class="fs-2" />
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="card-body pt-5" id="kt_chat_contacts_body">
-                    <div class="scroll-y me-n5 pe-5 h-200px h-lg-auto" style="max-height: 60vh;">
+                    <div
+                        class="scroll-y me-n5 pe-5 h-200px h-lg-auto"
+                        style="max-height: 60vh"
+                    >
                         <div v-if="isLoadingContact" class="text-center mt-5">
-                            <span class="spinner-border spinner-border-sm text-primary"></span>
+                            <span
+                                class="spinner-border spinner-border-sm text-primary"
+                            ></span>
                         </div>
-                        <div v-for="contact in contacts" :key="contact.id" @click="selectContact(contact)" class="d-flex align-items-center p-3 mb-2 rounded cursor-pointer contact-item position-relative overflow-hidden" :class="{ 'bg-light-primary': activeContact?.id === contact.id }">      
+                        <div
+                            v-for="contact in contacts"
+                            :key="contact.id"
+                            @click="selectContact(contact)"
+                            class="d-flex align-items-center p-3 mb-2 rounded cursor-pointer contact-item position-relative overflow-hidden"
+                            :class="{
+                                'bg-light-primary':
+                                    activeContact?.id === contact.id,
+                            }"
+                        >
                             <div class="d-flex align-items-center">
-                                <div class="symbol symbol-40px symbol-circle me-3">
-                                    <img :src="contact.photo ? `/storage/${contact.photo}` : '/media/avatars/blank.png'" alt="image">
-                                    <div v-if="contact.is_online" class="symbol-badge bg-success start-100 top-100 border-4 h-8px w-8px ms-n2 mt-n2"></div>
+                                <div
+                                    class="symbol symbol-40px symbol-circle me-3"
+                                >
+                                    <img
+                                        :src="
+                                            contact.photo
+                                                ? `/storage/${contact.photo}`
+                                                : '/media/avatars/blank.png'
+                                        "
+                                        alt="image"
+                                    />
+                                    <div
+                                        v-if="contact.is_online"
+                                        class="symbol-badge bg-success start-100 top-100 border-4 h-8px w-8px ms-n2 mt-n2"
+                                    ></div>
                                 </div>
-                                <div class="d-flex flex-column flex-grow-1 overflow-hidden">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div class="d-flex align-items-center overflow-hidden">
-                                            <span class="fw-bold text-gray-800 text-hover-primary fs-6 text-truncate">
+                                <div
+                                    class="d-flex flex-column flex-grow-1 overflow-hidden"
+                                >
+                                    <div
+                                        class="d-flex justify-content-between align-items-center"
+                                    >
+                                        <div
+                                            class="d-flex align-items-center overflow-hidden"
+                                        >
+                                            <span
+                                                class="fw-bold text-gray-800 text-hover-primary fs-6 text-truncate"
+                                            >
                                                 {{ contact.display_name }}
                                             </span>
-                                            
-                                            <span v-if="!contact.is_saved" class="badge badge-light-warning ms-2 fs-9 flex-shrink-0">
+
+                                            <span
+                                                v-if="!contact.is_saved"
+                                                class="badge badge-light-warning ms-2 fs-9 flex-shrink-0"
+                                            >
                                                 Unknown
                                             </span>
                                         </div>
                                     </div>
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <span class="text-muted fs-7 text-truncate pe-2" style="max-width: 150px;">
-                                            <span v-if="contact.last_message && contact.last_message_sender_id === currentUser?.id" class="me-1">
-                                                <i v-if="contact.last_message_read_at" class="fas fa-check-double text-primary fs-9"></i>
-                                                <i v-else class="fas fa-check-double text-gray-400 fs-9"></i>
+                                    <div
+                                        class="d-flex align-items-center justify-content-between"
+                                    >
+                                        <span
+                                            class="text-muted fs-7 text-truncate pe-2"
+                                            style="max-width: 150px"
+                                        >
+                                            <span
+                                                v-if="
+                                                    contact.last_message &&
+                                                    contact.last_message_sender_id ===
+                                                        currentUser?.id
+                                                "
+                                                class="me-1"
+                                            >
+                                                <i
+                                                    v-if="
+                                                        contact.last_message_read_at
+                                                    "
+                                                    class="fas fa-check-double text-primary fs-9"
+                                                ></i>
+                                                <i
+                                                    v-else
+                                                    class="fas fa-check-double text-gray-400 fs-9"
+                                                ></i>
                                             </span>
                                             {{ contact.email }}
                                         </span>
-                                        <span v-if="contact.unread_count > 0" class="badge badge-circle badge-primary w-20px h-20px fs-9">
+                                        <span
+                                            v-if="contact.unread_count > 0"
+                                            class="badge badge-circle badge-primary w-20px h-20px fs-9"
+                                        >
                                             {{ contact.unread_count }}
                                         </span>
                                     </div>
@@ -1050,12 +1242,20 @@ onUnmounted(() => {
     
         <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10" style="min-width: 0;">
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
-                <div v-if="!activeContact" class="card-body d-flex flex-column justify-content-center align-items-center h-100">
+                <div
+                    v-if="!activeContact"
+                    class="card-body d-flex flex-column justify-content-center align-items-center h-100"
+                >
                     <div class="symbol symbol-100px mb-5">
-                        <img src="/media/illustrations/sketchy-1/2.png" alt="Welcome" />
+                        <img
+                            src="/media/illustrations/sketchy-1/2.png"
+                            alt="Welcome"
+                        />
                     </div>
                     <h3 class="fw-bold text-gray-800">Selamat Datang</h3>
-                    <p class="text-muted">Silakan pilih kontak untuk mulai mengobrol.</p>
+                    <p class="text-muted">
+                        Silakan pilih kontak untuk mulai mengobrol.
+                    </p>
                 </div>
 
                 <div v-else class="d-flex flex-column h-100">
@@ -1097,185 +1297,671 @@ onUnmounted(() => {
                                 <i class="fas fa-ellipsis-v fs-4"></i>
                             </button>
 
-                            <div v-if="isHeaderMenuOpen" class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-bold w-200px py-3 show position-absolute end-0 mt-2 shadow bg-white" style="z-index: 105;">
-
-                                <div class="menu-item px-3">
-                                    <a href="#" class="menu-link px-3" @click.prevent="openInfoModal">
-                                        <i class="fas fa-info-circle me-2"></i> Info Kontak
-                                    </a>
-                                </div>
-
-                                <div class="menu-item px-3">
-                                    <a href="#" class="menu-link px-3" @click.prevent="isMuted = !isMuted">
-                                        <i class="fas me-2" :class="isMuted ? 'fa-volume-mute' : 'fa-volume-up'"></i> 
-                                        {{ isMuted ? 'Bunyikan Suara' : 'Bisukan Suara' }}
-                                    </a>
-                                </div>
-
-                                <div class="menu-item px-3">
-                                    <a href="#" class="menu-link px-3" @click.prevent="openClearChatModal">
-                                        <i class="fas fa-eraser me-2"></i> Bersihkan Chat
-                                    </a>
-                                </div>
-
-                                <div class="separator my-2"></div>
-
-                                <div class="menu-item px-3">
-                                    <a href="#" class="menu-link px-3" @click.prevent="openEditModal">
-                                        <i class="fas fa-user-edit me-2"></i> Edit Kontak
-                                    </a>
-                                </div>
+                            <div class="symbol symbol-40px symbol-circle me-3">
+                                <img
+                                    :src="
+                                        activeContact.photo
+                                            ? `/storage/${activeContact.photo}`
+                                            : '/media/avatars/blank.png'
+                                    "
+                                    alt="image"
+                                />
                             </div>
-                            <div v-if="isHeaderMenuOpen" @click="isHeaderMenuOpen = false" class="position-fixed top-0 start-0 w-100 h-100" style="z-index: 104;"></div>
+
+                            <div class="d-flex flex-column">
+                                <span class="fw-bold text-gray-800 fs-6">
+                                    {{ activeContact.display_name }}
+                                </span>
+                                <span class="text-muted fs-8">
+                                    {{
+                                        activeContact.is_online
+                                            ? "Online"
+                                            : formatLastSeen(
+                                                  activeContact.last_seen
+                                              )
+                                    }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button
+                                v-if="!activeContact.is_saved"
+                                @click="openSaveContactModal(activeContact)"
+                                class="btn btn-sm btn-light-primary d-none d-sm-inline-flex align-items-center"
+                            >
+                                <i class="fas fa-user-plus fs-7 me-1"></i>
+                                Simpan
+                            </button>
+
+                            <button
+                                @click="handleVoiceCall"
+                                :disabled="voiceProcessing"
+                                class="btn btn-icon btn-sm text-gray-500"
+                            >
+                                <Phone class="w-20px h-20px" />
+                            </button>
+                            <button class="btn btn-icon btn-sm text-gray-500">
+                                <Video class="w-20px h-20px" />
+                            </button>
+
+                            <div class="position-relative">
+                                <button
+                                    class="btn btn-icon btn-sm text-gray-500"
+                                    @click.stop="toggleHeaderMenu"
+                                >
+                                    <i class="fas fa-ellipsis-v fs-4"></i>
+                                </button>
+
+                                <div
+                                    v-if="isHeaderMenuOpen"
+                                    class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-bold w-200px py-3 show position-absolute end-0 mt-2 shadow bg-white"
+                                    style="z-index: 105"
+                                >
+                                    <div class="menu-item px-3">
+                                        <a
+                                            href="#"
+                                            class="menu-link px-3"
+                                            @click.prevent="openInfoModal"
+                                        >
+                                            <i
+                                                class="fas fa-info-circle me-2"
+                                            ></i>
+                                            Info Kontak
+                                        </a>
+                                    </div>
+
+                                    <div class="menu-item px-3">
+                                        <a
+                                            href="#"
+                                            class="menu-link px-3"
+                                            @click.prevent="isMuted = !isMuted"
+                                        >
+                                            <i
+                                                class="fas me-2"
+                                                :class="
+                                                    isMuted
+                                                        ? 'fa-volume-mute'
+                                                        : 'fa-volume-up'
+                                                "
+                                            ></i>
+                                            {{
+                                                isMuted
+                                                    ? "Bunyikan Suara"
+                                                    : "Bisukan Suara"
+                                            }}
+                                        </a>
+                                    </div>
+
+                                    <div class="menu-item px-3">
+                                        <a
+                                            href="#"
+                                            class="menu-link px-3"
+                                            @click.prevent="openClearChatModal"
+                                        >
+                                            <i class="fas fa-eraser me-2"></i>
+                                            Bersihkan Chat
+                                        </a>
+                                    </div>
+
+                                    <div class="separator my-2"></div>
+
+                                    <div class="menu-item px-3">
+                                        <a
+                                            href="#"
+                                            class="menu-link px-3"
+                                            @click.prevent="openEditModal"
+                                        >
+                                            <i
+                                                class="fas fa-user-edit me-2"
+                                            ></i>
+                                            Edit Kontak
+                                        </a>
+                                    </div>
+                                </div>
+                                <div
+                                    v-if="isHeaderMenuOpen"
+                                    @click="isHeaderMenuOpen = false"
+                                    class="position-fixed top-0 start-0 w-100 h-100"
+                                    style="z-index: 104"
+                                ></div>
+                            </div>
                         </div>
                     </div>
-                    </div>
-                    <div class="card-body p-4 chat-body-custom" ref="chatBodyRef" @scroll="handleScroll">
-                        <div v-if="isLoadingMessages" class="d-flex justify-content-center align-items-center h-100">
+                    <div
+                        class="card-body p-4 chat-body-custom"
+                        ref="chatBodyRef"
+                        @scroll="handleScroll"
+                    >
+                        <div
+                            v-if="isLoadingMessages"
+                            class="d-flex justify-content-center align-items-center h-100"
+                        >
                             <span class="spinner-border text-primary"></span>
                         </div>
-                        <div v-else v-for="(msg, index) in messages" :key="msg.id" :id="'msg-' + msg.id">
-                            <div v-if="shouldShowDateDivider(index)" class="d-flex justify-content-center my-4">
-                                <span class="badge badge-light-primary text-primary px-3 py-2 rounded-pill shadow-sm fs-9 fw-bold border">
+                        <div
+                            v-else
+                            v-for="(msg, index) in messages"
+                            :key="msg.id"
+                            :id="'msg-' + msg.id"
+                        >
+                            <div
+                                v-if="shouldShowDateDivider(index)"
+                                class="d-flex justify-content-center my-4"
+                            >
+                                <span
+                                    class="badge badge-light-primary text-primary px-3 py-2 rounded-pill shadow-sm fs-9 fw-bold border"
+                                >
                                     {{ formatDateSeparator(msg.created_at) }}
                                 </span>
                             </div>
-                            <div class="d-flex mb-4" :class="msg.sender_id === currentUser?.id ? 'justify-content-end' : 'justify-content-start'">
-                                <div class="d-flex flex-column" :class="msg.sender_id === currentUser?.id ? 'align-items-end' : 'align-items-start'">
-                                    
-                                    <div class="p-3 rounded shadow-sm position-relative group-hover"
-                                        :class="msg.sender_id === currentUser?.id 
-                                            ? 'bg-primary text-white rounded-bottom-end-0' 
-                                            : 'receiver-bubble rounded-bottom-start-0'"
-                                        style="max-width: 320px; min-width: 120px;">
-
-                                        <div v-if="msg.reply_to" 
+                            <div
+                                class="d-flex mb-4"
+                                :class="
+                                    msg.sender_id === currentUser?.id
+                                        ? 'justify-content-end'
+                                        : 'justify-content-start'
+                                "
+                            >
+                                <div
+                                    class="d-flex flex-column"
+                                    :class="
+                                        msg.sender_id === currentUser?.id
+                                            ? 'align-items-end'
+                                            : 'align-items-start'
+                                    "
+                                >
+                                    <div
+                                        class="p-3 rounded shadow-sm position-relative group-hover"
+                                        :class="
+                                            msg.sender_id === currentUser?.id
+                                                ? 'bg-primary text-white rounded-bottom-end-0'
+                                                : 'receiver-bubble rounded-bottom-start-0'
+                                        "
+                                        style="
+                                            max-width: 320px;
+                                            min-width: 120px;
+                                        "
+                                    >
+                                        <div
+                                            v-if="msg.reply_to"
                                             class="mb-2 p-2 rounded border-start border-4 cursor-pointer d-flex flex-column"
-                                            :class="msg.sender_id === currentUser?.id ? 'bg-black bg-opacity-10 border-white' : 'bg-secondary bg-opacity-25 border-primary'"
-                                            @click="scrollToMessage(msg.reply_to.id)">
-                                            
-                                            <span class="fw-bold fs-8 mb-1" 
-                                                :class="msg.sender_id === currentUser?.id ? 'text-white' : 'text-primary'">
-                                                {{ msg.reply_to.sender_id === currentUser?.id ? 'Anda' : (activeContact?.name || 'Teman') }}
+                                            :class="
+                                                msg.sender_id ===
+                                                currentUser?.id
+                                                    ? 'bg-black bg-opacity-10 border-white'
+                                                    : 'bg-secondary bg-opacity-25 border-primary'
+                                            "
+                                            @click="
+                                                scrollToMessage(msg.reply_to.id)
+                                            "
+                                        >
+                                            <span
+                                                class="fw-bold fs-8 mb-1"
+                                                :class="
+                                                    msg.sender_id ===
+                                                    currentUser?.id
+                                                        ? 'text-white'
+                                                        : 'text-primary'
+                                                "
+                                            >
+                                                {{
+                                                    msg.reply_to.sender_id ===
+                                                    currentUser?.id
+                                                        ? "Anda"
+                                                        : activeContact?.name ||
+                                                          "Teman"
+                                                }}
                                             </span>
 
-                                            <span class="fs-8 text-truncate" 
-                                                :class="msg.sender_id === currentUser?.id ? 'text-white text-opacity-75' : 'text-gray-600'">
-                                                <i v-if="msg.reply_to.type === 'image'" class="fas fa-camera me-1"></i>
-                                                <i v-else-if="msg.reply_to.type === 'video'" class="fas fa-video me-1"></i>
-                                                <i v-else-if="msg.reply_to.type === 'file'" class="fas fa-file me-1"></i>
-                                                {{ msg.reply_to.message || (msg.reply_to.type === 'text' ? '' : (msg.reply_to.type === 'image' ? 'Foto' : 'File')) }}
+                                            <span
+                                                class="fs-8 text-truncate"
+                                                :class="
+                                                    msg.sender_id ===
+                                                    currentUser?.id
+                                                        ? 'text-white text-opacity-75'
+                                                        : 'text-gray-600'
+                                                "
+                                            >
+                                                <i
+                                                    v-if="
+                                                        msg.reply_to.type ===
+                                                        'image'
+                                                    "
+                                                    class="fas fa-camera me-1"
+                                                ></i>
+                                                <i
+                                                    v-else-if="
+                                                        msg.reply_to.type ===
+                                                        'video'
+                                                    "
+                                                    class="fas fa-video me-1"
+                                                ></i>
+                                                <i
+                                                    v-else-if="
+                                                        msg.reply_to.type ===
+                                                        'file'
+                                                    "
+                                                    class="fas fa-file me-1"
+                                                ></i>
+                                                {{
+                                                    msg.reply_to.message ||
+                                                    (msg.reply_to.type ===
+                                                    "text"
+                                                        ? ""
+                                                        : msg.reply_to.type ===
+                                                          "image"
+                                                        ? "Foto"
+                                                        : msg.reply_to.type ===
+                                                          "video"
+                                                        ? "Video"
+                                                        : "File")
+                                                }}
                                             </span>
                                         </div>
-                                        <div v-if="msg.type === 'image'" class="mb-2 position-relative">
-                                            <img :src="msg.file_path.startsWith('blob') ? msg.file_path : `/storage/${msg.file_path}`" 
-                                                class="rounded w-100 cursor-pointer border" 
-                                                @click="openLightbox(msg.file_path)" 
-                                                style="max-height: 250px; object-fit: cover;">
-                                            <button @click.stop="downloadAttachment(msg)" class="btn btn-icon btn-sm btn-dark position-absolute bottom-0 end-0 m-2 shadow-sm download-btn" style="width: 30px; height: 30px; background-color: rgba(0,0,0,0.6); border: none;" title="Download Gambar"><i class="fas fa-download fs-8 text-white"></i></button>
+
+                                        <div
+                                            v-if="msg.type === 'video'"
+                                            class="mb-2"
+                                        >
+                                            <div
+                                                class="ratio ratio-16x9 rounded overflow-hidden bg-black mb-1 border border-secondary border-opacity-25"
+                                                style="min-width: 260px"
+                                            >
+                                                <video
+                                                    controls
+                                                    preload="metadata"
+                                                    class="w-100 h-100 object-fit-contain"
+                                                >
+                                                    <source
+                                                        :src="
+                                                            getFileUrl(
+                                                                msg.file_path
+                                                            )
+                                                        "
+                                                        type="video/mp4"
+                                                    />
+                                                    Browser Anda tidak mendukung
+                                                    tag video.
+                                                </video>
+                                            </div>
+                                            <div
+                                                class="d-flex justify-content-between align-items-center px-1"
+                                            >
+                                                <span
+                                                    class="fs-9"
+                                                    :class="
+                                                        msg.sender_id ===
+                                                        currentUser?.id
+                                                            ? 'text-white text-opacity-75'
+                                                            : 'text-gray-600'
+                                                    "
+                                                >
+                                                    <i
+                                                        class="fas fa-film me-1"
+                                                    ></i>
+                                                    {{
+                                                        msg.file_size
+                                                            ? (
+                                                                  msg.file_size /
+                                                                  1024 /
+                                                                  1024
+                                                              ).toFixed(1) +
+                                                              " MB"
+                                                            : "Video"
+                                                    }}
+                                                </span>
+                                                <button
+                                                    @click.prevent="
+                                                        downloadAttachment(msg)
+                                                    "
+                                                    class="btn btn-sm btn-icon p-0 h-20px w-20px"
+                                                    :class="
+                                                        msg.sender_id ===
+                                                        currentUser?.id
+                                                            ? 'btn-active-color-white text-white'
+                                                            : 'btn-active-color-primary text-gray-600'
+                                                    "
+                                                    title="Unduh Video"
+                                                >
+                                                    <i
+                                                        class="fas fa-download fs-7"
+                                                    ></i>
+                                                </button>
+                                            </div>
                                         </div>
 
-                                        <div v-else-if="msg.type === 'file'" class="d-flex align-items-center p-2 rounded mb-2" :class="msg.sender_id === currentUser?.id ? 'bg-white bg-opacity-20' : 'bg-light'">
-                                            <div class="symbol symbol-35px me-2">
-                                                <span class="symbol-label fw-bold text-primary bg-white">FILE</span>
-                                            </div>
-                                            <div class="text-truncate" style="max-width: 150px;">
-                                                <a href="#" @click.prevent="downloadAttachment(msg)" class="fw-bold fs-7 d-block text-truncate" :class="msg.sender_id === currentUser?.id ? 'text-white' : 'text-gray-800'">{{ msg.file_name }}</a>
-                                                <div class="fs-8" :class="msg.sender_id === currentUser?.id ? 'text-white text-opacity-75' : 'text-muted'">{{ (msg.file_size / 1024).toFixed(0) }} KB</div>
-                                            </div>
-                                            <button @click="downloadAttachment(msg)" class="btn btn-sm btn-icon ms-auto" :class="msg.sender_id === currentUser?.id ? 'btn-white text-primary' : 'btn-light text-gray-600'">
-                                                <i class="fas fa-download fs-7"></i>
+                                        <div
+                                            v-else-if="msg.type === 'image'"
+                                            class="mb-2 position-relative"
+                                        >
+                                            <img
+                                                :src="
+                                                    msg.file_path.startsWith(
+                                                        'blob'
+                                                    )
+                                                        ? msg.file_path
+                                                        : getFileUrl(
+                                                              msg.file_path
+                                                          )
+                                                "
+                                                class="rounded w-100 cursor-pointer border"
+                                                @click="
+                                                    openLightbox(msg.file_path)
+                                                "
+                                                style="
+                                                    max-height: 250px;
+                                                    object-fit: cover;
+                                                "
+                                            />
+
+                                            <button
+                                                @click.stop="
+                                                    downloadAttachment(msg)
+                                                "
+                                                class="btn btn-icon btn-sm btn-dark position-absolute bottom-0 end-0 m-2 shadow-sm download-btn"
+                                                style="
+                                                    width: 30px;
+                                                    height: 30px;
+                                                    background-color: rgba(
+                                                        0,
+                                                        0,
+                                                        0,
+                                                        0.6
+                                                    );
+                                                    border: none;
+                                                "
+                                                title="Download Gambar"
+                                            >
+                                                <i
+                                                    class="fas fa-download fs-8 text-white"
+                                                ></i>
                                             </button>
                                         </div>
 
-                                        <div v-if="msg.message" class="fs-6 px-1 text-break">
+                                        <div
+                                            v-else-if="msg.type === 'file'"
+                                            class="d-flex align-items-center p-2 rounded mb-2"
+                                            :class="
+                                                msg.sender_id ===
+                                                currentUser?.id
+                                                    ? 'bg-white bg-opacity-20'
+                                                    : 'bg-light'
+                                            "
+                                        >
+                                            <div
+                                                class="symbol symbol-35px me-2"
+                                            >
+                                                <span
+                                                    class="symbol-label fw-bold text-primary bg-white"
+                                                    >FILE</span
+                                                >
+                                            </div>
+                                            <div
+                                                class="text-truncate"
+                                                style="max-width: 150px"
+                                            >
+                                                <a
+                                                    href="#"
+                                                    @click.prevent="
+                                                        downloadAttachment(msg)
+                                                    "
+                                                    class="fw-bold fs-7 d-block text-truncate"
+                                                    :class="
+                                                        msg.sender_id ===
+                                                        currentUser?.id
+                                                            ? 'text-white'
+                                                            : 'text-gray-800'
+                                                    "
+                                                >
+                                                    {{ msg.file_name }}
+                                                </a>
+                                                <div
+                                                    class="fs-8"
+                                                    :class="
+                                                        msg.sender_id ===
+                                                        currentUser?.id
+                                                            ? 'text-white text-opacity-75'
+                                                            : 'text-muted'
+                                                    "
+                                                >
+                                                    {{
+                                                        (
+                                                            msg.file_size / 1024
+                                                        ).toFixed(0)
+                                                    }}
+                                                    KB
+                                                </div>
+                                            </div>
+                                            <button
+                                                @click="downloadAttachment(msg)"
+                                                class="btn btn-sm btn-icon ms-auto"
+                                                :class="
+                                                    msg.sender_id ===
+                                                    currentUser?.id
+                                                        ? 'btn-white text-primary'
+                                                        : 'btn-light text-gray-600'
+                                                "
+                                            >
+                                                <i
+                                                    class="fas fa-download fs-7"
+                                                ></i>
+                                            </button>
+                                        </div>
+
+                                        <div
+                                            v-if="msg.message"
+                                            class="fs-6 px-1 text-break"
+                                        >
                                             {{ msg.message }}
                                         </div>
 
-                                        <div class="d-flex justify-content-end align-items-center mt-1">
-                                            <span class="fs-9 me-1" :class="msg.sender_id === currentUser?.id ? 'text-white text-opacity-75' : 'text-muted'">
+                                        <div
+                                            class="d-flex justify-content-end align-items-center mt-1"
+                                        >
+                                            <span
+                                                class="fs-9 me-1"
+                                                :class="
+                                                    msg.sender_id ===
+                                                    currentUser?.id
+                                                        ? 'text-white text-opacity-75'
+                                                        : 'text-muted'
+                                                "
+                                            >
                                                 {{ formatTime(msg.created_at) }}
                                             </span>
-                                            <div v-if="msg.sender_id === currentUser?.id" class="ms-1">
-                                                <span v-if="isTempId(msg.id)" title="Mengirim...">
-                                                    <i class="fas fa-check text-white text-opacity-50 fs-9"></i>
+                                            <div
+                                                v-if="
+                                                    msg.sender_id ===
+                                                    currentUser?.id
+                                                "
+                                                class="ms-1"
+                                            >
+                                                <span
+                                                    v-if="isTempId(msg.id)"
+                                                    title="Mengirim..."
+                                                >
+                                                    <i
+                                                        class="fas fa-check text-white text-opacity-50 fs-9"
+                                                    ></i>
                                                 </span>
-                                                <span v-else-if="msg.read_at" title="Dibaca">
-                                                    <i class="fas fa-check-double tick-read fs-9"></i> 
+                                                <span
+                                                    v-else-if="msg.read_at"
+                                                    title="Dibaca"
+                                                >
+                                                    <i
+                                                        class="fas fa-check-double tick-read fs-9"
+                                                    ></i>
                                                 </span>
                                                 <span v-else title="Terkirim">
-                                                    <i class="fas fa-check-double text-white text-opacity-50 fs-9"></i>
+                                                    <i
+                                                        class="fas fa-check-double text-white text-opacity-50 fs-9"
+                                                    ></i>
                                                 </span>
                                             </div>
                                         </div>
-                                        <div class="position-absolute top-0 end-0 mt-n2 me-n2 d-flex gap-1" 
-                                            style="opacity: 0; transition: opacity 0.2s;" 
-                                            onmouseover="this.style.opacity=1" 
-                                            onmouseout="this.style.opacity=0">
-                                            <button @click="setReply(msg)" class="btn btn-sm btn-icon btn-circle btn-white shadow w-20px h-20px" title="Balas">
-                                                <i class="fas fa-reply fs-9 text-warning"></i>
+
+                                        <div
+                                            class="position-absolute top-0 end-0 mt-n2 me-n2 d-flex gap-1"
+                                            style="
+                                                opacity: 0;
+                                                transition: opacity 0.2s;
+                                            "
+                                            onmouseover="this.style.opacity=1"
+                                            onmouseout="this.style.opacity=0"
+                                        >
+                                            <button
+                                                @click="setReply(msg)"
+                                                class="btn btn-sm btn-icon btn-circle btn-white shadow w-20px h-20px"
+                                                title="Balas"
+                                            >
+                                                <i
+                                                    class="fas fa-reply fs-9 text-warning"
+                                                ></i>
                                             </button>
-                                            <button @click="openDeleteModal(msg)" class="btn btn-sm btn-icon btn-circle btn-white shadow w-20px h-20px" title="Hapus">
-                                                <i class="fas fa-trash fs-9 text-danger"></i>
+                                            <button
+                                                @click="openDeleteModal(msg)"
+                                                class="btn btn-sm btn-icon btn-circle btn-white shadow w-20px h-20px"
+                                                title="Hapus"
+                                            >
+                                                <i
+                                                    class="fas fa-trash fs-9 text-danger"
+                                                ></i>
                                             </button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                            <div v-if="isFriendTyping" class="d-flex justify-content-start mb-10">
-                                <div class="d-flex flex-column align-items-start">
-                                    <div class="d-flex align-items-center mb-2">
-                                        <div class="symbol symbol-35px symbol-circle">
-                                            <img :src="activeContact?.photo ? `/storage/${activeContact.photo}` : '/media/avatars/blank.png'" alt="image" />
-                                        </div>
-                                        <div class="ms-3 p-4 bg-light rounded shadow-sm text-dark fw-bold text-start d-inline-block" 
-                                            style="border-bottom-left-radius: 0 !important; min-width: 60px;">
-                                            
-                                            <div class="typing-indicator">
-                                                <span></span>
-                                                <span></span>
-                                                <span></span>
-                                            </div>
+                        <div
+                            v-if="isFriendTyping"
+                            class="d-flex justify-content-start mb-10"
+                        >
+                            <div class="d-flex flex-column align-items-start">
+                                <div class="d-flex align-items-center mb-2">
+                                    <div
+                                        class="symbol symbol-35px symbol-circle"
+                                    >
+                                        <img
+                                            :src="
+                                                activeContact?.photo
+                                                    ? `/storage/${activeContact.photo}`
+                                                    : '/media/avatars/blank.png'
+                                            "
+                                            alt="image"
+                                        />
+                                    </div>
+                                    <div
+                                        class="ms-3 p-4 bg-light rounded shadow-sm text-dark fw-bold text-start d-inline-block"
+                                        style="
+                                            border-bottom-left-radius: 0 !important;
+                                            min-width: 60px;
+                                        "
+                                    >
+                                        <div class="typing-indicator">
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                        </div>
                     </div>
-                    <div v-if="replyingTo" class="px-4 py-2 bg-light border-top d-flex justify-content-between align-items-center">
-                        <div class="d-flex flex-column border-start border-4 border-primary ps-2">
+                    <div
+                        v-if="replyingTo"
+                        class="px-4 py-2 bg-light border-top d-flex justify-content-between align-items-center"
+                    >
+                        <div
+                            class="d-flex flex-column border-start border-4 border-primary ps-2"
+                        >
                             <span class="text-primary fw-bold small">
-                                {{ replyingTo.sender_id === currentUser.id ? 'Anda' : activeContact.name }}
+                                {{
+                                    replyingTo.sender_id === currentUser.id
+                                        ? "Anda"
+                                        : activeContact.name
+                                }}
                             </span>
-                            
-                            <span class="text-muted small text-truncate" style="max-width: 300px;">
-                                <i v-if="replyingTo.type === 'image'" class="fas fa-camera me-1"></i>
-                                <i v-else-if="replyingTo.type === 'video'" class="fas fa-video me-1"></i>
-                                <i v-else-if="replyingTo.type === 'file'" class="fas fa-file me-1"></i>
-                                {{ replyingTo.message || (replyingTo.type === 'image' ? 'Foto' : 'File') }}
+
+                            <span
+                                class="text-muted small text-truncate"
+                                style="max-width: 300px"
+                            >
+                                <i
+                                    v-if="replyingTo.type === 'image'"
+                                    class="fas fa-camera me-1"
+                                ></i>
+                                <i
+                                    v-else-if="replyingTo.type === 'video'"
+                                    class="fas fa-video me-1"
+                                ></i>
+                                <i
+                                    v-else-if="replyingTo.type === 'file'"
+                                    class="fas fa-file me-1"
+                                ></i>
+                                {{
+                                    replyingTo.message ||
+                                    (replyingTo.type === "image"
+                                        ? "Foto"
+                                        : "File")
+                                }}
                             </span>
                         </div>
-                        
-                        <button @click="cancelReply" class="btn btn-sm btn-icon btn-light-danger">
+
+                        <button
+                            @click="cancelReply"
+                            class="btn btn-sm btn-icon btn-light-danger"
+                        >
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
                     <transition name="fade">
-                        <button 
-                            v-if="showScrollButton" 
-                            @click="scrollToBottom" 
+                        <button
+                            v-if="showScrollButton"
+                            @click="scrollToBottom"
                             class="btn btn-primary btn-icon shadow-sm rounded-circle position-absolute"
-                            style="bottom: 100px; right: 30px; z-index: 10; width: 30px; height: 30px;"
+                            style="
+                                bottom: 100px;
+                                right: 30px;
+                                z-index: 10;
+                                width: 30px;
+                                height: 30px;
+                            "
                         >
                             <i class="fas fa-arrow-down fs-4"></i>
                         </button>
                     </transition>
-                    <div class="card-footer pt-4 pb-4" style="min-height: 80px;">
+                    <div class="card-footer pt-4 pb-4" style="min-height: 80px">
                         <div class="d-flex align-items-center">
-                            <button class="btn btn-sm btn-icon btn-active-light-primary me-2" @click="triggerFileUpload"><KTIcon icon-name="paper-clip" icon-class="fs-3" /></button>
-                            <input type="file" ref="fileInput" class="d-none" @change="sendMessage" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
-                            <input v-model="newMessage" @keyup.enter="sendMessage" type="text" @input="handleTyping" class="form-control form-control-solid me-3" placeholder="Ketik pesan..." />
-                            <button class="btn btn-primary btn-icon" @click="sendMessage"><KTIcon icon-name="send" icon-class="fs-2" /></button>
+                            <button
+                                class="btn btn-sm btn-icon btn-active-light-primary me-2"
+                                @click="triggerFileUpload"
+                            >
+                                <KTIcon
+                                    icon-name="paper-clip"
+                                    icon-class="fs-3"
+                                />
+                            </button>
+                            <input
+                                type="file"
+                                ref="fileInput"
+                                class="d-none"
+                                @change="sendMessage"
+                                accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                            />
+                            <input
+                                v-model="newMessage"
+                                @keyup.enter="sendMessage"
+                                type="text"
+                                @input="handleTyping"
+                                class="form-control form-control-solid me-3"
+                                placeholder="Ketik pesan..."
+                            />
+                            <button
+                                class="btn btn-primary btn-icon"
+                                @click="sendMessage"
+                            >
+                                <KTIcon icon-name="send" icon-class="fs-2" />
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1285,65 +1971,152 @@ onUnmounted(() => {
 
     <!-- Modal State -->
     <div v-if="isAddContactOpen" class="modal-overlay">
-        <div class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden" style="max-width: 500px; width: 100%;">
-            <ContactForm @close="isAddContactOpen = false" @refresh="fetchContacts" />
+        <div
+            class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden"
+            style="max-width: 500px; width: 100%"
+        >
+            <ContactForm
+                @close="isAddContactOpen = false"
+                @refresh="fetchContacts"
+            />
         </div>
     </div>
     <div v-if="isEditContactOpen" class="modal-overlay">
-        <div class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden" style="max-width: 500px; width: 100%;">
-            <EditForm v-if="isEditContactOpen" :contactId="contactIdToEdit" :title="editModalTitle"  @close="isEditContactOpen = false" @updated="handleContactUpdated" @refresh="fetchContacts" />
+        <div
+            class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden"
+            style="max-width: 500px; width: 100%"
+        >
+            <EditForm
+                v-if="isEditContactOpen"
+                :contactId="contactIdToEdit"
+                :title="editModalTitle"
+                @close="isEditContactOpen = false"
+                @updated="handleContactUpdated"
+                @refresh="fetchContacts"
+            />
         </div>
     </div>
-    <div v-if="isLightboxOpen" class="lightbox-overlay" @click.self="closeLightbox">
+    <div
+        v-if="isLightboxOpen"
+        class="lightbox-overlay"
+        @click.self="closeLightbox"
+    >
         <div class="lightbox-content position-relative text-center">
-            <button @click="closeLightbox" class="btn btn-icon btn-sm btn-dark position-absolute top-0 end-0 m-3 shadow z-index-10"><i class="fas fa-times fs-2"></i></button>
-            <img :src="activeLightboxUrl" class="img-fluid rounded shadow-lg" style="max-height: 85vh; max-width: 90vw;" />
+            <button
+                @click="closeLightbox"
+                class="btn btn-icon btn-sm btn-dark position-absolute top-0 end-0 m-3 shadow z-index-10"
+            >
+                <i class="fas fa-times fs-2"></i>
+            </button>
+            <img
+                :src="activeLightboxUrl"
+                class="img-fluid rounded shadow-lg"
+                style="max-height: 85vh; max-width: 90vw"
+            />
         </div>
     </div>
     <div v-if="isDeleteModalOpen" class="modal-overlay">
-        <div class="modal-content bg-white rounded shadow p-5 text-center" style="width: 350px;">
-            <div class="bg-light-danger mb-4"><i class="fas fa-trash fs-2 text-danger p-3"></i></div>
+        <div
+            class="modal-content bg-white rounded shadow p-5 text-center"
+            style="width: 350px"
+        >
+            <div class="bg-light-danger mb-4">
+                <i class="fas fa-trash fs-2 text-danger p-3"></i>
+            </div>
             <h3 class="fw-bold text-gray-800 mb-1">Hapus Pesan?</h3>
-            <p class="text-muted fs-7 mb-4">Pesan yang dihapus tidak dapat dikembalikan.</p>
+            <p class="text-muted fs-7 mb-4">
+                Pesan yang dihapus tidak dapat dikembalikan.
+            </p>
             <div class="d-grid gap-2">
-                <button @click="confirmDelete('me')" class="btn btn-light-primary">Hapus untuk saya</button>
-                <button v-if="messageToDelete?.sender_id === currentUser?.id" @click="confirmDelete('everyone')" class="btn btn-light-danger">Hapus untuk semua orang</button>
-                <button @click="closeDeleteModal" class="btn btn-link text-muted btn-sm">Batal</button>
+                <button
+                    @click="confirmDelete('me')"
+                    class="btn btn-light-primary"
+                >
+                    Hapus untuk saya
+                </button>
+                <button
+                    v-if="messageToDelete?.sender_id === currentUser?.id"
+                    @click="confirmDelete('everyone')"
+                    class="btn btn-light-danger"
+                >
+                    Hapus untuk semua orang
+                </button>
+                <button
+                    @click="closeDeleteModal"
+                    class="btn btn-link text-muted btn-sm"
+                >
+                    Batal
+                </button>
             </div>
         </div>
     </div>
-    <div v-if="isInfoModalOpen" class="modal-overlay" @click.self="isInfoModalOpen = false">
-        <div class="modal-content bg-white rounded shadow p-0 overflow-hidden" style="max-width: 400px; width: 100%;">
-            <div class="modal-header p-4 border-bottom d-flex justify-content-between align-items-center">
+    <div
+        v-if="isInfoModalOpen"
+        class="modal-overlay"
+        @click.self="isInfoModalOpen = false"
+    >
+        <div
+            class="modal-content bg-white rounded shadow p-0 overflow-hidden"
+            style="max-width: 400px; width: 100%"
+        >
+            <div
+                class="modal-header p-4 border-bottom d-flex justify-content-between align-items-center"
+            >
                 <h3 class="fw-bold m-0">Info Kontak</h3>
-                <div class="btn btn-icon btn-sm btn-active-light-primary ms-2" @click="isInfoModalOpen = false">
+                <div
+                    class="btn btn-icon btn-sm btn-active-light-primary ms-2"
+                    @click="isInfoModalOpen = false"
+                >
                     <i class="fas fa-times fs-2"></i>
                 </div>
             </div>
             <div class="modal-body p-5 text-center">
                 <div class="symbol symbol-100px symbol-circle mb-4">
-                    <img :src="activeContact?.photo ? `/storage/${activeContact.photo}` : '/media/avatars/blank.png'" alt="image" style="object-fit: cover;" />
+                    <img
+                        :src="
+                            activeContact?.photo
+                                ? `/storage/${activeContact.photo}`
+                                : '/media/avatars/blank.png'
+                        "
+                        alt="image"
+                        style="object-fit: cover"
+                    />
                 </div>
-                
-                <h4 class="fw-bold text-gray-800">{{ activeContact?.alias || activeContact?.name }}</h4>
-                <div v-if="activeContact?.alias" class="text-muted fs-7">~ {{ activeContact?.name }}</div>
-                <div v-if="activeContact?.bio" class="text-gray-600 fs-7 mt-2 px-4 text-break">
+
+                <h4 class="fw-bold text-gray-800">
+                    {{ activeContact?.alias || activeContact?.name }}
+                </h4>
+                <div v-if="activeContact?.alias" class="text-muted fs-7">
+                    ~ {{ activeContact?.name }}
+                </div>
+                <div
+                    v-if="activeContact?.bio"
+                    class="text-gray-600 fs-7 mt-2 px-4 text-break"
+                >
                     "{{ activeContact.bio }}"
                 </div>
-                
+
                 <div class="text-start bg-light rounded p-4 mt-4">
                     <div class="d-flex mb-3">
-                        <i class="fas fa-phone text-gray-500 fs-4 me-3 mt-1"></i>
+                        <i
+                            class="fas fa-phone text-gray-500 fs-4 me-3 mt-1"
+                        ></i>
                         <div>
                             <div class="fs-7 text-muted">Nomor Telepon</div>
-                            <div class="fw-bold text-gray-800">{{ activeContact?.phone }}</div>
+                            <div class="fw-bold text-gray-800">
+                                {{ activeContact?.phone }}
+                            </div>
                         </div>
                     </div>
                     <div class="d-flex mb-3">
-                        <i class="fas fa-envelope text-gray-500 fs-4 me-3 mt-1"></i>
+                        <i
+                            class="fas fa-envelope text-gray-500 fs-4 me-3 mt-1"
+                        ></i>
                         <div>
                             <div class="fs-7 text-muted">Email</div>
-                            <div class="fw-bold text-gray-800">{{ activeContact?.email || '-' }}</div>
+                            <div class="fw-bold text-gray-800">
+                                {{ activeContact?.email || "-" }}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1351,17 +2124,29 @@ onUnmounted(() => {
         </div>
     </div>
     <div v-if="isClearChatModalOpen" class="modal-overlay">
-        <div class="modal-content bg-white rounded shadow p-5 text-center" style="width: 350px;">
+        <div
+            class="modal-content bg-white rounded shadow p-5 text-center"
+            style="width: 350px"
+        >
             <div class="bg-light-danger mb-4">
                 <i class="fas fa-eraser fs-2 text-danger p-3"></i>
             </div>
             <h3 class="fw-bold text-gray-800 mb-1">Bersihkan Chat?</h3>
             <p class="text-muted fs-7 mb-4">
-                Apakah Anda yakin ingin menghapus <b>semua riwayat pesan</b> dengan kontak ini? Tindakan ini tidak dapat dibatalkan.
+                Apakah Anda yakin ingin menghapus
+                <b>semua riwayat pesan</b> dengan kontak ini? Tindakan ini tidak
+                dapat dibatalkan.
             </p>
             <div class="d-grid gap-2">
-                <button @click="handleClearChat" class="btn btn-danger">Ya, Bersihkan</button>
-                <button @click="isClearChatModalOpen = false" class="btn btn-link text-muted btn-sm">Batal</button>
+                <button @click="handleClearChat" class="btn btn-danger">
+                    Ya, Bersihkan
+                </button>
+                <button
+                    @click="isClearChatModalOpen = false"
+                    class="btn btn-link text-muted btn-sm"
+                >
+                    Batal
+                </button>
             </div>
         </div>
     </div>
@@ -1391,7 +2176,8 @@ onUnmounted(() => {
     animation: fadeIn 0.3s ease;
 }
 
-.fa-check, .fa-check-double {
+.fa-check,
+.fa-check-double {
     transition: all 0.2s ease;
 }
 
@@ -1406,37 +2192,39 @@ onUnmounted(() => {
 
 /* Animasi Typing Indicator */
 .typing-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 10px;
 }
 
 .typing-indicator span {
-  display: block;
-  width: 6px;
-  height: 6px;
-  background-color: #888;
-  border-radius: 50%;
-  margin: 0 2px;
-  animation: typing 1.4s infinite ease-in-out both;
+    display: block;
+    width: 6px;
+    height: 6px;
+    background-color: #888;
+    border-radius: 50%;
+    margin: 0 2px;
+    animation: typing 1.4s infinite ease-in-out both;
 }
 
 .typing-indicator span:nth-child(1) {
-  animation-delay: -0.32s;
+    animation-delay: -0.32s;
 }
 
 .typing-indicator span:nth-child(2) {
-  animation-delay: -0.16s;
+    animation-delay: -0.16s;
 }
 
 @keyframes typing {
-  0%, 80%, 100% {
-    transform: scale(0);
-  }
-  40% {
-    transform: scale(1);
-  }
+    0%,
+    80%,
+    100% {
+        transform: scale(0);
+    }
+    40% {
+        transform: scale(1);
+    }
 }
 
 /* Modal & Lightbox Overlays */
@@ -1473,8 +2261,12 @@ onUnmounted(() => {
 
 /* Animations */
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 /* Chat Body Layout */
@@ -1493,18 +2285,18 @@ onUnmounted(() => {
 
 /* toast color */
 :root {
-  --toastify-text-color-light: #000000 !important;
-  --toastify-color-light: #ffffff;
+    --toastify-text-color-light: #000000 !important;
+    --toastify-color-light: #ffffff;
 }
 
 .Toastify__toast-theme--light {
-  color: #333333 !important;
-  background-color: #ffffff !important;
+    color: #333333 !important;
+    background-color: #ffffff !important;
 }
 
 .Toastify__close-button--light {
-  color: #333333 !important;
-  opacity: 0.7;
+    color: #333333 !important;
+    opacity: 0.7;
 }
 
 /* Dark Mode Styles */
