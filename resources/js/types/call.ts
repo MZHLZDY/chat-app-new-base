@@ -4,11 +4,12 @@ export interface User {
     email: string;
     avatar?: string;
     photo?: string;
+    profile_photo_url?: string;
 }
 
 export type CallType = 'video' | 'voice';
 
-export type CallStatus = 'ringing' | 'ongoing' | 'ended' | 'rejected' | 'missed' | 'cancelled';
+export type CallStatus = 'calling' | 'ringing' | 'ongoing' | 'ended' | 'rejected' | 'missed' | 'cancelled';
 
 export interface Call {
     id: number;

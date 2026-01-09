@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { getAssetPath } from "@/core/helpers/assets";
+import { useAuthStore } from "@/stores/auth";
 import { ref, onMounted } from "vue";
 import { ErrorMessage, Field, Form as VForm } from "vee-validate";
 import Swal from "sweetalert2/dist/sweetalert2.js";
@@ -13,6 +14,7 @@ const updateEmailButton = ref<HTMLButtonElement | null>(null);
 const updatePasswordButton = ref<HTMLButtonElement | null>(null);
 const emailFormDisplay = ref(false);
 const passwordFormDisplay = ref(false);
+const authStore = useAuthStore();
 
 // State Data User
 const profileDetails = ref({
@@ -110,6 +112,16 @@ const saveChanges1 = async (values: any) => {
         const response = await axios.post("/dashboard/profile", formData, {
             headers: { "Content-Type": "multipart/form-data" }
         });
+
+        // Update state Pinia secara manual agar CallAvatar langsung berubah
+        if (profileDetails.value.photo) {
+            authStore.setAuth({
+                ...authStore.user, // Ambil data user lama
+                name: values.name, // Update nama baru
+                photo: profileDetails.value.photo, // Update foto (Base64 string)
+                profile_photo_url: profileDetails.value.photo // Update url juga untuk safety
+            });
+        }
 
         Swal.fire({
             text: response.data.message || "Profil berhasil diperbarui!",

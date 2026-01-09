@@ -112,6 +112,66 @@ const remoteUser = computed(() => {
     }
 });
 
+const outgoingCalleeInfo = computed(() => {
+    const c = callStore.currentCall as any;
+    
+    // Default value jika call null
+    if (!c) return { name: 'Unknown', photo: '' };
+
+    // 1. Cek struktur Response API InviteCall (Outgoing) -> call.callee
+    if (c.call && c.call.callee) {
+        return {
+            name: c.call.callee.name || 'Unknown',
+            photo: c.call.callee.profile_photo_url || c.call.callee.photo || ''
+        };
+    }
+
+    // 2. Cek struktur standar (Incoming/Ongoing) -> call.receiver
+    if (c.receiver) {
+        return {
+            name: c.receiver.name || 'Unknown',
+            photo: c.receiver.profile_photo_url || c.receiver.photo || ''
+        };
+    }
+
+    // 3. Cek struktur alternatif flat -> call.callee
+    if (c.callee) {
+        return {
+            name: c.callee.name || 'Unknown',
+            photo: c.callee.profile_photo_url || c.callee.photo || ''
+        };
+    }
+
+    return { name: 'Unknown', photo: '' };
+});
+
+/**
+ * Helper function untuk mendapatkan foto caller dengan fallback priority
+ */
+const getCallerPhoto = (caller: any) => {
+    if (!caller) return '';
+    
+    // Priority: profile_photo_url > photo > avatar
+    return caller.profile_photo_url || 
+           caller.photo || 
+           caller.avatar || 
+           '';
+};
+
+/**
+ * Helper function untuk mendapatkan foto remote user
+ */
+const getRemoteUserPhoto = (user: any) => {
+    if (!user) return '';
+    
+    return user.profile_photo_url || 
+           user.photo || 
+           user.avatar || 
+           '';
+};
+
+
+
 // Pastikan destructuring ini sekarang sudah cocok dengan export useVoiceCall.ts di atas
 const { 
     startVoiceCall,
@@ -763,6 +823,12 @@ onMounted(async () => {
             // A. Seseorang menelepon saya
             .listen(".incoming-call", (event: any) => {
                 console.log("🔔 Incoming Call Event:", event);
+                console.log("Caller Data:", {
+                  name: event.call?.caller?.name,
+                  photo: event.call?.caller?.photo,
+                  profile_photo_url: event.call?.caller?.profile_photo_url,
+                  avatar: event.call?.caller?.avatar
+                });
                 handleIncomingCall(event);
             })
             // B. Lawan bicara mengangkat telepon (Untuk sisi penelpon)
@@ -866,44 +932,47 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <Teleport to="body">
-        
-        <VoiceIncomingModal
-            v-if="showIncomingModal"
-            :caller-name="callStore.incomingCall?.caller?.name || 'Unknown'"
-            :caller-photo="callStore.incomingCall?.caller?.avatar || ''" 
-            @accept="acceptVoiceCall"
-            @reject="rejectVoiceCall"
-        />
+       <Teleport to="body">
+    
+       <!-- INCOMING CALL MODAL -->
+       <VoiceIncomingModal
+          v-if="callStore.incomingCall"
+          :caller-name="callStore.incomingCall.caller.name"
+          :caller-photo="callStore.incomingCall.caller.profile_photo_url || callStore.incomingCall.caller.photo || ''"
+          @accept="acceptVoiceCall"
+          @reject="rejectVoiceCall"
+       />
 
-        <VoiceCallingModal
-            v-if="showCallingModal"
-            :callee-name="remoteUser.name"
-            :callee-photo="remoteUser.avatar || ''" 
-            :call-status="callStore.callStatus || 'calling'" 
-            @cancel="endVoiceCall" 
-        />
+       <!-- CALLING MODAL (Saat menelepon / outgoing) -->
+       <VoiceCallingModal
+          v-if="callStore.currentCall && callStore.callStatus === 'calling'"
+          :callee-name="outgoingCalleeInfo.name"   
+          :callee-photo="outgoingCalleeInfo.photo" 
+          :call-status="callStore.callStatus"
+          @cancel="endVoiceCall" 
+       />
 
-        <VoiceCallModal
-            v-if="showOngoingModal"
-            :remote-name="remoteUser.name"
-            :remote-photo="remoteUser.avatar || ''"
-            :is-muted="false" 
-            :is-speaker-on="false"
-            @end-call="endVoiceCall"
-            @minimize="callStore.toggleMinimize"
-        />
+       <!-- ONGOING CALL MODAL -->
+       <VoiceCallModal
+          v-if="showOngoingModal"
+          :remote-name="remoteUser.name"
+          :remote-photo="getRemoteUserPhoto(remoteUser)"
+          :is-muted="false" 
+          :is-speaker-on="false"
+          @end-call="endVoiceCall"
+          @minimize="callStore.toggleMinimize"
+       />
 
-        <VoiceFloating
-            v-if="showFloatingModal"
-            :remote-name="remoteUser.name"
-            :remote-photo="remoteUser.avatar || ''"
-            :is-muted="false"
-            @maximize="callStore.toggleMinimize"
-            @end-call="endVoiceCall"
-        />
-
-    </Teleport>
+       <!-- FLOATING CALL -->
+      <VoiceFloating
+          v-if="showFloatingModal"
+          :remote-name="remoteUser.name"
+          :remote-photo="getRemoteUserPhoto(remoteUser)"
+          :is-muted="false"
+          @maximize="callStore.toggleMinimize"
+          @end-call="endVoiceCall"
+      />
+      </Teleport>
     
         <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10" style="min-width: 0;">
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
@@ -944,7 +1013,7 @@ onUnmounted(() => {
                             <i class="fas fa-user-plus fs-7 me-1"></i> Simpan
                         </button>
 
-                        <button @click="handleVoiceCall" :disabled="voiceProcessing" class="btn btn-icon btn-sm text-gray-500"><Phone class="w-20px h-20px" /></button>
+                        <button @click="startVoiceCall(activeContact)" :disabled="voiceProcessing" class="btn btn-icon btn-sm text-gray-500"><Phone class="w-20px h-20px" /></button>
                         <button class="btn btn-icon btn-sm text-gray-500"><Video class="w-20px h-20px" /></button>
 
                         
