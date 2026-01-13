@@ -84,6 +84,7 @@ const contactIdToEdit = ref<string | number | undefined>(undefined);
 const editModalTitle = ref("Edit Kontak");
 const isDeleteModalOpen = ref(false);
 const messageToDelete = ref<any>(null);
+const messageDrafts = ref<Record<string | number, string>>({});
 const isLightboxOpen = ref(false);
 const activeLightboxUrl = ref("");
 const heartbeatInterval = ref<any>(null);
@@ -389,9 +390,14 @@ const fetchContacts = async () => {
 };
 
 const selectContact = async (contact: any) => {
+    if (activeContact.value) {
+        messageDrafts.value[activeContact.value.id] = newMessage.value;
+    }
+
     activeContact.value = contact;
     globalChatStore.setActiveChat(contact.id);
     messages.value = [];
+    newMessage.value = messageDrafts.value[contact.id] || "";
 
     const contactIndex = contacts.value.findIndex((c) => c.id === contact.id);
     if (contactIndex !== -1) {
@@ -399,8 +405,12 @@ const selectContact = async (contact: any) => {
     }
 
     await getMessages(contact.id);
-};
 
+    nextTick(() => {
+        const input = document.querySelector("input[type='text'].form-control");
+        if (input) (input as HTMLElement).focus();
+    });
+};
 const getMessages = async (friendId: any) => {
     isLoadingMessages.value = true;
     try {
@@ -461,6 +471,9 @@ const sendMessage = async () => {
     newMessage.value = "";
     replyingTo.value = null;
     if (fileInput.value) fileInput.value.value = "";
+    if (activeContact.value) {
+        delete messageDrafts.value[activeContact.value.id];
+    }
 
     try {
         const response = await axios.post("/chat/send", formData, {
@@ -1218,24 +1231,44 @@ onUnmounted(() => {
                                         >
                                             <span
                                                 v-if="
-                                                    contact.last_message &&
-                                                    contact.last_message_sender_id ===
-                                                        currentUser?.id
+                                                    messageDrafts[
+                                                        contact.id
+                                                    ]?.trim() !== ''
                                                 "
-                                                class="me-1"
+                                                class="text-danger fst-italic"
                                             >
-                                                <i
-                                                    v-if="
-                                                        contact.last_message_read_at
-                                                    "
-                                                    class="fas fa-check-double text-primary fs-9"
-                                                ></i>
-                                                <i
-                                                    v-else
-                                                    class="fas fa-check-double text-gray-400 fs-9"
-                                                ></i>
+                                                <span class="me-1">Draft:</span>
+                                                <span class="text-gray-800">{{
+                                                    messageDrafts[contact.id]
+                                                }}</span>
                                             </span>
-                                            {{ contact.email }}
+
+                                            <span v-else>
+                                                <span
+                                                    v-if="
+                                                        contact.last_message &&
+                                                        contact.last_message_sender_id ===
+                                                            currentUser?.id
+                                                    "
+                                                    class="me-1"
+                                                >
+                                                    <i
+                                                        v-if="
+                                                            contact.last_message_read_at
+                                                        "
+                                                        class="fas fa-check-double text-primary fs-9"
+                                                    ></i>
+                                                    <i
+                                                        v-else
+                                                        class="fas fa-check-double text-gray-400 fs-9"
+                                                    ></i>
+                                                </span>
+
+                                                {{
+                                                    contact.last_message ||
+                                                    contact.email
+                                                }}
+                                            </span>
                                         </span>
                                         <span
                                             v-if="contact.unread_count > 0"
@@ -1995,7 +2028,14 @@ onUnmounted(() => {
                                 v-model="newMessage"
                                 @keyup.enter="sendMessage"
                                 type="text"
-                                @input="handleTyping"
+                                @input="
+                                    (e) => {
+                                        handleTyping();
+                                        if (activeContact)
+                                            messageDrafts[activeContact.id] =
+                                                newMessage;
+                                    }
+                                "
                                 class="form-control form-control-solid me-3"
                                 placeholder="Ketik pesan..."
                             />

@@ -58,7 +58,7 @@ const replyingTo = ref<any>(null);
 const isHeaderMenuOpen = ref(false);
 const isInfoModalOpen = ref(false);
 const searchQuery = ref("");
-const chatDrafts = ref<Record<string, string>>({});
+const chatDrafts = ref<Record<string | number, string>>({});
 
 // Typing State untuk Group
 const typingUsers = ref<string[]>([]);
@@ -141,7 +141,7 @@ const selectGroup = async (group: any) => {
     messages.value = [];
     globalChatStore.setActiveGroup(group.id);
 
-    newMessage.value = chatDrafts.value[group.id] || "";
+    newMessage.value = chatDrafts.value[String(group.id)] || "";
     const idx = groups.value.findIndex((g) => g.id === group.id);
     if (idx !== -1) {
         groups.value[idx].unread_count = 0;
@@ -730,26 +730,19 @@ onUnmounted(() => {
                                     <div
                                         class="d-flex align-items-center justify-content-between"
                                     >
-                                        <span
-                                            v-if="
-                                                (
-                                                    chatDrafts[
-                                                        String(group.id)
-                                                    ] || ''
-                                                ).length > 0
-                                            "
-                                            class="text-danger fs-7 text-truncate pe-2 fst-italic"
-                                            style="max-width: 150px"
-                                        >
-                                            Draft: {{ chatDrafts[group.id] }}
-                                        </span>
-                                        <span
-                                            v-else
-                                            class="text-muted fs-7 text-truncate pe-2"
-                                            style="max-width: 150px"
-                                        >
-                                            {{ group.members_count }} Anggota
-                                        </span>
+                                        <span class="text-muted fs-7 text-truncate pe-2" style="max-width: 150px">
+    <span 
+        v-if="chatDrafts[group.id]?.trim()" 
+        class="text-danger fst-italic"
+    >
+        <span class="me-1">Draft:</span>
+        <span class="text-gray-800">{{ chatDrafts[group.id] }}</span>
+    </span>
+
+    <span v-else>
+        {{ group.last_message || (group.members_count + ' Anggota') }}
+    </span>
+</span>
 
                                         <span
                                             v-if="group.unread_count > 0"
@@ -1410,7 +1403,10 @@ onUnmounted(() => {
                                 v-model="newMessage"
                                 @keyup.enter="sendMessage"
                                 type="text"
-                                @input="handleTyping"
+                                @input="(e) => { 
+        handleTyping(); 
+        if(activeGroup) chatDrafts[activeGroup.id] = newMessage; 
+    }"
                                 class="form-control form-control-solid me-3"
                                 placeholder="Ketik pesan..."
                             />
