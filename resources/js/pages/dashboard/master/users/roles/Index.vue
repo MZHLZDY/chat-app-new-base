@@ -15,6 +15,7 @@ import { id } from "date-fns/locale";
 import { Phone, Video, Download, Loader2, CheckCheck } from "lucide-vue-next";
 import { useGlobalChatStore } from "@/stores/globalChat";
 import { usePersonalCall } from '@/composables/usePersonalCall';
+import type { PersonalCall, User } from "@/types/call";
 import VoiceCallModal from '@/components/call/voice/VoiceCallModal.vue';
 import VoiceFloating from '@/components/call/voice/VoiceFloating.vue';
 import VoiceIncomingModal from '@/components/call/voice/VoiceIncomingModal.vue';
@@ -29,6 +30,7 @@ import EditForm from "./Edit.vue";
 
 // --- FIREBASE IMPORT ---
 import { db, auth } from "@/libs/firebase"; 
+import { database } from "@/libs/firebase";
 import { 
     ref as firebaseRef, 
     onChildAdded,
@@ -84,7 +86,6 @@ const contactIdToEdit = ref<string | number | undefined>(undefined);
 const editModalTitle = ref("Edit Kontak");
 const isDeleteModalOpen = ref(false);
 const messageToDelete = ref<any>(null);
-const messageDrafts = ref<Record<string | number, string>>({});
 const isLightboxOpen = ref(false);
 const activeLightboxUrl = ref("");
 const heartbeatInterval = ref<any>(null);
@@ -254,16 +255,51 @@ const handleVideoCall = async () => {
     
     // Validasi kontak aktif
     if (!activeContact.value) {
-        toast.error('Tidak ada kontak yang dipilih untuk panggilan video.');
+        console.error('❌ Tidak ada kontak yang dipilih untuk panggilan video.');
+        toast.error('Pilih kontak terlebih dahulu');
         return;
     }
 
     try {
-        await initiateCall(activeContact.value, 'video') // Panggil API /call/invite
+        console.log('🚀 Memulai panggilan video ke:', activeContact.value.name);
+        console.log('📦 Caller ID:', authStore.user.id);
+        console.log('📦 Receiver ID:', activeContact.value.id);
+
+        // Convert activeContact ke tipe User
+        const receiveUser: User = {
+            id: activeContact.value.id,
+            name: activeContact.value.display_name || activeContact.value.name,
+            email: activeContact.value.email,
+            avatar: activeContact.value.photo ? `/storage/${activeContact.value.photo}` : undefined,
+        };
+
+        console.log('📦 Receiver User:', receiveUser);
+
+        await initiateCall(receiveUser, 'video') // Panggil API /call/invite
+
+        console.log('✅ Memulai panggilan video');
+
+        // Log state setelah initiateCall
+        console.log('State setelah initiate');
+        console.log('callStore.currentCall:', callStore.currentCall);
+        console.log('callStore.incomingCall:', callStore.incomingCall);
+        console.log('callStore.isInCall:', callStore.isInCall);
+        console.log('callStore.callStatus:', callStore.callStatus);
+        console.log('showVideoCallingModal:', showVideoCallingModal.value);
+        console.log('showVideoIncomingModal:', showVideoIncomingModal.value);
+        console.log('showVideoCallModal:', showVideoCallModal.value);
+
         toast.success('Memanggil...');
-    } catch (error) {
-        console.error('Gagal memulai panggilan video:', error);
-        toast.error('Gagal memulai panggilan video.');
+
+    } catch (error: any) {
+        console.error('❌ Gagal memulai panggilan video:', error);
+
+        // Clear call state kalau error
+        callStore.clearCurrentCall();
+
+        // Tampilkan pesan error
+        const errorMsg = error.response?.data?.message || error.message || 'Gagal memulai panggilan video';
+        toast.error(errorMsg);
     }
 };
 
@@ -390,14 +426,9 @@ const fetchContacts = async () => {
 };
 
 const selectContact = async (contact: any) => {
-    if (activeContact.value) {
-        messageDrafts.value[activeContact.value.id] = newMessage.value;
-    }
-
     activeContact.value = contact;
     globalChatStore.setActiveChat(contact.id);
     messages.value = [];
-    newMessage.value = messageDrafts.value[contact.id] || "";
 
     const contactIndex = contacts.value.findIndex((c) => c.id === contact.id);
     if (contactIndex !== -1) {
@@ -405,12 +436,8 @@ const selectContact = async (contact: any) => {
     }
 
     await getMessages(contact.id);
-
-    nextTick(() => {
-        const input = document.querySelector("input[type='text'].form-control");
-        if (input) (input as HTMLElement).focus();
-    });
 };
+
 const getMessages = async (friendId: any) => {
     isLoadingMessages.value = true;
     try {
@@ -471,9 +498,6 @@ const sendMessage = async () => {
     newMessage.value = "";
     replyingTo.value = null;
     if (fileInput.value) fileInput.value.value = "";
-    if (activeContact.value) {
-        delete messageDrafts.value[activeContact.value.id];
-    }
 
     try {
         const response = await axios.post("/chat/send", formData, {
@@ -1017,94 +1041,149 @@ onMounted(async () => {
     if (userId) {
         console.log(`📡 Menghubungkan ke channel: users/${userId}`);
 
-        // @ts-ignore (Abaikan error TS jika window.Echo tidak terdeteksi)
-        window.Echo.private(`user.${userId}`)
-            // A. Seseorang menelepon saya
-            .listen(".incoming-call", (event: any) => {
-                console.log("🔔 Incoming Call Event:", event);
-                if (event.call_type === 'video') {
-                    // Set panggilan video masuk
+        // Listener untuk panggilan masuk
+        const incomingCallRef = dbRef(database, `calls/${userId}/incoming`);
+
+        onValue(incomingCallRef, (snapshot) => {
+            const data = snapshot.val();
+
+            if (data) {
+                console.log('🔔Firebase: Panggilan masuk:', data);
+
+                // Video call
+                if (data.call_type === 'video') {
+                    if (!authStore.user?.id) {
+                        console.error('❌ authStore.user tidak terdefinisi saat panggilan masuk video');
+                        return;
+                    }
+
                     const incomingCall: Call = {
-                        id: event.call_id,
+                        id: data.call_id,
                         type: 'video' as CallType,
-                        caller: event.caller,
+                        caller: data.caller,
                         receiver: {
-                            id: authStore.user!.id!,
-                            name: authStore.user!.name,
-                            email: authStore.user!.email,
-                            avatar: authStore.user!.photo || authStore.user!.profile_photo_url || undefined,
+                            id: authStore.user.id,
+                            name: authStore.user.name,
+                            email: authStore.user.email,
+                            avatar: authStore.user.photo || authStore.user.profile_photo_url || undefined,
                         },
                         status: 'ringing' as CallStatus,
-                        token: event.agora_token,
-                        channel: event.channel_name,
+                        token: data.agora_token,
+                        channel: data.channel_name,
                     };
 
                     callStore.setIncomingCall(incomingCall);
-                    callStore.setBackendCall(event.call, event.agora_token, event.channel_name);
-                } else {
-                    // voice call handle
-                    handleIncomingCall(event);
+
+                    // Set backend call
+                    const backendCall: PersonalCall = {
+                        id: data.call_id,
+                        caller_id: data.caller.id,
+                        callee_id: authStore.user.id,
+                        call_type: 'video',
+                        channel_name: data.channel_name,
+                        status: 'ringing',
+                        answered_at: null,
+                        ended_at: null,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                        duration: null,
+                        ended_by: null,
+                    };
+
+                    callStore.setBackendCall(backendCall, data.agora_token, data.channel_name);
+
+                    console.log('✅ Panggilan video terhandle (Firebase)');
+
+                } else if (data.call_type === 'voice') {
+                    // Voice call
+                    handleIncomingCall(data);
+                    console.log('✅ Panggilan suara terhandle (Firebase)');
                 }
-            })
 
-            // B. Lawan bicara mengangkat telepon (Untuk sisi penelpon)
-            .listen(".call-accepted", (event: any) => {
-                console.log("✅ Call Accepted:", event);
+                // Hapus data dari firebase ketika sudah dibaca
+                remove(incomingCallRef);
+            }
+        });
 
-                // Update status untuk video dan voice call
-                callStore.updateCallStatus('ongoing');
-                callStore.setInCall(true);
+        // Listener untuk status panggilan
+        const statusRef = dbRef(database, `calls/${userId}/status`);
 
-                if (event.call) {
-                    callStore.updateBackendCall(event.call);
+        onValue(statusRef, (snapshot) => {
+            const data = snapshot.val();
+
+            if (data) {
+                console.log('📡 Firebase: Status panggilan terupdate:', data);
+
+                switch (data.status) {
+                    case 'accepted':
+                        console.log('✅ Firebase: Panggilan diterima');
+
+                        if (data.call_type === 'video') {
+                            callStore.updateCallStatus('ongoing');
+                            callStore.setInCall(true);
+
+                            // Update backend call jika ada
+                            if (data.call) {
+                                callStore.updateBackendCall(data.call);
+                            }
+                        } else {
+                            handleCallAccepted(data);
+                        }
+
+                        // Hapus status dari firebase
+                        remove(statusRef);
+                        break;
+                    
+                    case 'rejected':
+                        console.log('❌ Firebase: Panggilan ditolak');
+
+                        if (data.call_type === 'video') {
+                            callStore.updateCallStatus('rejected');
+                            setTimeout(() => {
+                                callStore.clearCurrentCall();
+                                callStore.clearIncomingCall();
+                            }, 2000);
+                        } else {
+                            handleCallRejected();
+                        }
+
+                        // Hapus status dari firebase
+                        remove(statusRef);
+                        break;
+
+                    case 'cancelled':
+                        console.log('❌ Firebase: Panggilan dibatalkan');
+
+                        if (data.call_type === 'video') {
+                            callStore.updateCallStatus('cancelled');
+                            setTimeout(() => {
+                                callStore.clearCurrentCall();
+                                callStore.clearIncomingCall();
+                            }, 2000);
+                        }
+
+                        // Hapus status dari firebase
+                        remove(statusRef);
+                        break;
+
+                    case 'ended':
+                        console.log('📴 Firebase: Panggilan diakhiri');
+
+                        if (data.call_type === 'video') {
+                            callStore.updateCallStatus('ended');
+                            setTimeout(() => {
+                                callStore.clearCurrentCall();
+                            }, 2000);
+                        } else {
+                            handleCallEnded();
+                        }
+
+                        remove(statusRef);
+                        break;
+                        
                 }
-
-                if (event.call_type !== 'video') {
-                    handleCallAccepted(event);
-                }
-            })
-
-            // C. Lawan bicara menolak panggilan
-            .listen(".call-rejected", (event: any) => {
-                console.log("🚫 Call Rejected:", event);
-                callStore.updateCallStatus('rejected');
-
-                setTimeout(() => {
-                    callStore.clearCurrentCall();
-                    callStore.clearIncomingCall();
-                }, 2000);
-
-                // voice call handler
-                if (event.call_type !== 'video') {
-                    handleCallRejected();
-                }
-            })
-
-            // D. Panggilan dibatalkan
-            .listen(".call-cancelled", (event: any) => {
-                console.log("❌ Call Cancelled:", event);
-                callStore.updateCallStatus('cancelled');
-
-                setTimeout(() => {
-                    callStore.clearCurrentCall();
-                    callStore.clearIncomingCall();
-                }, 2000);
-            })
-
-            // E. Panggilan selesai / ditutup
-            .listen(".call-ended", (event: any) => {
-                console.log("❌ Call Ended:", event);
-                callStore.updateCallStatus('ended');
-
-                setTimeout(() => {
-                    callStore.clearCurrentCall();
-                }, 2000);
-
-                // Voice call handler
-                if (event.call_type !== 'video') {
-                    handleCallEnded();
-                }
-            });
+            }
+        });
     }
 });
 
@@ -1231,44 +1310,24 @@ onUnmounted(() => {
                                         >
                                             <span
                                                 v-if="
-                                                    messageDrafts[
-                                                        contact.id
-                                                    ]?.trim() !== ''
+                                                    contact.last_message &&
+                                                    contact.last_message_sender_id ===
+                                                        currentUser?.id
                                                 "
-                                                class="text-danger fst-italic"
+                                                class="me-1"
                                             >
-                                                <span class="me-1">Draft:</span>
-                                                <span class="text-gray-800">{{
-                                                    messageDrafts[contact.id]
-                                                }}</span>
-                                            </span>
-
-                                            <span v-else>
-                                                <span
+                                                <i
                                                     v-if="
-                                                        contact.last_message &&
-                                                        contact.last_message_sender_id ===
-                                                            currentUser?.id
+                                                        contact.last_message_read_at
                                                     "
-                                                    class="me-1"
-                                                >
-                                                    <i
-                                                        v-if="
-                                                            contact.last_message_read_at
-                                                        "
-                                                        class="fas fa-check-double text-primary fs-9"
-                                                    ></i>
-                                                    <i
-                                                        v-else
-                                                        class="fas fa-check-double text-gray-400 fs-9"
-                                                    ></i>
-                                                </span>
-
-                                                {{
-                                                    contact.last_message ||
-                                                    contact.email
-                                                }}
+                                                    class="fas fa-check-double text-primary fs-9"
+                                                ></i>
+                                                <i
+                                                    v-else
+                                                    class="fas fa-check-double text-gray-400 fs-9"
+                                                ></i>
                                             </span>
+                                            {{ contact.email }}
                                         </span>
                                         <span
                                             v-if="contact.unread_count > 0"
@@ -2028,14 +2087,7 @@ onUnmounted(() => {
                                 v-model="newMessage"
                                 @keyup.enter="sendMessage"
                                 type="text"
-                                @input="
-                                    (e) => {
-                                        handleTyping();
-                                        if (activeContact)
-                                            messageDrafts[activeContact.id] =
-                                                newMessage;
-                                    }
-                                "
+                                @input="handleTyping"
                                 class="form-control form-control-solid me-3"
                                 placeholder="Ketik pesan..."
                             />
