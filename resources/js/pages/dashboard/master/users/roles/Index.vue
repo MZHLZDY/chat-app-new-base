@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, onUnmounted, watch } from "vue";
-import { useAuthStore } from "@/stores/auth";
+import { useAuthStore } from "@/stores/authStore";
+import { usePage } from "@inertiajs/vue3";
 import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
 import {
@@ -13,23 +14,23 @@ import {
 import { id } from "date-fns/locale";
 import { Phone, Video, Download, Loader2, CheckCheck } from "lucide-vue-next";
 import { useGlobalChatStore } from "@/stores/globalChat";
-import { usePersonalCall } from "@/composables/usePersonalCall";
-import VoiceCallModal from "@/components/call/voice/VoiceCallModal.vue";
-import VoiceFloating from "@/components/call/voice/VoiceFloating.vue";
-import VoiceIncomingModal from "@/components/call/voice/VoiceIncomingModal.vue";
-import VoiceCallingModal from "@/components/call/voice/VoiceCallingModal.vue";
-import VideoCallingModal from "@/components/call/video/VideoCallingModal.vue";
-import VideoIncomingModal from "@/components/call/video/VideoIncomingModal.vue";
-import VideoCallModal from "@/components/call/video/VideoCallModal.vue";
+import { usePersonalCall } from '@/composables/usePersonalCall';
+import VoiceCallModal from '@/components/call/voice/VoiceCallModal.vue';
+import VoiceFloating from '@/components/call/voice/VoiceFloating.vue';
+import VoiceIncomingModal from '@/components/call/voice/VoiceIncomingModal.vue';
+import VoiceCallingModal from '@/components/call/voice/VoiceCallingModal.vue';
+import VideoCallingModal from '@/components/call/video/VideoCallingModal.vue';
+import VideoIncomingModal from '@/components/call/video/VideoIncomingModal.vue';
+import VideoCallModal from '@/components/call/video/VideoCallModal.vue';
 
 // Component Form Kontak
 import ContactForm from "./Form.vue";
 import EditForm from "./Edit.vue";
 
 // --- FIREBASE IMPORT ---
-import { db, auth } from "@/libs/firebase";
-import {
-    ref as firebaseRef,
+import { db, auth } from "@/libs/firebase"; 
+import { 
+    ref as firebaseRef, 
     onChildAdded,
     onChildRemoved,
     onValue,
@@ -42,6 +43,7 @@ import {
     limitToLast,
 } from "firebase/database";
 import { onAuthStateChanged } from "firebase/auth";
+import { ref as dbRef } from 'firebase/database';
 
 // --- CALL IMPORT ---
 import { useVoiceCall } from "@/composables/useVoiceCall";
@@ -60,6 +62,7 @@ const {
 
 // --- STATE UTAMA ---
 const authStore = useAuthStore();
+const page = usePage();
 const currentUser = computed(() => authStore.user);
 
 const contacts = ref<any[]>([]);
@@ -225,17 +228,41 @@ const handleEndVoiceCall = () => {
 
 // Handler video call
 const handleVideoCall = async () => {
+    console.log('📹 Tombol video call diklik');
+
+    // Pastikan authStore.user terinisialisasi
+    if (!authStore.user) {
+        console.warn('⚠️ authStore.user tidak terdefinisi, mencoba inisialisasi...');
+
+        if (currentUser.value?.id) {
+            authStore.setUser(currentUser.value);
+            console.log('✅ authStore.user terinisialisasi:', authStore.user);
+        } else {
+            console.error('❌ Gagal inisialisasi authStore.user, tidak ada currentUser');
+            toast.error('Silahkan refresh halaman');
+            return;
+        }
+    }
+
+    // Double check setelah inisialisasi
+    if (!authStore.user?.id) {
+        console.error('❌ authStore.user masih tidak terdefinisi setelah inisialisasi');
+        toast.error('Gagal mendapatkan data user');
+        return;
+    }
+    
+    // Validasi kontak aktif
     if (!activeContact.value) {
-        toast.error("Tidak ada kontak yang dipilih untuk panggilan video.");
+        toast.error('Tidak ada kontak yang dipilih untuk panggilan video.');
         return;
     }
 
     try {
-        await initiateCall(activeContact.value, "video"); // Panggil API /call/invite
-        toast.success("Memanggil...");
+        await initiateCall(activeContact.value, 'video') // Panggil API /call/invite
+        toast.success('Memanggil...');
     } catch (error) {
-        console.error("Gagal memulai panggilan video:", error);
-        toast.error("Gagal memulai panggilan video.");
+        console.error('Gagal memulai panggilan video:', error);
+        toast.error('Gagal memulai panggilan video.');
     }
 };
 
@@ -935,6 +962,24 @@ watch(activeContact, (newVal, oldVal) => {
 });
 
 onMounted(async () => {
+    console.log('🚀 Komponen terpasang')
+
+    // Expose ke window untuk debug
+    if (import.meta.env.DEV) {
+        (window as any).authStore = authStore;
+        (window as any).callStore = callStore;
+        (window as any).showVideoCallingModal = showVideoCallingModal;
+        (window as any).showVideoIncomingModal = showVideoIncomingModal;
+        (window as any).showVideoCallModal = showVideoCallModal;
+        console.log('✅ Debug Variabel diekspos ke window');
+    }
+
+    // Init authStore dari current user
+    if (!authStore.user && currentUser.value) {
+        authStore.setUser(currentUser.value);
+        console.log('✅ authStore.user terinisialisasi dari computed')
+    }
+
     requestNotificationPermission();
     await fetchContacts();
 
@@ -957,40 +1002,32 @@ onMounted(async () => {
     const userId = authStore.user?.id;
 
     if (userId) {
-        console.log(`📡 Menghubungkan ke channel: users.${userId}`);
+        console.log(`📡 Menghubungkan ke channel: users/${userId}`);
 
         // @ts-ignore (Abaikan error TS jika window.Echo tidak terdeteksi)
         window.Echo.private(`user.${userId}`)
             // A. Seseorang menelepon saya
             .listen(".incoming-call", (event: any) => {
                 console.log("🔔 Incoming Call Event:", event);
-                if (event.call_type === "video") {
+                if (event.call_type === 'video') {
                     // Set panggilan video masuk
                     const incomingCall: Call = {
                         id: event.call_id,
-                        type: "video" as CallType,
+                        type: 'video' as CallType,
                         caller: event.caller,
                         receiver: {
                             id: authStore.user!.id!,
                             name: authStore.user!.name,
                             email: authStore.user!.email,
-                            avatar:
-                                authStore.user!.photo ||
-                                authStore.user!.profile_photo_url ||
-                                undefined,
+                            avatar: authStore.user!.photo || authStore.user!.profile_photo_url || undefined,
                         },
-                        status: "ringing" as CallStatus,
+                        status: 'ringing' as CallStatus,
                         token: event.agora_token,
                         channel: event.channel_name,
                     };
 
-                    // Set ke store
                     callStore.setIncomingCall(incomingCall);
-                    callStore.setBackendCall(
-                        event.call,
-                        event.agora_token,
-                        event.channel_name
-                    );
+                    callStore.setBackendCall(event.call, event.agora_token, event.channel_name);
                 } else {
                     // voice call handle
                     handleIncomingCall(event);
@@ -1002,14 +1039,14 @@ onMounted(async () => {
                 console.log("✅ Call Accepted:", event);
 
                 // Update status untuk video dan voice call
-                callStore.updateCallStatus("ongoing");
+                callStore.updateCallStatus('ongoing');
                 callStore.setInCall(true);
 
                 if (event.call) {
                     callStore.updateBackendCall(event.call);
                 }
 
-                if (event.call_type !== "video") {
+                if (event.call_type !== 'video') {
                     handleCallAccepted(event);
                 }
             })
@@ -1017,7 +1054,7 @@ onMounted(async () => {
             // C. Lawan bicara menolak panggilan
             .listen(".call-rejected", (event: any) => {
                 console.log("🚫 Call Rejected:", event);
-                callStore.updateCallStatus("rejected");
+                callStore.updateCallStatus('rejected');
 
                 setTimeout(() => {
                     callStore.clearCurrentCall();
@@ -1025,7 +1062,7 @@ onMounted(async () => {
                 }, 2000);
 
                 // voice call handler
-                if (event.call_type !== "video") {
+                if (event.call_type !== 'video') {
                     handleCallRejected();
                 }
             })
@@ -1033,7 +1070,7 @@ onMounted(async () => {
             // D. Panggilan dibatalkan
             .listen(".call-cancelled", (event: any) => {
                 console.log("❌ Call Cancelled:", event);
-                callStore.updateCallStatus("cancelled");
+                callStore.updateCallStatus('cancelled');
 
                 setTimeout(() => {
                     callStore.clearCurrentCall();
@@ -1044,14 +1081,14 @@ onMounted(async () => {
             // E. Panggilan selesai / ditutup
             .listen(".call-ended", (event: any) => {
                 console.log("❌ Call Ended:", event);
-                callStore.updateCallStatus("ended");
+                callStore.updateCallStatus('ended');
 
                 setTimeout(() => {
                     callStore.clearCurrentCall();
                 }, 2000);
 
                 // Voice call handler
-                if (event.call_type !== "video") {
+                if (event.call_type !== 'video') {
                     handleCallEnded();
                 }
             });

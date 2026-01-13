@@ -8,8 +8,16 @@ export const useAuthStore = defineStore('auth', () => {
 
     const isAuthenticated = computed(() => !!user.value && !!token.value);
 
-    const setUser = (userData: User) => {
-        user.value = userData;
+    const setUser = (userData: any) => {
+        user.value = {
+            id: userData.id,
+            name: userData.name,
+            email: userData.email,
+            avatar: userData.avatar || userData.photo || userData.profile_photo_url || undefined,
+            photo: userData.photo || undefined,
+            profile_photo_url: userData.profile_photo_url || undefined,
+        };
+        console.log('✅ authStore.user set:', user.value);
     };
 
     const setToken = (authToken: string) => {

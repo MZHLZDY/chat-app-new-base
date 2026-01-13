@@ -3,7 +3,8 @@ export interface User {
     name: string;
     email: string;
     avatar?: string;
-    photo?: string;
+    photo?: string | null;
+    profile_photo_url?: string;
 }
 
 export type CallType = 'video' | 'voice';

@@ -18,8 +18,15 @@ export const useCallStore = defineStore('call', () => {
     const setCurrentCall = (call: Call) => {
         currentCall.value = call;
         callStatus.value = call.status;
-        isInCall.value = true;
+        isInCall.value = call.status === 'ongoing';
         isMinimized.value = false;
+
+        console.log('✅ setCurrentCall:', {
+            id: call.id,
+            type: call.type,
+            status: call.status,
+            isInCall: isInCall.value
+        });
     };
 
     const clearCurrentCall = () => {
