@@ -5,7 +5,7 @@ import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { id } from "date-fns/locale";
-import { Phone, Video, Users } from "lucide-vue-next";
+import { Phone, Video, Users, Loader2, CheckCheck } from "lucide-vue-next";
 import { useGlobalChatStore } from "@/stores/globalChat";
 import { onBeforeRouteLeave } from "vue-router";
 import GroupForm from "./Form.vue";
@@ -203,6 +203,13 @@ const sendMessage = async () => {
     if (!activeGroup.value) return;
 
     const tempId = Date.now();
+    let tempType = "text";
+    if (file) {
+        if (file.type.startsWith("image/")) tempType = "image";
+        else if (file.type.startsWith("video/"))
+            tempType = "video"; // Tambahkan ini
+        else tempType = "file";
+    }
 
     // Structure message object
     const tempMessage = {
@@ -211,11 +218,9 @@ const sendMessage = async () => {
         group_id: activeGroup.value.id,
         message: textContent,
         file_path: file ? URL.createObjectURL(file) : null,
-        type: file
-            ? file.type.startsWith("image")
-                ? "image"
-                : "file"
-            : "text",
+        type: tempType,
+        file_size: file ? file.size : 0,
+        file_name: file ? file.name : null,
         created_at: new Date().toISOString(),
         read_at: null,
         reply_to: replyingTo.value ? replyingTo.value : null,
@@ -293,18 +298,9 @@ const STORAGE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const getFileUrl = (path: string) => {
     if (!path) return "";
+    if (path.startsWith("blob:")) return path;
     if (path.startsWith("http")) return path;
-
-    const baseUrl = STORAGE_URL.endsWith("/")
-        ? STORAGE_URL.slice(0, -1)
-        : STORAGE_URL;
-    const cleanPath = path.startsWith("/") ? path.substring(1) : path;
-
-    if (cleanPath.startsWith("storage/")) {
-        return `${baseUrl}/${cleanPath}`;
-    } else {
-        return `${baseUrl}/storage/${cleanPath}`;
-    }
+    return `/storage/${path}`;
 };
 
 const downloadAttachment = (msg: any) => {
@@ -1070,7 +1066,8 @@ onUnmounted(() => {
                                                     <source
                                                         :src="
                                                             getFileUrl(
-                                                                msg.file_path
+                                                                msg.file_path ||
+                                                                    msg.message
                                                             )
                                                         "
                                                         type="video/mp4"
@@ -1259,6 +1256,7 @@ onUnmounted(() => {
                                             >
                                                 {{ formatTime(msg.created_at) }}
                                             </span>
+
                                             <div
                                                 v-if="
                                                     msg.sender_id ===
@@ -1266,9 +1264,26 @@ onUnmounted(() => {
                                                 "
                                                 class="ms-1"
                                             >
-                                                <i
-                                                    class="fas fa-check-double text-white text-opacity-50 fs-9"
-                                                ></i>
+                                                <span
+                                                    v-if="
+                                                        msg.is_temp ||
+                                                        (typeof isTempId ===
+                                                            'function' &&
+                                                            isTempId(msg.id))
+                                                    "
+                                                    title="Mengirim..."
+                                                >
+                                                    <Loader2
+                                                        class="spin-animation text-white text-opacity-75"
+                                                        :size="14"
+                                                    />
+                                                </span>
+
+                                                <span v-else title="Terkirim">
+                                                    <i
+                                                        class="fas fa-check-double text-white text-opacity-50 fs-9"
+                                                    ></i>
+                                                </span>
                                             </div>
                                         </div>
 
@@ -1701,6 +1716,20 @@ onUnmounted(() => {
     }
     to {
         opacity: 1;
+    }
+}
+
+/* Animasi Putar untuk Loader */
+.spin-animation {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
     }
 }
 

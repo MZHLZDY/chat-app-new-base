@@ -11,7 +11,7 @@ import {
     isSameDay,
 } from "date-fns";
 import { id } from "date-fns/locale";
-import { Phone, Video, Download } from "lucide-vue-next";
+import { Phone, Video, Download, Loader2, CheckCheck } from "lucide-vue-next";
 import { useGlobalChatStore } from "@/stores/globalChat";
 import { usePersonalCall } from "@/composables/usePersonalCall";
 import VoiceCallModal from "@/components/call/voice/VoiceCallModal.vue";
@@ -397,17 +397,22 @@ const sendMessage = async () => {
     if (!activeContact.value) return;
 
     const tempId = Date.now();
+    let tempType = "text";
+    if (file) {
+        if (file.type.startsWith("image/")) tempType = "image";
+        else if (file.type.startsWith("video/")) tempType = "video";
+        else tempType = "file";
+    }
+
     const tempMessage = {
         id: tempId,
         sender_id: currentUser.value?.id,
         receiver_id: activeContact.value.id,
         message: textContent,
         file_path: file ? URL.createObjectURL(file) : null,
-        type: file
-            ? file.type.startsWith("image")
-                ? "image"
-                : "file"
-            : "text",
+        type: tempType,
+        file_size: file ? file.size : 0,
+        file_name: file ? file.name : null,
         created_at: new Date().toISOString(),
         read_at: null,
         reply_to: replyingTo.value ? replyingTo.value : null,
@@ -475,8 +480,14 @@ const STORAGE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const getFileUrl = (path: string) => {
     if (!path) return "";
-    if (path.startsWith("http")) return path;
-    return `${STORAGE_URL}/storage/${path}`;
+
+    if (path.startsWith("blob:")) {
+        return path;
+    }
+    if (path.startsWith("http")) {
+        return path;
+    }
+    return `/storage/${path}`;
 };
 
 const downloadAttachment = (msg: any) => {
@@ -1561,7 +1572,8 @@ onUnmounted(() => {
                                                     <source
                                                         :src="
                                                             getFileUrl(
-                                                                msg.file_path
+                                                                msg.file_path ||
+                                                                    msg.message
                                                             )
                                                         "
                                                         type="video/mp4"
@@ -1763,13 +1775,20 @@ onUnmounted(() => {
                                                 class="ms-1"
                                             >
                                                 <span
-                                                    v-if="isTempId(msg.id)"
+                                                    v-if="
+                                                        msg.is_temp ||
+                                                        (typeof isTempId ===
+                                                            'function' &&
+                                                            isTempId(msg.id))
+                                                    "
                                                     title="Mengirim..."
                                                 >
-                                                    <i
-                                                        class="fas fa-check text-white text-opacity-50 fs-9"
-                                                    ></i>
+                                                    <Loader2
+                                                        class="spin-animation text-white text-opacity-75"
+                                                        :size="14"
+                                                    />
                                                 </span>
+
                                                 <span
                                                     v-else-if="msg.read_at"
                                                     title="Dibaca"
@@ -1778,6 +1797,7 @@ onUnmounted(() => {
                                                         class="fas fa-check-double tick-read fs-9"
                                                     ></i>
                                                 </span>
+
                                                 <span v-else title="Terkirim">
                                                     <i
                                                         class="fas fa-check-double text-white text-opacity-50 fs-9"
@@ -2210,6 +2230,20 @@ onUnmounted(() => {
     }
     40% {
         transform: scale(1);
+    }
+}
+
+/* CSS Animasi Loading */
+.spin-animation {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
     }
 }
 

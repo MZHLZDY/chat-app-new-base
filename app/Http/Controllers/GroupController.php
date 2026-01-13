@@ -4,15 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Group;
 use App\Models\GroupMessage;
-use App\Models\User; 
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Kreait\Firebase\Contract\Database;
 use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
 use FFMpeg\Format\Video\X264;
-use Illuminate\Support\Str;
 
 class GroupController extends Controller
 {
@@ -150,172 +152,168 @@ class GroupController extends Controller
     // 2. SEND MESSAGE DENGAN FIREBASE PUSH (Realtime)
     public function sendMessage(Request $request)
     {
-        set_time_limit(0);
-
-        $request->validate([
+        // 1. Validasi Input
+        $validator = Validator::make($request->all(), [
             'group_id' => 'required|exists:groups,id',
-            'message' => 'nullable|string',
-            'file' => 'nullable|file|mimes:jpg,jpeg,png,webp,gif,pdf,doc,docx,xls,xlsx,txt,zip,rar,mp4,mov,avi,mkv,webm|max:102400',
-            'reply_to_id' => 'nullable|exists:group_messages,id'
+            'message'  => 'nullable|string',
+            'file'     => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf,doc,docx,mp4,mov,avi,mkv|max:51200',
         ]);
 
+        if ($validator->fails()) {
+            return response()->json(['message' => $validator->errors()->first()], 422);
+        }
         if (!$request->message && !$request->hasFile('file')) {
-            return response()->json(['message' => 'Pesan tidak boleh kosong'], 422);
+            return response()->json(['message' => 'Pesan atau file tidak boleh kosong'], 422);
         }
 
-        $isMember = DB::table('group_user')
-            ->where('group_id', $request->group_id)
-            ->where('user_id', Auth::id())
-            ->exists();
-
-        if (!$isMember) {
-            return response()->json(['message' => 'Anda bukan anggota grup ini'], 403);
-        }
-
-        DB::beginTransaction();
         try {
+            DB::beginTransaction();
+            
+            $sender = Auth::user();
+            $group  = Group::find($request->group_id);
+            if (!$group->members()->where('users.id', $sender->id)->exists()) {
+                return response()->json(['message' => 'Anda bukan anggota grup ini'], 403);
+            }
+
             $filePath = null;
             $fileName = null;
             $fileMime = null;
             $fileSize = null;
-            $type = 'text';
+            $msgType  = 'text'; 
 
-            // 3. HANDLE FILE UPLOAD
             if ($request->hasFile('file')) {
                 $file = $request->file('file');
-                $originalName = $file->getClientOriginalName();
-                $mimeType = $file->getMimeType();
-                $fileSize = $file->getSize(); 
-
-                // --- A. HANDLE IMAGE ---
-                if (str_starts_with($mimeType, 'image/')) {
-                    $type = 'image';
-                    $fileName = 'group_img_' . time() . '_' . Str::random(10) . '.webp'; 
-                    $path = 'group_chat/images/' . $fileName;
-                    
-                    $manager = new ImageManager(new Driver());
-                    $image = $manager->read($file);
-                    $image->scaleDown(width: 1280); 
-
-                    Storage::disk('public')->put($path, (string) $image->toWebp(quality: 80));
-                    
-                    $filePath = $path;
-                    $fileMime = 'image/webp';
-                    $fileSize = Storage::disk('public')->size($path);
+                if (!$file->isValid()) {
+                    return response()->json(['message' => 'File korup atau gagal upload'], 400);
                 }
-                
-                // --- B. HANDLE VIDEO ---
-                elseif (str_starts_with($mimeType, 'video/')) {
-                    $type = 'video';
-                    $fileName = 'group_vid_' . time() . '_' . Str::random(10) . '.mp4';
+
+                $originalName = $file->getClientOriginalName();
+                $fileName = $originalName; 
+                $fileMime = $file->getMimeType();
+                $fileSize = $file->getSize(); 
+                if (str_starts_with($fileMime, 'video/')) {
+                    set_time_limit(0);
+
+                    $physicalName = 'grp_vid_' . time() . '_' . Str::random(10) . '.mp4';
+                    $tempPath = 'group_files/temp/' . $physicalName;
+                    $finalPath = 'group_files/' . $physicalName;
                     
-                    $tempPath = 'group_chat/temp/' . $fileName;
-                    $finalPath = 'group_chat/videos/' . $fileName;
-                    $file->storeAs('group_chat/temp', $fileName, 'public');
+                    $file->storeAs('group_files/temp', $physicalName, 'public');
 
                     try {
+                        $format = new X264('aac', 'libx264');
+                        $format->setKiloBitrate(1000); 
+
                         FFMpeg::fromDisk('public')
                             ->open($tempPath)
                             ->export()
                             ->toDisk('public')
-                            ->inFormat(new X264('aac', 'libx264'))
-                            ->resize(1280, null, function ($constraint) {
-                                $constraint->aspectRatio();
-                                $constraint->upsize();
-                            })
+                            ->inFormat($format)
+                            ->resize(1280, 720) 
                             ->save($finalPath);
 
                         Storage::disk('public')->delete($tempPath);
-
                         $filePath = $finalPath;
-                        $fileMime = 'video/mp4';
-                        $fileSize = Storage::disk('public')->size($finalPath);
-
+                        $fileMime = 'video/mp4'; 
+                        
+                        if (Storage::disk('public')->exists($finalPath)) {
+                            $fileSize = Storage::disk('public')->size($finalPath);
+                        }
                     } catch (\Exception $e) {
+                        \Log::error("Gagal kompres video: " . $e->getMessage());
                         if (Storage::disk('public')->exists($tempPath)) {
                             Storage::disk('public')->move($tempPath, $finalPath);
                         }
                         $filePath = $finalPath;
-                        $fileName = $originalName; 
                     }
+                    $msgType = 'video';
+                }
+                elseif (str_starts_with($fileMime, 'image/')) {
+                    $physicalName = 'grp_img_' . time() . '_' . Str::random(10) . '.webp';
+                    $path = 'group_files/' . $physicalName;
+
+                    try {
+                        $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
+                        $image = $manager->read($file);
+                        $image->scaleDown(width: 1280);
+                        Storage::disk('public')->put($path, (string) $image->toWebp(quality: 80));
+                        
+                        $filePath = $path;
+                        $fileMime = 'image/webp';
+                        $fileSize = Storage::disk('public')->size($path);
+                    } catch (\Exception $e) {
+                        $physicalName = time() . '_' . str_replace(' ', '_', $originalName);
+                        $filePath = $file->storeAs('group_files', $physicalName, 'public');
+                    }
+                    $msgType = 'image';
                 }
                 else {
-                    $type = 'file';
-                    $fileName = $originalName;
-                    $fileMime = $mimeType;
-                    $filePath = $file->storeAs('group_chat/files', time().'_'.$originalName, 'public');
+                    $physicalName = time() . '_' . str_replace(' ', '_', $originalName);
+                    $filePath = $file->storeAs('group_files', $physicalName, 'public');
+                    $msgType = 'file';
                 }
             }
 
-            // 4. SIMPAN KE DATABASE
+            // Simpan ke DB MySQL
             $message = GroupMessage::create([
-                'group_id' => $request->group_id,
-                'sender_id' => Auth::id(),
-                'message' => $request->message,
-                'type' => $type,
-                'file_path' => $filePath,
-                'file_name' => $fileName,
+                'group_id'       => $group->id,
+                'sender_id'      => $sender->id,
+                'message'        => $request->message,
+                'file_path'      => $filePath,
+                'file_name'      => $fileName,
                 'file_mime_type' => $fileMime,
-                'file_size' => $fileSize,
-                'reply_to_id' => $request->reply_to_id,
-                'created_at' => now(),
+                'file_size'      => $fileSize,
+                'type'           => $msgType,
+                'created_at'     => now(),
             ]);
 
-            $group = Group::with('members')->find($request->group_id);
-            $group->touch(); 
+            $group->touch();
 
             DB::commit();
-            $message->load(['sender', 'replyTo.sender']);
-            $sender = Auth::user();
+            // Push ke Firebase Realtime Database
+            $this->database->getReference('group_messages/' . $group->id)->push([
+                'id'             => $message->id,
+                'group_id'       => $message->group_id,
+                'sender_id'      => $message->sender_id,
+                'message'        => $message->message,
+                'file_path'      => $message->file_path,
+                'file_name'      => $message->file_name,
+                'file_size'      => $message->file_size,
+                'type'           => $message->type,
+                'created_at'     => $message->created_at->toIso8601String(),
+                'sender' => [
+                    'id'    => $sender->id,
+                    'name'  => $sender->name,
+                    'photo' => $sender->avatar ?? $sender->photo ?? null, 
+                ]
+            ]);
 
-            // 5. KIRIM KE FIREBASE
-            $this->database->getReference('group_messages/' . $request->group_id)
-                ->push([
-                    'id' => $message->id,
-                    'sender_id' => $message->sender_id,
-                    'message' => $message->message,
-                    'type' => $message->type,
-                    'file_path' => $message->file_path,
-                    'file_name' => $message->file_name,
-                    'file_size' => $message->file_size,
-                    'created_at' => $message->created_at->toIso8601String(),
-                    'sender' => [
-                        'id' => $sender->id,
-                        'name' => $sender->name,
-                        'photo' => $sender->photo ?? null, 
-                    ],
-                    'reply_to' => $message->replyTo ? [
-                        'id' => $message->replyTo->id,
-                        'message' => $message->replyTo->message,
-                        'type' => $message->replyTo->type, 
-                        'sender' => [
-                            'name' => $message->replyTo->sender->name ?? 'Unknown'
-                        ]
-                    ] : null
-                ]);
+            $notifMessage = $request->message;
+            if (empty($notifMessage)) {
+                if ($msgType === 'video') $notifMessage = '🎥 Mengirim video';
+                else if ($msgType === 'image') $notifMessage = '📷 Mengirim foto';
+                else if ($msgType === 'file') $notifMessage = '📁 Mengirim berkas';
+            }
 
-            // 6. LOOPING NOTIFIKASI KE MEMBER
-            foreach ($group->members as $member) {
-                if ($member->id == $sender->id) continue;
-
+            $members = $group->members()->where('users.id', '!=', $sender->id)->get();
+            foreach ($members as $member) {
                 $this->sendGroupNotification(
                     $member->id,
                     $group,
                     $sender,
-                    $message->message,
-                    $message->type
+                    $notifMessage, 
+                    $msgType
                 );
             }
 
             return response()->json([
-                'status' => true,
-                'message' => 'Pesan terkirim',
-                'data' => $message
+                'status' => 'success',
+                'data'   => $message
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Gagal mengirim pesan: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'Server Error: ' . $e->getMessage()], 500);
         }
     }
 
@@ -335,7 +333,11 @@ class GroupController extends Controller
     public function downloadAttachment($msgId)
     {
         $message = GroupMessage::findOrFail($msgId);
-        return Storage::disk('public')->download($message->file_path, $message->file_name);
+        if (!Storage::disk('public')->exists($message->file_path)) {
+            return response()->json(['message' => 'File tidak ditemukan di server'], 404);
+        }
+        $fullPath = Storage::disk('public')->path($message->file_path);
+        return response()->download($fullPath, $message->file_name);
     }
 
     // 4. DELETE MESSAGE
