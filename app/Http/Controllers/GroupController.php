@@ -29,16 +29,18 @@ class GroupController extends Controller
     protected function sendGroupNotification($receiverId, $group, $sender, $message, $messageType = 'text')
     {
         $previewMessage = $message;
-        if ($messageType === 'image') $previewMessage = '📷 Mengirim gambar';
-        if ($messageType === 'file') $previewMessage = '📁 Mengirim berkas';
+        if ($messageType === 'image')
+            $previewMessage = '📷 Mengirim gambar';
+        if ($messageType === 'file')
+            $previewMessage = '📁 Mengirim berkas';
 
         $this->database->getReference('notifications/' . $receiverId)->push([
-            'type' => 'new_group_message',     
-            'group_id' => $group->id,            
-            'group_name' => $group->name,       
+            'type' => 'new_group_message',
+            'group_id' => $group->id,
+            'group_name' => $group->name,
             'sender_id' => $sender->id,
-            'sender_name' => $sender->name,      
-            'message' => $previewMessage,        
+            'sender_name' => $sender->name,
+            'message' => $previewMessage,
             'message_type' => $messageType,
             'created_at' => now()->timestamp
         ]);
@@ -47,16 +49,16 @@ class GroupController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'name'       => 'required|string|max:100',
-            'member_ids' => 'required|array|min:1', 
+            'name' => 'required|string|max:100',
+            'member_ids' => 'required|array|min:1',
         ]);
 
         DB::beginTransaction();
         try {
             $group = Group::create([
-                'name'     => $request->name,
-                'admin_id' => Auth::id(), 
-                'photo'    => null,
+                'name' => $request->name,
+                'admin_id' => Auth::id(),
+                'photo' => null,
             ]);
 
             $group->members()->attach(Auth::id(), ['is_admin' => true]);
@@ -64,7 +66,7 @@ class GroupController extends Controller
             $memberIds = collect($request->member_ids)
                 ->diff([Auth::id()])
                 ->unique();
-            
+
             $group->members()->attach($memberIds, ['is_admin' => false]);
 
             DB::commit();
@@ -84,43 +86,53 @@ class GroupController extends Controller
     public function index()
     {
         $userId = Auth::id();
+
         $groups = Group::whereHas('members', function ($query) use ($userId) {
             $query->where('user_id', $userId);
         })
-        ->with(['members' => function($q) use ($userId) {
-            $q->where('user_id', $userId);
-        }])
-        ->withCount('members') 
-        ->with(['latestMessage.sender']) 
-        ->get()
-        ->map(function ($group) use ($userId) {
-            $latestMsg = $group->latestMessage;
-            // --- LOGIKA UNREAD COUNT ---
-            $currentUserPivot = $group->members->first(); 
-            $lastReadAt = $currentUserPivot ? $currentUserPivot->pivot->last_read_at : null;
-            $lastClearedAt = $currentUserPivot ? $currentUserPivot->pivot->last_cleared_at : null;
-            $unreadCount = 0;
-            if ($lastReadAt) {
-                $unreadCount = GroupMessage::where('group_id', $group->id)
-                    ->where('created_at', '>', $lastReadAt)
-                    ->count();
-            } else {
-                $unreadCount = GroupMessage::where('group_id', $group->id)->count();
-            }
+            ->with([
+                'members' => function ($q) use ($userId) {
+                    $q->where('user_id', $userId);
+                }
+            ])
+            ->withCount('members')
+            ->with(['latestMessage.sender'])
+            ->get()
+            ->map(function ($group) use ($userId) {
+                $latestMsg = $group->latestMessage;
+                $currentUser = $group->members->first();
+                $lastReadAt = $currentUser ? $currentUser->pivot->last_read_at : null;
+                $lastClearedAt = $currentUser ? $currentUser->pivot->last_cleared_at : null;
+                $cutoffTime = $lastReadAt;
+                if ($lastClearedAt && (!$lastReadAt || $lastClearedAt > $lastReadAt)) {
+                    $cutoffTime = $lastClearedAt;
+                }
+                $unreadQuery = GroupMessage::where('group_id', $group->id)
+                    ->where('sender_id', '!=', $userId);
 
-            return [
-                'id' => $group->id,
-                'last_cleared_at' => $lastClearedAt,
-                'name' => $group->name,
-                'photo' => $group->photo, 
-                'members_count' => $group->members_count,
-                'unread_count' => $unreadCount, 
-                'last_message_sender_id' => $latestMsg ? $latestMsg->sender_id : null,
-                'last_message_sender_name' => $latestMsg && $latestMsg->sender ? $latestMsg->sender->name : null,
-                'last_message_preview' => $latestMsg ? ($latestMsg->message ?? ($latestMsg->type == 'image' ? 'Foto' : 'File')) : 'Belum ada pesan',
-                'updated_at' => $group->updated_at,
-            ];
-        });
+                if ($cutoffTime) {
+                    $unreadQuery->where('created_at', '>', $cutoffTime);
+                }
+                $unreadQuery->where(function ($q) use ($userId) {
+                    $q->whereNull('deleted_by')
+                        ->orWhereJsonDoesntContain('deleted_by', $userId);
+                });
+
+                $unreadCount = $unreadQuery->count();
+
+                return [
+                    'id' => $group->id,
+                    'last_cleared_at' => $lastClearedAt,
+                    'name' => $group->name,
+                    'photo' => $group->photo,
+                    'members_count' => $group->members_count,
+                    'unread_count' => $unreadCount,
+                    'last_message_sender_id' => $latestMsg ? $latestMsg->sender_id : null,
+                    'last_message_sender_name' => $latestMsg && $latestMsg->sender ? $latestMsg->sender->name : null,
+                    'last_message_preview' => $latestMsg ? ($latestMsg->message ?? ($latestMsg->type == 'image' ? 'Foto' : 'File')) : 'Belum ada pesan',
+                    'updated_at' => $group->updated_at,
+                ];
+            });
 
         return response()->json($groups->sortByDesc('updated_at')->values());
     }
@@ -129,13 +141,14 @@ class GroupController extends Controller
     public function getMessages($groupId)
     {
         $userId = Auth::id();
-        
+
         $memberData = DB::table('group_user')
             ->where('group_id', $groupId)
             ->where('user_id', $userId)
             ->first();
 
-        if (!$memberData) return response()->json(['message' => 'Unauthorized'], 403);
+        if (!$memberData)
+            return response()->json(['message' => 'Unauthorized'], 403);
 
         $query = GroupMessage::where('group_id', $groupId)
             ->with(['sender', 'replyTo.sender'])
@@ -155,8 +168,8 @@ class GroupController extends Controller
         // 1. Validasi Input
         $validator = Validator::make($request->all(), [
             'group_id' => 'required|exists:groups,id',
-            'message'  => 'nullable|string',
-            'file'     => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf,doc,docx,mp4,mov,avi,mkv|max:51200',
+            'message' => 'nullable|string',
+            'file' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf,doc,docx,mp4,mov,avi,mkv|max:51200',
         ]);
 
         if ($validator->fails()) {
@@ -168,9 +181,9 @@ class GroupController extends Controller
 
         try {
             DB::beginTransaction();
-            
+
             $sender = Auth::user();
-            $group  = Group::find($request->group_id);
+            $group = Group::find($request->group_id);
             if (!$group->members()->where('users.id', $sender->id)->exists()) {
                 return response()->json(['message' => 'Anda bukan anggota grup ini'], 403);
             }
@@ -179,7 +192,7 @@ class GroupController extends Controller
             $fileName = null;
             $fileMime = null;
             $fileSize = null;
-            $msgType  = 'text'; 
+            $msgType = 'text';
 
             if ($request->hasFile('file')) {
                 $file = $request->file('file');
@@ -188,34 +201,34 @@ class GroupController extends Controller
                 }
 
                 $originalName = $file->getClientOriginalName();
-                $fileName = $originalName; 
+                $fileName = $originalName;
                 $fileMime = $file->getMimeType();
-                $fileSize = $file->getSize(); 
+                $fileSize = $file->getSize();
                 if (str_starts_with($fileMime, 'video/')) {
                     set_time_limit(0);
 
                     $physicalName = 'grp_vid_' . time() . '_' . Str::random(10) . '.mp4';
                     $tempPath = 'group_files/temp/' . $physicalName;
                     $finalPath = 'group_files/' . $physicalName;
-                    
+
                     $file->storeAs('group_files/temp', $physicalName, 'public');
 
                     try {
                         $format = new X264('aac', 'libx264');
-                        $format->setKiloBitrate(1000); 
+                        $format->setKiloBitrate(1000);
 
                         FFMpeg::fromDisk('public')
                             ->open($tempPath)
                             ->export()
                             ->toDisk('public')
                             ->inFormat($format)
-                            ->resize(1280, 720) 
+                            ->resize(1280, 720)
                             ->save($finalPath);
 
                         Storage::disk('public')->delete($tempPath);
                         $filePath = $finalPath;
-                        $fileMime = 'video/mp4'; 
-                        
+                        $fileMime = 'video/mp4';
+
                         if (Storage::disk('public')->exists($finalPath)) {
                             $fileSize = Storage::disk('public')->size($finalPath);
                         }
@@ -227,8 +240,7 @@ class GroupController extends Controller
                         $filePath = $finalPath;
                     }
                     $msgType = 'video';
-                }
-                elseif (str_starts_with($fileMime, 'image/')) {
+                } elseif (str_starts_with($fileMime, 'image/')) {
                     $physicalName = 'grp_img_' . time() . '_' . Str::random(10) . '.webp';
                     $path = 'group_files/' . $physicalName;
 
@@ -237,7 +249,7 @@ class GroupController extends Controller
                         $image = $manager->read($file);
                         $image->scaleDown(width: 1280);
                         Storage::disk('public')->put($path, (string) $image->toWebp(quality: 80));
-                        
+
                         $filePath = $path;
                         $fileMime = 'image/webp';
                         $fileSize = Storage::disk('public')->size($path);
@@ -246,8 +258,7 @@ class GroupController extends Controller
                         $filePath = $file->storeAs('group_files', $physicalName, 'public');
                     }
                     $msgType = 'image';
-                }
-                else {
+                } else {
                     $physicalName = time() . '_' . str_replace(' ', '_', $originalName);
                     $filePath = $file->storeAs('group_files', $physicalName, 'public');
                     $msgType = 'file';
@@ -256,15 +267,15 @@ class GroupController extends Controller
 
             // Simpan ke DB MySQL
             $message = GroupMessage::create([
-                'group_id'       => $group->id,
-                'sender_id'      => $sender->id,
-                'message'        => $request->message,
-                'file_path'      => $filePath,
-                'file_name'      => $fileName,
+                'group_id' => $group->id,
+                'sender_id' => $sender->id,
+                'message' => $request->message,
+                'file_path' => $filePath,
+                'file_name' => $fileName,
                 'file_mime_type' => $fileMime,
-                'file_size'      => $fileSize,
-                'type'           => $msgType,
-                'created_at'     => now(),
+                'file_size' => $fileSize,
+                'type' => $msgType,
+                'created_at' => now(),
             ]);
 
             $group->touch();
@@ -272,27 +283,30 @@ class GroupController extends Controller
             DB::commit();
             // Push ke Firebase Realtime Database
             $this->database->getReference('group_messages/' . $group->id)->push([
-                'id'             => $message->id,
-                'group_id'       => $message->group_id,
-                'sender_id'      => $message->sender_id,
-                'message'        => $message->message,
-                'file_path'      => $message->file_path,
-                'file_name'      => $message->file_name,
-                'file_size'      => $message->file_size,
-                'type'           => $message->type,
-                'created_at'     => $message->created_at->toIso8601String(),
+                'id' => $message->id,
+                'group_id' => $message->group_id,
+                'sender_id' => $message->sender_id,
+                'message' => $message->message,
+                'file_path' => $message->file_path,
+                'file_name' => $message->file_name,
+                'file_size' => $message->file_size,
+                'type' => $message->type,
+                'created_at' => $message->created_at->toIso8601String(),
                 'sender' => [
-                    'id'    => $sender->id,
-                    'name'  => $sender->name,
-                    'photo' => $sender->avatar ?? $sender->photo ?? null, 
+                    'id' => $sender->id,
+                    'name' => $sender->name,
+                    'photo' => $sender->avatar ?? $sender->photo ?? null,
                 ]
             ]);
 
             $notifMessage = $request->message;
             if (empty($notifMessage)) {
-                if ($msgType === 'video') $notifMessage = '🎥 Mengirim video';
-                else if ($msgType === 'image') $notifMessage = '📷 Mengirim foto';
-                else if ($msgType === 'file') $notifMessage = '📁 Mengirim berkas';
+                if ($msgType === 'video')
+                    $notifMessage = '🎥 Mengirim video';
+                else if ($msgType === 'image')
+                    $notifMessage = '📷 Mengirim foto';
+                else if ($msgType === 'file')
+                    $notifMessage = '📁 Mengirim berkas';
             }
 
             $members = $group->members()->where('users.id', '!=', $sender->id)->get();
@@ -301,14 +315,14 @@ class GroupController extends Controller
                     $member->id,
                     $group,
                     $sender,
-                    $notifMessage, 
+                    $notifMessage,
                     $msgType
                 );
             }
 
             return response()->json([
                 'status' => 'success',
-                'data'   => $message
+                'data' => $message
             ]);
 
         } catch (\Exception $e) {
@@ -325,10 +339,11 @@ class GroupController extends Controller
             ->where('user_id', Auth::id())
             ->delete();
 
-        if ($deleted) return response()->json(['message' => 'Berhasil keluar']);
+        if ($deleted)
+            return response()->json(['message' => 'Berhasil keluar']);
         return response()->json(['message' => 'Gagal'], 400);
     }
-    
+
     // 3. DOWNLOAD ATTACHMENT
     public function downloadAttachment($msgId)
     {
@@ -360,9 +375,9 @@ class GroupController extends Controller
 
             $groupId = $message->group_id;
             $msgId = $message->id;
-            $message->delete(); 
+            $message->delete();
             $this->database->getReference('group_messages/' . $groupId)->push([
-                'id' => 'del_' . time(), 
+                'id' => 'del_' . time(),
                 'type' => 'delete_notify',
                 'target_message_id' => $msgId,
                 'deleted_by_user_id' => $userId,
@@ -387,10 +402,12 @@ class GroupController extends Controller
     // DETAILS GROUP
     public function show($id)
     {
-        $group = Group::with(['members' => function($query) {
-            $query->select('users.id', 'users.name', 'users.email', 'users.photo', 'users.phone') 
-                  ->withPivot('is_admin'); 
-        }])->find($id);
+        $group = Group::with([
+            'members' => function ($query) {
+                $query->select('users.id', 'users.name', 'users.email', 'users.photo', 'users.phone')
+                    ->withPivot('is_admin');
+            }
+        ])->find($id);
 
         if (!$group) {
             return response()->json(['message' => 'Grup tidak ditemukan'], 404);
@@ -414,7 +431,8 @@ class GroupController extends Controller
         ]);
 
         $group = Group::find($id);
-        if (!$group) return response()->json(['message' => 'Grup tidak ditemukan'], 404);
+        if (!$group)
+            return response()->json(['message' => 'Grup tidak ditemukan'], 404);
 
         $group->update(['name' => $request->name]);
 
@@ -434,7 +452,8 @@ class GroupController extends Controller
         ]);
 
         $group = Group::find($id);
-        if (!$group) return response()->json(['message' => 'Grup tidak ditemukan'], 404);
+        if (!$group)
+            return response()->json(['message' => 'Grup tidak ditemukan'], 404);
 
         // Tambahkan user tanpa menghapus member lama (syncWithoutDetaching)
         $group->members()->syncWithoutDetaching($request->user_ids);
@@ -450,7 +469,8 @@ class GroupController extends Controller
     public function removeMember($groupId, $userId)
     {
         $group = Group::find($groupId);
-        if (!$group) return response()->json(['message' => 'Grup tidak ditemukan'], 404);
+        if (!$group)
+            return response()->json(['message' => 'Grup tidak ditemukan'], 404);
 
         // Hapus dari pivot table
         $group->members()->detach($userId);
@@ -470,19 +490,19 @@ class GroupController extends Controller
         $query = User::query();
 
         if ($search) {
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'LIKE', "%{$search}%")
-                  ->orWhere('email', 'LIKE', "%{$search}%");
+                    ->orWhere('email', 'LIKE', "%{$search}%");
             });
         }
 
         // Jangan tampilkan user yang SUDAH ada di grup ini
         if ($excludeGroupId) {
-            $query->whereDoesntHave('groups', function($q) use ($excludeGroupId) {
+            $query->whereDoesntHave('groups', function ($q) use ($excludeGroupId) {
                 $q->where('groups.id', $excludeGroupId);
             });
         }
-        
+
         // Jangan tampilkan diri sendiri
         $query->where('id', '!=', Auth::id());
 
@@ -495,7 +515,7 @@ class GroupController extends Controller
     public function markAsRead($groupId)
     {
         $userId = Auth::id();
-        
+
         DB::table('group_user')
             ->where('group_id', $groupId)
             ->where('user_id', $userId)
@@ -508,11 +528,11 @@ class GroupController extends Controller
     public function clearChat($groupId)
     {
         $user = Auth::user();
-    
+
         $isMember = DB::table('group_user')
-                    ->where('group_id', $groupId)
-                    ->where('user_id', $user->id)
-                    ->exists();
+            ->where('group_id', $groupId)
+            ->where('user_id', $user->id)
+            ->exists();
 
         if (!$isMember) {
             return response()->json(['message' => 'Unauthorized'], 403);

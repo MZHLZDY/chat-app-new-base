@@ -45,6 +45,8 @@ const fileInput = ref<HTMLInputElement | null>(null);
 // --- STATE MODAL ---
 const isCreateGroupOpen = ref(false);
 const isEditGroupOpen = ref(false);
+const sidebarUnsubscribes: Record<string, Function> = {};
+const pageLoadTime = Date.now();
 const groupIdToEdit = ref<string | number | undefined>(undefined);
 const editModalTitle = ref("Edit Info Grup");
 const isDeleteModalOpen = ref(false);
@@ -119,13 +121,15 @@ const shouldShowDateDivider = (index: number) => {
 
 // --- FETCH GROUPS ---
 const fetchGroups = async () => {
-    isLoadingGroups.value = true;
     try {
-        // Asumsi endpoint untuk list grup
+        isLoadingGroups.value = true;
         const response = await axios.get("/chat/groups");
-        groups.value = response.data;
+        groups.value = response.data.map((g: any) => ({
+            ...g,
+            unread_count: Number(g.unread_count) || 0,
+        }));
     } catch (error) {
-        console.error("Gagal memuat grup", error);
+        console.error("Gagal memuat grup:", error);
     } finally {
         isLoadingGroups.value = false;
     }
@@ -145,6 +149,11 @@ const selectGroup = async (group: any) => {
     const idx = groups.value.findIndex((g) => g.id === group.id);
     if (idx !== -1) {
         groups.value[idx].unread_count = 0;
+    }
+    try {
+        axios.post(`/chat/groups/${group.id}/read`);
+    } catch (error) {
+        console.error("Gagal update status read:", error);
     }
 
     setupGroupListener(group.id);
@@ -549,6 +558,58 @@ const handleEscKey = (e: KeyboardEvent) => {
     }
 };
 
+const setupSidebarListeners = () => {
+    // Kurangi 2 detik untuk toleransi waktu server vs client
+    const timeThreshold = pageLoadTime - 2000;
+
+    groups.value.forEach((group) => {
+        // Cek duplikasi listener
+        if (sidebarUnsubscribes[group.id]) return;
+
+        const messagesRef = firebaseRef(db, `group_messages/${group.id}`);
+        const q = query(messagesRef, limitToLast(1));
+
+        const unsub = onChildAdded(q, (snapshot) => {
+            const msg = snapshot.val();
+            if (!msg) return;
+
+            // 1. Cari Index Grup di Array (Bukan find object biasa)
+            const index = groups.value.findIndex((g) => g.id == group.id);
+            if (index === -1) return;
+
+            // 2. Filter Pesan Lama (History)
+            const msgTime = new Date(msg.created_at).getTime();
+            if (msgTime <= timeThreshold) return;
+
+            // --- UPDATE REALTIME ---
+            groups.value[index].last_message_preview =
+                msg.type === "text"
+                    ? msg.message
+                    : msg.type === "image"
+                    ? "📷 Foto"
+                    : "📎 Berkas";
+            groups.value[index].last_message_time = msg.created_at;
+            const isMyMessage = msg.sender_id === authStore.user.id;
+            const isGroupOpen =
+                activeGroup.value && activeGroup.value.id === group.id;
+
+            if (!isMyMessage && !isGroupOpen) {
+                const currentCount =
+                    Number(groups.value[index].unread_count) || 0;
+
+                // Tambah 1
+                const newCount = currentCount + 1;
+
+                groups.value[index].unread_count = newCount;
+                const movedGroup = groups.value.splice(index, 1)[0];
+                groups.value.unshift(movedGroup);
+            }
+        });
+
+        sidebarUnsubscribes[group.id] = unsub;
+    });
+};
+
 // --- LISTENER GROUP CHAT ---
 const setupGroupListener = (groupId: number) => {
     if (unsubscribeGroupChats) {
@@ -619,7 +680,7 @@ watch(
 
 onMounted(async () => {
     await fetchGroups();
-
+    setupSidebarListeners();
     if (currentUser.value) {
         onAuthStateChanged(auth, (firebaseUser) => {
             if (!firebaseUser) {
@@ -641,7 +702,7 @@ onUnmounted(() => {
         set(myRef, null);
     }
     globalChatStore.setActiveGroup(null);
-
+    Object.values(sidebarUnsubscribes).forEach((unsub) => unsub());
     window.removeEventListener("keydown", handleEscKey);
 });
 </script>
@@ -730,19 +791,30 @@ onUnmounted(() => {
                                     <div
                                         class="d-flex align-items-center justify-content-between"
                                     >
-                                        <span class="text-muted fs-7 text-truncate pe-2" style="max-width: 150px">
-    <span 
-        v-if="chatDrafts[group.id]?.trim()" 
-        class="text-danger fst-italic"
-    >
-        <span class="me-1">Draft:</span>
-        <span class="text-gray-800">{{ chatDrafts[group.id] }}</span>
-    </span>
+                                        <span
+                                            class="text-muted fs-7 text-truncate pe-2"
+                                            style="max-width: 150px"
+                                        >
+                                            <span
+                                                v-if="
+                                                    chatDrafts[group.id]?.trim()
+                                                "
+                                                class="text-danger fst-italic"
+                                            >
+                                                <span class="me-1">Draft:</span>
+                                                <span class="text-gray-800">{{
+                                                    chatDrafts[group.id]
+                                                }}</span>
+                                            </span>
 
-    <span v-else>
-        {{ group.last_message || (group.members_count + ' Anggota') }}
-    </span>
-</span>
+                                            <span v-else>
+                                                {{
+                                                    group.last_message ||
+                                                    group.members_count +
+                                                        " Anggota"
+                                                }}
+                                            </span>
+                                        </span>
 
                                         <span
                                             v-if="group.unread_count > 0"
@@ -1403,10 +1475,14 @@ onUnmounted(() => {
                                 v-model="newMessage"
                                 @keyup.enter="sendMessage"
                                 type="text"
-                                @input="(e) => { 
-        handleTyping(); 
-        if(activeGroup) chatDrafts[activeGroup.id] = newMessage; 
-    }"
+                                @input="
+                                    (e) => {
+                                        handleTyping();
+                                        if (activeGroup)
+                                            chatDrafts[activeGroup.id] =
+                                                newMessage;
+                                    }
+                                "
                                 class="form-control form-control-solid me-3"
                                 placeholder="Ketik pesan..."
                             />
