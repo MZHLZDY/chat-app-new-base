@@ -54,10 +54,9 @@ const fetchGroupData = async () => {
     isFetching.value = true;
     try {
         const response = await axios.get(`/chat/groups/${props.groupId}`);
-        const data = response.data.data; // Pastikan struktur response sesuai
+        const data = response.data.data; 
 
         form.value.name = data.name;
-        // Simpan foto lama
         existingPhotoUrl.value = data.photo ? `/storage/${data.photo}` : "";
         members.value = data.members || [];
     } catch (error) {
@@ -79,14 +78,12 @@ const handleFileChange = (event: Event) => {
     if (input.files && input.files[0]) {
         const file = input.files[0];
 
-        // Validasi tipe file
         if (!file.type.startsWith("image/")) {
             toast.error("Harap pilih file gambar (JPG/PNG).");
             return;
         }
 
         photoFile.value = file;
-        // Buat preview lokal
         photoPreview.value = URL.createObjectURL(file);
     }
 };
@@ -102,15 +99,12 @@ const submitInfo = async () => {
     try {
         const formData = new FormData();
         formData.append("name", form.value.name);
-
-        // Jika ada foto baru yang dipilih
         if (photoFile.value) {
             formData.append("photo", photoFile.value);
         }
 
         if (props.groupId) {
             // EDIT MODE
-            // PENTING: Laravel butuh _method: 'PUT' jika mengirim FormData via POST
             formData.append("_method", "PUT");
 
             const response = await axios.post(
@@ -123,7 +117,6 @@ const submitInfo = async () => {
 
             toast.success("Info grup diperbarui");
 
-            // Update foto preview jika sukses
             if (response.data.data.photo) {
                 existingPhotoUrl.value = `/storage/${response.data.data.photo}`;
                 photoPreview.value = null;
@@ -131,9 +124,7 @@ const submitInfo = async () => {
             }
 
             emit("group-updated", response.data.data);
-            // Jangan close modal, user mungkin mau edit member
         } else {
-            // CREATE NEW
             const response = await axios.post(`/chat/groups`, formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
@@ -150,13 +141,10 @@ const submitInfo = async () => {
 };
 
 // --- LOGIC TAB 2: MEMBERS ---
-
 const searchUsers = async () => {
     if (searchQuery.value.length < 2) return;
     isSearching.value = true;
     try {
-        // Panggil endpoint search
-        // Pastikan backend sudah join ke tabel contacts
         const response = await axios.get(`/chat/users/search`, {
             params: {
                 q: searchQuery.value,
@@ -191,7 +179,6 @@ const addSelectedMembers = async () => {
         });
         toast.success("Anggota berhasil ditambahkan!");
 
-        // Reset search
         searchQuery.value = "";
         searchResults.value = [];
         selectedUsersToAdd.value = [];
@@ -223,12 +210,10 @@ watch(
     (newVal) => {
         if (newVal) {
             activeTab.value = "info";
-            // Reset state foto
             photoPreview.value = null;
             photoFile.value = null;
             fetchGroupData();
         } else {
-            // Reset form create
             form.value.name = "";
             existingPhotoUrl.value = "";
             members.value = [];
