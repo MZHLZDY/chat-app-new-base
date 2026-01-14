@@ -428,13 +428,36 @@ class GroupController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'photo' => 'sometimes|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         $group = Group::find($id);
         if (!$group)
             return response()->json(['message' => 'Grup tidak ditemukan'], 404);
 
-        $group->update(['name' => $request->name]);
+        $is_admin = $group->members()
+            ->where('user_id', Auth::id())
+            ->wherePivot('is_admin', true)
+            ->exists();
+
+        if (!$is_admin) {
+            return response()->json(['message' => 'Hanya admin yang dapat mengubah info grup'], 403);
+        }
+
+        if ($request->has('name')) {
+            $group->name = $request->name;
+        }
+
+        if ($request->hasFile('photo')) {
+            if ($group->photo && $group->photo !== 'groups/default.png') {
+                Storage::disk('public')->delete($group->photo);
+            }
+
+            $path = $request->file('photo')->store('groups', 'public');
+            $group->photo = $path;
+        }
+
+        $group->save();
 
         return response()->json([
             'success' => true,
@@ -486,31 +509,33 @@ class GroupController extends Controller
     {
         $search = $request->query('q');
         $excludeGroupId = $request->query('exclude_group');
+        $authId = Auth::id();
 
-        $query = User::query();
+        $query = User::select('users.*', 'contacts.alias')
+            ->leftJoin('contacts', function ($join) use ($authId) {
+                $join->on('users.id', '=', 'contacts.friend_id')
+                    ->where('contacts.user_id', '=', $authId);
+            });
 
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'LIKE', "%{$search}%")
-                    ->orWhere('email', 'LIKE', "%{$search}%");
+                $q->where('users.name', 'LIKE', "%{$search}%")
+                    ->orWhere('users.email', 'LIKE', "%{$search}%")
+                    ->orWhere('contacts.alias', 'LIKE', "%{$search}%");
             });
         }
-
-        // Jangan tampilkan user yang SUDAH ada di grup ini
         if ($excludeGroupId) {
             $query->whereDoesntHave('groups', function ($q) use ($excludeGroupId) {
                 $q->where('groups.id', $excludeGroupId);
             });
         }
 
-        // Jangan tampilkan diri sendiri
-        $query->where('id', '!=', Auth::id());
+        $query->where('users.id', '!=', $authId);
 
         $users = $query->limit(10)->get();
 
         return response()->json(['data' => $users]);
     }
-
     // MARK GROUP AS READ
     public function markAsRead($groupId)
     {

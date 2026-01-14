@@ -5,7 +5,7 @@ import { toast } from "vue3-toastify";
 
 const props = defineProps({
     groupId: { type: [String, Number], default: null },
-    modelValue: { type: Boolean, default: false }, // Untuk v-model open/close modal
+    modelValue: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
@@ -20,11 +20,15 @@ const activeTab = ref<"info" | "members">("info");
 const isLoading = ref(false);
 const isFetching = ref(false);
 
-// Data Grup
+// Data Grup & Foto
 const form = ref({
     name: "",
     description: "",
 });
+const existingPhotoUrl = ref(""); // Untuk menyimpan URL foto dari server
+const photoPreview = ref<string | null>(null); // Untuk preview upload baru
+const photoFile = ref<File | null>(null); // File mentah untuk diupload
+
 const members = ref<any[]>([]);
 
 // State untuk Tambah Member
@@ -32,6 +36,7 @@ const searchQuery = ref("");
 const searchResults = ref<any[]>([]);
 const selectedUsersToAdd = ref<number[]>([]);
 const isSearching = ref(false);
+const fileInputRef = ref<HTMLInputElement | null>(null);
 
 // Judul Modal
 const modalTitle = computed(() =>
@@ -44,12 +49,12 @@ const fetchGroupData = async () => {
 
     isFetching.value = true;
     try {
-        // Panggil endpoint SHOW yang baru kita buat di controller
         const response = await axios.get(`/chat/groups/${props.groupId}`);
-        const data = response.data.data;
+        const data = response.data.data; // Pastikan struktur response sesuai
 
         form.value.name = data.name;
-        // Pastikan backend mengirim relasi 'members'
+        // Simpan foto lama
+        existingPhotoUrl.value = data.photo ? `/storage/${data.photo}` : "";
         members.value = data.members || [];
     } catch (error) {
         console.error(error);
@@ -60,27 +65,80 @@ const fetchGroupData = async () => {
     }
 };
 
-// --- LOGIC TAB 1: EDIT INFO ---
+// --- LOGIC FOTO ---
+const triggerFileInput = () => {
+    fileInputRef.value?.click();
+};
+
+const handleFileChange = (event: Event) => {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+
+        // Validasi tipe file
+        if (!file.type.startsWith("image/")) {
+            toast.error("Harap pilih file gambar (JPG/PNG).");
+            return;
+        }
+
+        photoFile.value = file;
+        // Buat preview lokal
+        photoPreview.value = URL.createObjectURL(file);
+    }
+};
+
+// --- LOGIC TAB 1: EDIT INFO (NAMA & FOTO) ---
 const submitInfo = async () => {
+    if (!form.value.name) {
+        toast.error("Nama grup tidak boleh kosong.");
+        return;
+    }
+
     isLoading.value = true;
     try {
+        const formData = new FormData();
+        formData.append("name", form.value.name);
+
+        // Jika ada foto baru yang dipilih
+        if (photoFile.value) {
+            formData.append("photo", photoFile.value);
+        }
+
         if (props.groupId) {
-            const response = await axios.put(`/chat/groups/${props.groupId}`, {
-                name: form.value.name,
-            });
+            // EDIT MODE
+            // PENTING: Laravel butuh _method: 'PUT' jika mengirim FormData via POST
+            formData.append("_method", "PUT");
+
+            const response = await axios.post(
+                `/chat/groups/${props.groupId}`,
+                formData,
+                {
+                    headers: { "Content-Type": "multipart/form-data" },
+                }
+            );
 
             toast.success("Info grup diperbarui");
+
+            // Update foto preview jika sukses
+            if (response.data.data.photo) {
+                existingPhotoUrl.value = `/storage/${response.data.data.photo}`;
+                photoPreview.value = null;
+                photoFile.value = null;
+            }
+
             emit("group-updated", response.data.data);
-            emit("close");
+            // Jangan close modal, user mungkin mau edit member
         } else {
-            // Create New
-            await axios.post(`/chat/groups`, { name: form.value.name });
+            // CREATE NEW
+            const response = await axios.post(`/chat/groups`, formData, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
             toast.success("Grup dibuat");
             emit("refresh");
             emit("close");
         }
-    } catch (error) {
-        toast.error("Gagal menyimpan.");
+    } catch (error: any) {
+        toast.error(error.response?.data?.message || "Gagal menyimpan.");
         console.error(error);
     } finally {
         isLoading.value = false;
@@ -89,12 +147,12 @@ const submitInfo = async () => {
 
 // --- LOGIC TAB 2: MEMBERS ---
 
-// A. Cari User Baru
 const searchUsers = async () => {
     if (searchQuery.value.length < 2) return;
     isSearching.value = true;
     try {
-        // Panggil endpoint search user, exclude user yang sudah ada di grup
+        // Panggil endpoint search
+        // Pastikan backend sudah join ke tabel contacts
         const response = await axios.get(`/chat/users/search`, {
             params: {
                 q: searchQuery.value,
@@ -109,7 +167,6 @@ const searchUsers = async () => {
     }
 };
 
-// B. Pilih User untuk Ditambah
 const toggleUserSelection = (userId: number) => {
     if (selectedUsersToAdd.value.includes(userId)) {
         selectedUsersToAdd.value = selectedUsersToAdd.value.filter(
@@ -120,7 +177,6 @@ const toggleUserSelection = (userId: number) => {
     }
 };
 
-// C. Eksekusi Tambah Member
 const addSelectedMembers = async () => {
     if (selectedUsersToAdd.value.length === 0) return;
 
@@ -131,12 +187,11 @@ const addSelectedMembers = async () => {
         });
         toast.success("Anggota berhasil ditambahkan!");
 
-        // Reset form tambah
+        // Reset search
         searchQuery.value = "";
         searchResults.value = [];
         selectedUsersToAdd.value = [];
 
-        // Refresh data member
         await fetchGroupData();
     } catch (error) {
         toast.error("Gagal menambahkan anggota.");
@@ -145,32 +200,33 @@ const addSelectedMembers = async () => {
     }
 };
 
-// D. Kick Member
 const kickMember = async (userId: number, memberName: string) => {
     if (!confirm(`Yakin ingin mengeluarkan ${memberName} dari grup?`)) return;
 
     try {
         await axios.delete(`/chat/groups/${props.groupId}/members/${userId}`);
-
-        // Hapus dari state lokal biar responsif
         members.value = members.value.filter((m) => m.id !== userId);
         toast.success(`${memberName} dikeluarkan.`);
-        emit("refresh"); // Refresh parent
+        emit("refresh");
     } catch (error) {
         toast.error("Gagal mengeluarkan anggota.");
     }
 };
 
-// Watcher: Saat modal dibuka (groupId berubah), load data
+// Watcher
 watch(
     () => props.groupId,
     (newVal) => {
         if (newVal) {
-            activeTab.value = "info"; // Reset ke tab info
+            activeTab.value = "info";
+            // Reset state foto
+            photoPreview.value = null;
+            photoFile.value = null;
             fetchGroupData();
         } else {
-            // Reset form jika modal ditutup/buat baru
+            // Reset form create
             form.value.name = "";
+            existingPhotoUrl.value = "";
             members.value = [];
         }
     },
@@ -232,6 +288,51 @@ watch(
                 <div v-else>
                     <div v-if="activeTab === 'info'">
                         <form @submit.prevent="submitInfo" id="groupForm">
+                            <div
+                                class="d-flex flex-column align-items-center mb-5"
+                            >
+                                <div class="position-relative">
+                                    <div
+                                        class="symbol symbol-100px symbol-circle overflow-hidden shadow-sm border"
+                                    >
+                                        <img
+                                            :src="
+                                                photoPreview ||
+                                                existingPhotoUrl ||
+                                                '/media/avatars/blank.png'
+                                            "
+                                            alt="Grup Photo"
+                                            style="
+                                                object-fit: cover;
+                                                width: 100px;
+                                                height: 100px;
+                                            "
+                                        />
+                                    </div>
+                                    <button
+                                        type="button"
+                                        @click="triggerFileInput"
+                                        class="btn btn-icon btn-circle btn-sm btn-white shadow position-absolute bottom-0 end-0 m-1"
+                                        title="Ganti Foto"
+                                    >
+                                        <i
+                                            class="fas fa-camera text-primary"
+                                        ></i>
+                                    </button>
+                                </div>
+                                <div class="text-muted fs-8 mt-2">
+                                    Klik ikon kamera untuk mengganti
+                                </div>
+
+                                <input
+                                    type="file"
+                                    ref="fileInputRef"
+                                    class="d-none"
+                                    accept="image/*"
+                                    @change="handleFileChange"
+                                />
+                            </div>
+
                             <div class="mb-4">
                                 <label class="form-label fw-bold"
                                     >Nama Grup</label
@@ -261,14 +362,14 @@ watch(
                                     @input="searchUsers"
                                     type="text"
                                     class="form-control"
-                                    placeholder="Cari nama atau email..."
+                                    placeholder="Cari nama kontak..."
                                 />
                                 <span class="input-group-text"
                                     ><i class="fas fa-search"></i
                                 ></span>
                             </div>
 
-                            <div
+                            <button
                                 v-if="searchResults.length > 0"
                                 class="list-group mb-3 shadow-sm"
                             >
@@ -290,28 +391,35 @@ watch(
                                             readonly
                                         />
                                     </div>
-                                    <div class="d-flex align-items-center">
-                                        <div
-                                            class="symbol symbol-35px symbol-circle me-2"
-                                        >
-                                            <img
-                                                :src="
-                                                    user.avatar ||
-                                                    '/media/avatars/blank.png'
-                                                "
-                                                alt="pic"
-                                            />
+                                    <div
+                                        class="symbol symbol-35px symbol-circle me-2"
+                                    >
+                                        <img
+                                            :src="
+                                                user.photo
+                                                    ? `/storage/${user.photo}`
+                                                    : '/media/avatars/blank.png'
+                                            "
+                                            alt="pic"
+                                            style="object-fit: cover"
+                                        />
+                                    </div>
+                                    <div>
+                                        <div class="fw-bold text-gray-800">
+                                            {{ user.alias || user.name }}
                                         </div>
-                                        <div class="fw-bold">
-                                            {{ user.name }}
-                                            <span
-                                                class="text-muted fw-normal fs-7"
-                                                >({{ user.email }})</span
-                                            >
+                                        <div
+                                            v-if="user.alias"
+                                            class="text-muted fs-8"
+                                        >
+                                            ~ {{ user.name }}
+                                        </div>
+                                        <div v-else class="text-muted fs-8">
+                                            {{ user.email }}
                                         </div>
                                     </div>
                                 </div>
-                            </div>
+                            </button>
 
                             <button
                                 v-if="selectedUsersToAdd.length > 0"
@@ -324,7 +432,6 @@ watch(
                                     class="spinner-border spinner-border-sm me-1"
                                 ></span>
                                 Tambahkan {{ selectedUsersToAdd.length }} Orang
-                                Terpilih
                             </button>
                         </div>
 
@@ -345,11 +452,12 @@ watch(
                                 >
                                     <img
                                         :src="
-                                            member.avatar ||
-                                            member.photo ||
-                                            '/media/avatars/blank.png'
+                                            member.photo
+                                                ? `/storage/${member.photo}`
+                                                : '/media/avatars/blank.png'
                                         "
                                         alt="member"
+                                        style="object-fit: cover"
                                     />
                                 </div>
                                 <div class="d-flex flex-column">
@@ -361,7 +469,7 @@ watch(
                                     }}</span>
                                 </div>
                                 <span
-                                    v-if="member.id === member.pivot?.is_admin"
+                                    v-if="member.pivot?.is_admin"
                                     class="badge badge-light-success ms-2"
                                     >Admin</span
                                 >
@@ -370,17 +478,10 @@ watch(
                             <button
                                 @click="kickMember(member.id, member.name)"
                                 class="btn btn-icon btn-sm btn-light-danger btn-active-danger"
-                                title="Keluarkan dari grup"
+                                title="Keluarkan"
                             >
                                 <i class="fas fa-user-times"></i>
                             </button>
-                        </div>
-
-                        <div
-                            v-if="members.length === 0"
-                            class="text-center text-muted fst-italic py-4"
-                        >
-                            Belum ada anggota lain.
                         </div>
                     </div>
                 </div>
@@ -396,7 +497,6 @@ watch(
                 >
                     Tutup
                 </button>
-
                 <button
                     v-if="activeTab === 'info'"
                     type="submit"
@@ -416,7 +516,6 @@ watch(
 </template>
 
 <style scoped>
-/* Styling Tambahan */
 .mw-600px {
     max-width: 600px;
 }
@@ -448,8 +547,6 @@ watch(
     border-radius: 0.475rem;
     outline: 0;
 }
-
-/* Dark Mode Support */
 [data-bs-theme="dark"] .bg-body {
     background-color: #1e1e2d !important;
 }
