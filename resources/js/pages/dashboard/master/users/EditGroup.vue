@@ -2,6 +2,7 @@
 import { ref, computed, watch } from "vue";
 import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
+import { useAuthStore } from "@/stores/authStore";
 
 const props = defineProps({
     groupId: { type: [String, Number], default: null },
@@ -20,14 +21,17 @@ const activeTab = ref<"info" | "members">("info");
 const isLoading = ref(false);
 const isFetching = ref(false);
 
+const authStore = useAuthStore();
+const currentUser = computed(() => authStore.user);
+
 // Data Grup & Foto
 const form = ref({
     name: "",
     description: "",
 });
-const existingPhotoUrl = ref(""); // Untuk menyimpan URL foto dari server
-const photoPreview = ref<string | null>(null); // Untuk preview upload baru
-const photoFile = ref<File | null>(null); // File mentah untuk diupload
+const existingPhotoUrl = ref("");
+const photoPreview = ref<string | null>(null);
+const photoFile = ref<File | null>(null);
 
 const members = ref<any[]>([]);
 
@@ -460,14 +464,20 @@ watch(
                                         style="object-fit: cover"
                                     />
                                 </div>
+
                                 <div class="d-flex flex-column">
-                                    <span class="text-gray-800 fw-bold">{{
-                                        member.name
-                                    }}</span>
+                                    <span class="text-gray-800 fw-bold">
+                                        {{
+                                            member.id === currentUser?.id
+                                                ? "Anda"
+                                                : member.name
+                                        }}
+                                    </span>
                                     <span class="text-muted fs-7">{{
                                         member.email
                                     }}</span>
                                 </div>
+
                                 <span
                                     v-if="member.pivot?.is_admin"
                                     class="badge badge-light-success ms-2"
@@ -476,6 +486,7 @@ watch(
                             </div>
 
                             <button
+                                v-if="member.id !== currentUser?.id"
                                 @click="kickMember(member.id, member.name)"
                                 class="btn btn-icon btn-sm btn-light-danger btn-active-danger"
                                 title="Keluarkan"

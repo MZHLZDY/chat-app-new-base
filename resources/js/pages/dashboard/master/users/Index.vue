@@ -144,6 +144,16 @@ const selectGroup = async (group: any) => {
     activeGroup.value = group;
     messages.value = [];
     globalChatStore.setActiveGroup(group.id);
+    try {
+        const fullGroupResponse = await axios.get(`/chat/groups/${group.id}`);
+        if (fullGroupResponse.data.success) {
+            activeGroup.value = fullGroupResponse.data.data;
+        } else {
+            activeGroup.value = fullGroupResponse.data;
+        }
+    } catch (err) {
+        console.error("Gagal memuat detail grup", err);
+    }
 
     newMessage.value = chatDrafts.value[String(group.id)] || "";
     const idx = groups.value.findIndex((g) => g.id === group.id);
@@ -282,6 +292,29 @@ const sendMessage = async () => {
         replyingTo.value = tempReply;
     }
 };
+
+const groupMembersHeader = computed(() => {
+    if (
+        !activeGroup.value ||
+        !activeGroup.value.members ||
+        activeGroup.value.members.length === 0
+    ) {
+        return "Memuat anggota...";
+    }
+
+    const names = activeGroup.value.members.map((m: any) =>
+        m.id === currentUser.value?.id ? "Anda" : m.name.split(" ")[0]
+    );
+
+    const limit = 5;
+    if (names.length <= limit) {
+        return names.join(", ");
+    } else {
+        const visibleNames = names.slice(0, limit).join(", ");
+        const remaining = names.length - limit;
+        return `${visibleNames}, +${remaining} lainnya`;
+    }
+});
 
 const setReply = (msg: any) => {
     replyingTo.value = msg;
@@ -872,8 +905,12 @@ onUnmounted(() => {
                                 <span class="fw-bold text-gray-800 fs-6">
                                     {{ activeGroup.name }}
                                 </span>
-                                <span class="text-muted fs-8">
-                                    {{ activeGroup.members_count || 0 }} Anggota
+                                <span
+                                    class="text-muted fs-8 d-block text-truncate"
+                                    style="max-width: 100%; cursor: pointer"
+                                    :title="activeGroup?.members?.map((m:any) => m.name).join(', ')"
+                                >
+                                    {{ groupMembersHeader }}
                                 </span>
                             </div>
                         </div>
@@ -1623,31 +1660,80 @@ onUnmounted(() => {
 
                 <div
                     class="text-start bg-light rounded p-4 mt-4 overflow-auto"
-                    style="max-height: 200px"
+                    style="max-height: 250px"
                 >
-                    <h6 class="text-gray-600 mb-3">Anggota</h6>
+                    <h6 class="text-gray-600 mb-3">
+                        Anggota ({{ activeGroup?.members?.length || 0 }})
+                    </h6>
+
                     <div
-                        v-for="member in activeGroup?.members"
-                        :key="member.id"
-                        class="d-flex align-items-center mb-2"
+                        v-if="
+                            activeGroup?.members &&
+                            activeGroup.members.length > 0
+                        "
                     >
-                        <div class="symbol symbol-30px symbol-circle me-2">
-                            <img
-                                :src="
-                                    member.photo
-                                        ? `/storage/${member.photo}`
-                                        : '/media/avatars/blank.png'
-                                "
-                            />
-                        </div>
-                        <span class="fs-7 fw-bold text-gray-800">{{
-                            member.name
-                        }}</span>
-                        <span
-                            v-if="member.is_admin"
-                            class="badge badge-light-success ms-auto fs-9"
-                            >Admin</span
+                        <div
+                            v-for="member in activeGroup.members"
+                            :key="member.id"
+                            class="d-flex align-items-center mb-3 border-bottom pb-2"
                         >
+                            <div class="symbol symbol-35px symbol-circle me-3">
+                                <img
+                                    :src="
+                                        member.photo
+                                            ? `/storage/${member.photo}`
+                                            : '/media/avatars/blank.png'
+                                    "
+                                    alt="foto"
+                                    style="object-fit: cover"
+                                />
+                            </div>
+
+                            <div
+                                class="d-flex flex-grow-1 justify-content-between align-items-center"
+                            >
+                                <div class="d-flex flex-column">
+                                    <span class="fs-7 fw-bold text-gray-800">
+                                        {{ member.name }}
+                                        <span
+                                            v-if="member.id === currentUser?.id"
+                                            class="text-muted fs-9 fw-normal ms-1"
+                                            >(Anda)</span
+                                        >
+                                    </span>
+                                    <span
+                                        v-if="!member.is_admin"
+                                        class="text-gray-500 fs-9"
+                                    >
+                                        {{
+                                            member.phone ||
+                                            member.phone_number ||
+                                            "-"
+                                        }}
+                                    </span>
+                                </div>
+
+                                <div v-if="member.is_admin">
+                                    <span
+                                        class="badge badge-light-success fw-bold fs-9"
+                                        >Admin</span
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="text-center py-5">
+                        <span class="text-muted fs-7">
+                            <i class="fas fa-exclamation-circle me-1"></i>
+                            Data anggota belum dimuat.
+                        </span>
+                        <button
+                            @click="fetchGroups"
+                            class="btn btn-sm btn-link text-primary d-block mx-auto mt-2"
+                        >
+                            Refresh Data
+                        </button>
                     </div>
                 </div>
             </div>
