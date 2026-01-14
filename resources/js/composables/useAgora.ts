@@ -115,7 +115,14 @@ export const useAgora = () => {
                 initializeClient();
             }
 
-            const appId = import.meta.env.VITE_APP_AGORA_ID || '';
+            const appId = import.meta.env.VITE_AGORA_APP_ID;
+
+            console.log('📦 Agora App Id:', appId);
+
+            if (!appId) {
+                console.error('❌ Agora App ID tidak ditemukan di env!');
+                throw new Error('Agora App ID tidak dikonfigurasi');
+            }
 
             await client.value!.join(appId, channel, token, uid);
             isJoined.value = true;

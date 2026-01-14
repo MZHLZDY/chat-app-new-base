@@ -1,57 +1,101 @@
 import { ref } from "vue";
 import { useCallStore } from "@/stores/callStore";
 import { useAgora } from "./useAgora";
+import { useAuthStore } from "@/stores/authStore";
 import * as callService from "@/services/callServices";
 import type { Call, CallType } from "@/types/call";
 import { usePage } from "@inertiajs/vue3";
 
 export const useVideoCall = () => {
     const store = useCallStore();
+    const authStore = useAuthStore();
     const { joinChannel, leaveChannel, toggleAudio, toggleVideo, localAudioTrack, localVideoTrack } = useAgora();
     const processing = ref(false);
 
     // Dapatkan otentikasi user saat ini (dari inertia shared props atau manapun kamu simpan user auth)
     const page = usePage();
-    const currentUser = page.props.auth ? (page.props.auth as any).user : null;
+    const currentUser = authStore.user;
     // @ts-ignore
     const appId = import.meta.env.VITE_AGORA_APP_ID;
 
     // Start / Invite call
     const startCall = async (receiverId: number, type: CallType = 'video') => {
-        if (processing.value) return;
+        console.log('🚀 useVideoCall: startCall dipanggil');
+        console.log('📦 receiverId:', receiverId);
+        console.log('📦 type:', type);
+        console.log('📦 currentUser:', currentUser);
+
+        if (processing.value) {
+            console.warn('⚠️ Processing masih berjalan, skip call');
+            return
+        };
+
+        if (!currentUser?.id) {
+            console.error('❌ Current user tidak ditemukan!');
+            return;
+        }
+
         processing.value = true;
 
         try {
+            console.log('Memanggil API /call/invite...');
             const response = await callService.inviteCall(receiverId, type);
+
+            console.log('✅ Respon API:', response.data);
+
             // Simpan call ke store dengan status ringing
             store.setCurrentCall(response.data);
 
+            console.log('✅ Call tersimpan di store');
+            console.log('📦 currentCall:', store.currentCall);
+            console.log('📦 callStatus:', store.callStatus);
+
         } catch (error: any) {
-            console.error(error);
-            console.error(error.response?.data?.message || "Gagal memulai panggilan");
+            console.error('❌ Error saat melakukan startCall:', error);
+            console.error('Pesan:', error.response?.data?.message || error.message);
         } finally {
             processing.value = false;
         }
     };
 
     // Accept call
-    const acceptCall = async (callId: string) => {
-        if (processing.value) return;
+    const acceptCall = async (callId: number) => {
+        console.log('✅ useVideoCall: acceptCall dipanggil');
+        console.log('📦 callId:', callId);
+
+        if (processing.value) {
+            console.warn('⚠️ Processing masih berjalan, skip accept call');
+            return
+        };
+
+        if (!currentUser?.id) {
+            console.error('❌ Current user tidak ditemukan!');
+            return;
+        };
+
         processing.value = true;
 
         try {
+            console.log('Memanggil API /call/answer...');
             const response = await callService.answerCall(callId);
             const callData = response.data;
+
+            console.log('✅ Respon API:', callData);
+
             store.setCurrentCall(callData);
             
             // Join channel agora sekarang
-            if (currentUser) {
-                await joinChannel(appId, callData.channel, callData.token, currentUser.id);
-            }
+            console.log('🚀 Bergabung ke channel Agora...');
+            console.log('📦 App ID:', appId);
+            console.log('📦 Channel:', callData.channel);
+            console.log('📦 Token:', callData.token);
+            console.log('📦 UID:', currentUser.id);
+
+            await joinChannel(callData.channel, callData.token, currentUser.id);
 
         } catch (error: any) {
-            console.error(error);
-            console.error("Gagal menjawab panggilan");
+            console.error('❌ Error pada saat acceptCall:', error);
+            console.error('Pesan:', error.response?.data?.message || error.message);
             store.clearIncomingCall();
         } finally {
             processing.value = false;
@@ -59,65 +103,83 @@ export const useVideoCall = () => {
     };
 
     // Menolak panggilan masuk
-    const rejectCall = async (callId: string) => {
+    const rejectCall = async (callId: number) => {
+        console.log('🚫 useVideoCall: rejectCall dipanggil');
+        console.log('📦 Call Id:', callId);
+
         try {
             await callService.rejectCall(callId);
             store.clearIncomingCall();
 
         } catch (error) {
-            console.error(error);
+            console.error('❌ Error pada saat rejectCall:', error);
         }
     };
 
     // Mengakhiri panggilan
-    const endCall = async (callId: string) => {
+    const endCall = async (callId: number) => {
+        console.log('🔚 useVideoCall: endCall dipanggil...');
+        console.log('📦 Call Id:', callId);
+
         try {
             // Leave agora dulu biar feedback UI nya cepet
+            console.log('👋 Meninggalkan channel Agora...');
             await leaveChannel();
 
             // Hit API backend
+            console.log('Memanggil API /call/end...');
             await callService.endCall(callId);
 
             // Cleanup store
             store.clearCurrentCall();
 
         } catch (error) {
-            console.error(error);
+            console.error('❌ Error pada saat endCall:', error);
         }
     };
 
     // Handle websocket events (nanti dipanggil di main app / layout)
     const handleIncomingCall = (event: any) => {
+        console.log('🔔 useVideoCall: handleIncomingcall dipanggil');
+        console.log('📦 Event:', event);
+
         // Cek kalau kita lagi ga di panggilan lain
         if (!store.isInCall) {
             store.setIncomingCall(event.call);
-            // Buynikan nada dering (jika ada / opsional)
+            console.log('✅ Incoming call diset ke store');
         } else {
-            // Otomatis ditolak jika tidak dijawab / mati karena timeout
+            console.warn('⚠️ Sedang dalam panggilan lain, mengabaikan panggilan masuk');
         }
     };
 
     const handleCallAccepted = async (event: any) => {
+        console.log('✅ useVideoCall: handleCallAccepted dipanggil');
+        console.log('📦 Event:', event);
+
         // Update status di store
         if (store.currentCall && store.currentCall.id === event.call.id) {
             store.updateCallStatus('ongoing');
 
-            if (currentUser && event.call.token) {
-                await joinChannel(appId, event.call.channel, event.call.token, currentUser.id);
+            if (!currentUser?.id) {
+                console.error('❌ Current user tidak ditemukan!');
+                return;
+            }
+
+            if (event.call.token) {
+                await joinChannel(event.call.channel, event.call.token, currentUser.id);
             }
         }
     };
 
     const handleCallRejected = () => {
-        console.info("Panggilan ditolak");
+        console.warn('🚫 useVideoCall: handleCallRejected dipanggil');
         store.clearCurrentCall();
-        // Suara memanggil berhenti
     };
 
     const handleCallEnded = async () => {
+        console.log('🔚 useVideoCall: handleCallEnded dipanggil');
         await leaveChannel();
         store.clearCurrentCall();
-        console.info("Panggilan berakhir");
     };
 
     return {
