@@ -230,10 +230,13 @@ const isSpeakerOn = ref(false); // State untuk speaker (UI only)
 // --- HANDLERS ---
 
 const handleVoiceCall = () => {
-    if (!activeContact.value) return;
+    if (!activeContact.value) {
+        toast.error("Pilih kontak terlebih dahulu");
+        return;
+    }
 
-    // Perbaikan: Panggil startVoiceCall
-    startVoiceCall(activeContact.value.id);
+    console.log('📞 Memulai voice call ke:', activeContact.value);
+    startVoiceCall(activeContact.value, 'voice'); // ✅ Kirim object lengkap!
 };
 
 const handleAcceptCall = async () => {
@@ -375,6 +378,61 @@ const handleVideoCall = async () => {
         toast.error(errorMsg);
     }
 };
+
+// Props untuk modal voice call
+const incomingCallProps = computed(() => {
+    if (!callStore.incomingCall) {
+        return { callerName: 'Unknown', callerPhoto: '' };
+    }
+    
+    const caller = callStore.incomingCall.caller;
+    return {
+        callerName: caller?.name || 'Unknown',
+        callerPhoto: caller?.profile_photo_url || caller?.photo || caller?.avatar || ''
+    };
+});
+
+const callingModalProps = computed(() => {
+    if (!callStore.currentCall) {
+        return { calleeName: 'Unknown', calleePhoto: '', callStatus: 'calling' };
+    }
+    
+    const call = callStore.currentCall as any;
+    const myId = authStore.user?.id;
+    
+    if (call.caller?.id === myId) {
+        const callee = call.receiver || call.callee;
+        return {
+            calleeName: callee?.name || callee?.display_name || 'Unknown',
+            calleePhoto: callee?.profile_photo_url || callee?.photo || callee?.avatar || '',
+            callStatus: callStore.callStatus || 'calling'
+        };
+    } else {
+        return {
+            calleeName: call.caller?.name || 'Unknown',
+            calleePhoto: call.caller?.profile_photo_url || call.caller?.photo || '',
+            callStatus: callStore.callStatus || 'calling'
+        };
+    }
+});
+
+const ongoingCallProps = computed(() => {
+    if (!callStore.currentCall) {
+        return { remoteName: 'Unknown', remotePhoto: '' };
+    }
+    
+    const call = callStore.currentCall as any;
+    const myId = authStore.user?.id;
+    
+    const remoteUser = call.caller?.id === myId 
+        ? (call.receiver || call.callee)
+        : call.caller;
+    
+    return {
+        remoteName: remoteUser?.name || remoteUser?.display_name || 'Unknown',
+        remotePhoto: remoteUser?.profile_photo_url || remoteUser?.photo || remoteUser?.avatar || ''
+    };
+});
 
 // Computed untuk modal video call
 const showVideoCallingModal = computed(
@@ -1457,45 +1515,46 @@ onUnmounted(() => {
         </div>
 
         <Teleport to="body">
-            <VoiceIncomingModal
-                v-if="showIncomingModal"
-                :caller-name="callStore.incomingCall?.caller?.name || 'Unknown'"
-                :caller-photo="callStore.incomingCall?.caller?.avatar || ''"
-                @accept="acceptVoiceCall"
-                @reject="rejectVoiceCall"
-            />
+    <VoiceIncomingModal
+        v-if="showIncomingModal"
+        :caller-name="incomingCallProps.callerName"
+        :caller-photo="incomingCallProps.callerPhoto"
+        @accept="handleAcceptCall"
+        @reject="handleRejectCall"
+    />
 
-            <VoiceCallingModal
-                v-if="showCallingModal"
-                :callee-name="remoteUser.name"
-                :callee-photo="remoteUser.avatar || ''"
-                :call-status="callStore.callStatus || 'calling'"
-                @cancel="endVoiceCall"
-            />
+    <VoiceCallingModal
+        v-if="showCallingModal"
+        :callee-name="callingModalProps.calleeName"
+        :callee-photo="callingModalProps.calleePhoto"
+        :call-status="callingModalProps.callStatus"
+        @cancel="handleEndVoiceCall"
+    />
 
-            <VoiceCallModal
-                v-if="showOngoingModal"
-                :remote-name="remoteUser.name"
-                :remote-photo="remoteUser.avatar || ''"
-                :is-muted="false"
-                :is-speaker-on="false"
-                @end-call="endVoiceCall"
-                @minimize="callStore.toggleMinimize"
-            />
+    <VoiceCallModal
+        v-if="showOngoingModal"
+        :remote-name="ongoingCallProps.remoteName"
+        :remote-photo="ongoingCallProps.remotePhoto"
+        :is-muted="false"
+        :is-speaker-on="false"
+        @end-call="handleEndVoiceCall"
+        @minimize="callStore.toggleMinimize"
+    />
 
-            <VoiceFloating
-                v-if="showFloatingModal"
-                :remote-name="remoteUser.name"
-                :remote-photo="remoteUser.avatar || ''"
-                :is-muted="false"
-                @maximize="callStore.toggleMinimize"
-                @end-call="endVoiceCall"
-            />
+    <VoiceFloating
+        v-if="showFloatingModal"
+        :remote-name="ongoingCallProps.remoteName"
+        :remote-photo="ongoingCallProps.remotePhoto"
+        :is-muted="false"
+        @maximize="callStore.toggleMinimize"
+        @end-call="handleEndVoiceCall"
+    />
 
-            <VideoCallingModal v-if="showVideoCallingModal" />
-            <VideoIncomingModal v-if="showVideoIncomingModal" />
-            <VideoCallModal v-if="showVideoCallModal" />
-        </Teleport>
+    <!-- Video call modals tetap sama -->
+    <VideoCallingModal v-if="showVideoCallingModal" />
+    <VideoIncomingModal v-if="showVideoIncomingModal" />
+    <VideoCallModal v-if="showVideoCallModal" />
+</Teleport>
 
         <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10" style="min-width: 0">
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
