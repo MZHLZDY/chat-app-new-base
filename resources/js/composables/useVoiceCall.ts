@@ -129,29 +129,57 @@ export const useVoiceCall = () => {
 
     // Helper untuk memperbaiki URL avatar dengan prioritas field
     const fixAvatarUrl = (user: any) => {
-        if (!user) return null;
+        if (!user) {
+            console.warn('⚠️ User object is null/undefined');
+            return null;
+        }
         
-        // Priority: profile_photo_url > photo > avatar
-        const photoField = user.profile_photo_url || user.photo || user.avatar;
+        // Expanded priority check - backend bisa kirim field berbeda
+        const photoField = 
+            user.profile_photo_url || 
+            user.photo || 
+            user.avatar ||
+            user.profile_photo ||
+            user.image ||
+            user.picture;
         
         console.log('🖼️ Avatar Fix Input:', {
             name: user.name,
+            id: user.id,
             profile_photo_url: user.profile_photo_url,
             photo: user.photo,
             avatar: user.avatar,
-            selected: photoField
+            profile_photo: user.profile_photo,
+            selected: photoField,
+            allKeys: Object.keys(user)
         });
         
-        if (!photoField) return null;
-        if (photoField.startsWith('http')) return photoField; // Sudah URL lengkap
+        if (!photoField) {
+            console.warn('⚠️ No photo field found for user:', user.name);
+            return null;
+        }
         
-        const cleanPath = photoField.startsWith('/') ? photoField : `/${photoField}`;
-        const result = `${baseUrl}${cleanPath}`;
+        // Jika sudah URL lengkap
+        if (photoField.startsWith('http')) {
+            console.log('✅ Using full URL:', photoField);
+            return photoField;
+        }
         
+        // Build URL dari path relative
+        const cleanBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+        let cleanPath = photoField.startsWith('/') ? photoField.substring(1) : photoField;
+        
+        // Pastikan path tidak double 'storage/'
+        if (cleanPath.startsWith('storage/')) {
+            cleanPath = cleanPath; // sudah benar
+        } else {
+            cleanPath = `storage/${cleanPath}`; // tambahkan storage/ jika belum ada
+        }
+        
+        const result = `${cleanBase}${cleanPath}`;
         console.log('✅ Avatar Fixed URL:', result);
         return result;
     };
-    // -----------------------------
 
     const mappedCall = {
         id: event.call_id,     

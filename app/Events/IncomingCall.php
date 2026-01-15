@@ -45,23 +45,32 @@ class IncomingCall implements ShouldBroadcast
     }
 
     public function broadcastWith()
-    {
-      return [
-          'call_id' => $this->callId,
-          'caller' => [
-              'id' => $this->caller->id,
-              'name' => $this->caller->name,
-              'avatar' => $this->caller->avatar_url ?? null,
-          ],
-          'callee' => [  // ✅ Tambahkan data callee
-              'id' => $this->callee->id,
-              'name' => $this->callee->name,
-              'avatar' => $this->callee->avatar_url ?? null,
-          ],
-          'call_type' => $this->callType,
-          'channel_name' => $this->channel,  // ✅ Ubah ke 'channel_name'
-          'agora_token' => $this->token,     // ✅ Ubah ke 'agora_token'
-          'timestamp' => now()->toISOString()
-      ];
-  }  
+{
+    return [
+        'call_id' => $this->callId,
+        'caller' => [
+            'id' => $this->caller->id,
+            'name' => $this->caller->name,
+            'email' => $this->caller->email,
+            // ✅ KIRIM SEMUA FIELD FOTO UNTUK KOMPATIBILITAS
+            'photo' => $this->caller->photo,
+            'avatar' => $this->caller->photo, // Gunakan field 'photo' langsung
+            'profile_photo_url' => $this->caller->profile_photo_url,
+            'avatar_url' => $this->caller->profile_photo_url, // Alias
+        ],
+        'callee' => [
+            'id' => $this->callee->id,
+            'name' => $this->callee->name,
+            'email' => $this->callee->email,
+            'photo' => $this->callee->photo,
+            'avatar' => $this->callee->photo,
+            'profile_photo_url' => $this->callee->profile_photo_url,
+            'avatar_url' => $this->callee->profile_photo_url,
+        ],
+        'call_type' => $this->callType,
+        'channel_name' => $this->channel,
+        'agora_token' => $this->token,
+        'timestamp' => now()->toISOString()
+    ];
+  } 
 }
