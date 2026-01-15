@@ -129,7 +129,7 @@ const fetchGroups = async () => {
             unread_count: Number(g.unread_count) || 0,
         }));
     } catch (error) {
-        console.error("Gagal memuat grup:", error);
+        console.error('Gagal memuat grup:', error);
     } finally {
         isLoadingGroups.value = false;
     }
@@ -163,7 +163,7 @@ const selectGroup = async (group: any) => {
     try {
         axios.post(`/chat/groups/${group.id}/read`);
     } catch (error) {
-        console.error("Gagal update status read:", error);
+        console.error('Gagal update status read:', error);
     }
 
     setupGroupListener(group.id);
@@ -286,8 +286,8 @@ const sendMessage = async () => {
 
         refreshGroupOrder(activeGroup.value.id);
     } catch (error) {
-        console.error("Gagal kirim pesan grup", error);
-        toast.error("Gagal mengirim pesan");
+        console.error('Gagal kirim pesan grup', error);
+        toast.error('Gagal mengirim pesan');
         messages.value = messages.value.filter((m) => m.id !== tempId);
         replyingTo.value = tempReply;
     }
@@ -421,9 +421,9 @@ const confirmDelete = async (type: "me" | "everyone") => {
         );
         closeDeleteModal();
     } catch (error: any) {
-        console.error("Error delete:", error);
+        console.error('Error delete:', error);
         const errorMsg =
-            error.response?.data?.message || "Gagal menghapus pesan";
+            error.response?.data?.message || 'Gagal menghapus pesan';
         toast.error(errorMsg);
     }
 };
@@ -455,10 +455,10 @@ const processClearChat = async () => {
         messages.value = [];
 
         isClearChatModalOpen.value = false;
-        toast.success("Riwayat chat berhasil dibersihkan");
+        toast.success('Riwayat chat berhasil dibersihkan');
     } catch (error) {
-        console.error("Gagal clear chat", error);
-        toast.error("Gagal membersihkan chat");
+        console.error('Gagal clear chat', error);
+        toast.error('Gagal membersihkan chat');
         isClearChatModalOpen.value = false;
     }
 };

@@ -145,7 +145,7 @@ const remoteUser = computed(() => {
         // @ts-ignore (jika receiver kadang null di type definition)
         return call.receiver || { name: "User", avatar: "" };
     } else {
-        return call.caller || { name: "User", avatar: "" };
+        return call.caller || { name: 'User', avatar: '' };
     }
 });
 
@@ -282,7 +282,7 @@ const handleEndVoiceCall = () => {
         endVoiceCall(callId);
     } else {
         // Fallback: Jika ID entah kenapa hilang, force cleanup di lokal saja
-        console.warn("Call ID missing, forcing local cleanup.");
+        console.warn('Call ID missing, forcing local cleanup.');
         callStore.clearCurrentCall();
     }
 
@@ -292,22 +292,22 @@ const handleEndVoiceCall = () => {
 
 // Handler video call
 const handleVideoCall = async () => {
-    console.log("📹 Tombol video call diklik");
+    console.log('📹 Tombol video call diklik');
 
     // Pastikan authStore.user terinisialisasi
     if (!authStore.user) {
         console.warn(
-            "⚠️ authStore.user tidak terdefinisi, mencoba inisialisasi..."
+            '⚠️ authStore.user tidak terdefinisi, mencoba inisialisasi...'
         );
 
         if (currentUser.value?.id) {
             authStore.setUser(currentUser.value);
-            console.log("✅ authStore.user terinisialisasi:", authStore.user);
+            console.log('✅ authStore.user terinisialisasi:', authStore.user);
         } else {
             console.error(
-                "❌ Gagal inisialisasi authStore.user, tidak ada currentUser"
+                '❌ Gagal inisialisasi authStore.user, tidak ada currentUser'
             );
-            toast.error("Silahkan refresh halaman");
+            toast.error('Silahkan refresh halaman');
             return;
         }
     }
@@ -315,25 +315,25 @@ const handleVideoCall = async () => {
     // Double check setelah inisialisasi
     if (!authStore.user?.id) {
         console.error(
-            "❌ authStore.user masih tidak terdefinisi setelah inisialisasi"
+            '❌ authStore.user masih tidak terdefinisi setelah inisialisasi'
         );
-        toast.error("Gagal mendapatkan data user");
+        toast.error('Gagal mendapatkan data user');
         return;
     }
 
     // Validasi kontak aktif
     if (!activeContact.value) {
         console.error(
-            "❌ Tidak ada kontak yang dipilih untuk panggilan video."
+            '❌ Tidak ada kontak yang dipilih untuk panggilan video.'
         );
-        toast.error("Pilih kontak terlebih dahulu");
+        toast.error('Pilih kontak terlebih dahulu');
         return;
     }
 
     try {
-        console.log("🚀 Memulai panggilan video ke:", activeContact.value.name);
-        console.log("📦 Caller ID:", authStore.user.id);
-        console.log("📦 Receiver ID:", activeContact.value.id);
+        console.log('🚀 Memulai panggilan video ke:', activeContact.value.name);
+        console.log('📦 Caller ID:', authStore.user.id);
+        console.log('📦 Receiver ID:', activeContact.value.id);
 
         // Convert activeContact ke tipe User
         const receiveUser: User = {
@@ -345,25 +345,25 @@ const handleVideoCall = async () => {
                 : undefined,
         };
 
-        console.log("📦 Receiver User:", receiveUser);
+        console.log('📦 Receiver User:', receiveUser);
 
-        await initiateCall(receiveUser, "video"); // Panggil API /call/invite
+        await initiateCall(receiveUser, 'video'); // Panggil API /call/invite
 
-        console.log("✅ Memulai panggilan video");
+        console.log('✅ Memulai panggilan video');
 
         // Log state setelah initiateCall
-        console.log("State setelah initiate");
-        console.log("callStore.currentCall:", callStore.currentCall);
-        console.log("callStore.incomingCall:", callStore.incomingCall);
-        console.log("callStore.isInCall:", callStore.isInCall);
-        console.log("callStore.callStatus:", callStore.callStatus);
-        console.log("showVideoCallingModal:", showVideoCallingModal.value);
-        console.log("showVideoIncomingModal:", showVideoIncomingModal.value);
-        console.log("showVideoCallModal:", showVideoCallModal.value);
+        console.log('State setelah initiate');
+        console.log('callStore.currentCall:', callStore.currentCall);
+        console.log('callStore.incomingCall:', callStore.incomingCall);
+        console.log('callStore.isInCall:', callStore.isInCall);
+        console.log('callStore.callStatus:', callStore.callStatus);
+        console.log('showVideoCallingModal:', showVideoCallingModal.value);
+        console.log('showVideoIncomingModal:', showVideoIncomingModal.value);
+        console.log('showVideoCallModal:', showVideoCallModal.value);
 
-        toast.success("Memanggil...");
+        toast.success('Memanggil...');
     } catch (error: any) {
-        console.error("❌ Gagal memulai panggilan video:", error);
+        console.error('❌ Gagal memulai panggilan video:', error);
 
         // Clear call state kalau error
         callStore.clearCurrentCall();
@@ -372,7 +372,7 @@ const handleVideoCall = async () => {
         const errorMsg =
             error.response?.data?.message ||
             error.message ||
-            "Gagal memulai panggilan video";
+            'Gagal memulai panggilan video';
         toast.error(errorMsg);
     }
 };
@@ -545,10 +545,10 @@ const shouldShowDateDivider = (index: number) => {
 const fetchContacts = async () => {
     isLoadingContact.value = true;
     try {
-        const response = await axios.get("/chat/contacts");
+        const response = await axios.get('/chat/contacts');
         contacts.value = response.data;
     } catch (error) {
-        console.error("Gagal memuat kontak", error);
+        console.error('Gagal memuat kontak', error);
     } finally {
         isLoadingContact.value = false;
     }
@@ -655,8 +655,8 @@ const sendMessage = async () => {
 
         refreshContactOrder(activeContact.value.id);
     } catch (error) {
-        console.error("Gagal kirim pesan", error);
-        toast.error("Gagal mengirim pesan");
+        console.error('Gagal kirim pesan', error);
+        toast.error('Gagal mengirim pesan');
         messages.value = messages.value.filter((m) => m.id !== tempId);
         replyingTo.value = tempReply;
     }
@@ -768,9 +768,9 @@ const confirmDelete = async (type: "me" | "everyone") => {
         );
         closeDeleteModal();
     } catch (error: any) {
-        console.error("Error delete:", error);
+        console.error('Error delete:', error);
         const errorMsg =
-            error.response?.data?.message || "Gagal menghapus pesan";
+            error.response?.data?.message || 'Gagal menghapus pesan';
         toast.error(errorMsg);
     }
 };
@@ -1141,7 +1141,7 @@ watch(activeContact, (newVal, oldVal) => {
 });
 
 onMounted(async () => {
-    console.log("🚀 Komponen terpasang");
+    console.log('🚀 Komponen terpasang');
 
     // Expose ke window untuk debug
     if (import.meta.env.DEV) {
@@ -1150,13 +1150,13 @@ onMounted(async () => {
         (window as any).showVideoCallingModal = showVideoCallingModal;
         (window as any).showVideoIncomingModal = showVideoIncomingModal;
         (window as any).showVideoCallModal = showVideoCallModal;
-        console.log("✅ Debug Variabel diekspos ke window");
+        console.log('✅ Debug Variabel diekspos ke window');
     }
 
     // Init authStore dari current user
     if (!authStore.user && currentUser.value) {
         authStore.setUser(currentUser.value);
-        console.log("✅ authStore.user terinisialisasi dari computed");
+        console.log('✅ authStore.user terinisialisasi dari computed');
     }
 
     requestNotificationPermission();
@@ -1190,13 +1190,13 @@ onMounted(async () => {
             const data = snapshot.val();
 
             if (data) {
-                console.log("🔔Firebase: Panggilan masuk:", data);
+                console.log('🔔Firebase: Panggilan masuk:', data);
 
                 // Video call
-                if (data.call_type === "video") {
+                if (data.call_type === 'video') {
                     if (!authStore.user?.id) {
                         console.error(
-                            "❌ authStore.user tidak terdefinisi saat panggilan masuk video"
+                            '❌ authStore.user tidak terdefinisi saat panggilan masuk video'
                         );
                         return;
                     }
@@ -1243,11 +1243,11 @@ onMounted(async () => {
                         data.channel_name
                     );
 
-                    console.log("✅ Panggilan video terhandle (Firebase)");
-                } else if (data.call_type === "voice") {
+                    console.log('✅ Panggilan video terhandle (Firebase)');
+                } else if (data.call_type === 'voice') {
                     // Voice call
                     handleIncomingCall(data);
-                    console.log("✅ Panggilan suara terhandle (Firebase)");
+                    console.log('✅ Panggilan suara terhandle (Firebase)');
                 }
 
                 // Hapus data dari firebase ketika sudah dibaca
@@ -1262,11 +1262,11 @@ onMounted(async () => {
             const data = snapshot.val();
 
             if (data) {
-                console.log("📡 Firebase: Status panggilan terupdate:", data);
+                console.log('📡 Firebase: Status panggilan terupdate:', data);
 
                 switch (data.status) {
-                    case "accepted":
-                        console.log("✅ Firebase: Panggilan diterima");
+                    case 'accepted':
+                        console.log('✅ Firebase: Panggilan diterima');
 
                         if (data.call_type === "video") {
                             callStore.updateCallStatus("ongoing");
@@ -1284,8 +1284,8 @@ onMounted(async () => {
                         remove(statusRef);
                         break;
 
-                    case "rejected":
-                        console.log("❌ Firebase: Panggilan ditolak");
+                    case 'rejected':
+                        console.log('❌ Firebase: Panggilan ditolak');
 
                         if (data.call_type === "video") {
                             callStore.updateCallStatus("rejected");
@@ -1301,8 +1301,8 @@ onMounted(async () => {
                         remove(statusRef);
                         break;
 
-                    case "cancelled":
-                        console.log("❌ Firebase: Panggilan dibatalkan");
+                    case 'cancelled':
+                        console.log('❌ Firebase: Panggilan dibatalkan');
 
                         if (data.call_type === "video") {
                             callStore.updateCallStatus("cancelled");
@@ -1316,8 +1316,8 @@ onMounted(async () => {
                         remove(statusRef);
                         break;
 
-                    case "ended":
-                        console.log("📴 Firebase: Panggilan diakhiri");
+                    case 'ended':
+                        console.log('📴 Firebase: Panggilan diakhiri');
 
                         if (data.call_type === "video") {
                             callStore.updateCallStatus("ended");
@@ -1623,28 +1623,15 @@ onUnmounted(() => {
                                 Simpan
                             </button>
 
-                            <button
-                                @click="handleVoiceCall"
-                                :disabled="voiceProcessing || callProcessing"
-                                class="btn btn-icon btn-sm text-gray-500"
-                            >
-                                <Phone class="w-20px h-20px" />
-                            </button>
-                            <button
-                                @click="handleVideoCall"
-                                :disabled="voiceProcessing || callProcessing"
-                                class="btn btn-icon btn-sm text-gray-500"
-                            >
-                                <Video class="w-20px h-20px" />
-                            </button>
+                        <button @click="startVoiceCall(activeContact)" :disabled="voiceProcessing" class="btn btn-icon btn-sm text-gray-500"><Phone class="w-20px h-20px" /></button>
+                        <button class="btn btn-icon btn-sm text-gray-500"><Video class="w-20px h-20px" /></button>
 
-                            <div class="position-relative">
-                                <button
-                                    class="btn btn-icon btn-sm text-gray-500"
-                                    @click.stop="toggleHeaderMenu"
-                                >
-                                    <i class="fas fa-ellipsis-v fs-4"></i>
-                                </button>
+                        
+                        
+                        <div class="position-relative">
+                            <button class="btn btn-icon btn-sm text-gray-500" @click.stop="toggleHeaderMenu">
+                                <i class="fas fa-ellipsis-v fs-4"></i>
+                            </button>
 
                                 <div
                                     v-if="isHeaderMenuOpen"
