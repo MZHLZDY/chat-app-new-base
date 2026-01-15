@@ -35,3 +35,4 @@ signInAnonymously(auth)
   });
 const storage = getStorage(app);
 export { db, auth, storage };
+export const database = getDatabase(app);

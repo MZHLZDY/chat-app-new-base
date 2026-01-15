@@ -5,7 +5,7 @@ import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { id } from "date-fns/locale";
-import { Phone, Video, Users } from "lucide-vue-next";
+import { Phone, Video, Users, Loader2, CheckCheck } from "lucide-vue-next";
 import { useGlobalChatStore } from "@/stores/globalChat";
 import { onBeforeRouteLeave } from "vue-router";
 import GroupForm from "./Form.vue";
@@ -45,6 +45,8 @@ const fileInput = ref<HTMLInputElement | null>(null);
 // --- STATE MODAL ---
 const isCreateGroupOpen = ref(false);
 const isEditGroupOpen = ref(false);
+const sidebarUnsubscribes: Record<string, Function> = {};
+const pageLoadTime = Date.now();
 const groupIdToEdit = ref<string | number | undefined>(undefined);
 const editModalTitle = ref("Edit Info Grup");
 const isDeleteModalOpen = ref(false);
@@ -58,7 +60,7 @@ const replyingTo = ref<any>(null);
 const isHeaderMenuOpen = ref(false);
 const isInfoModalOpen = ref(false);
 const searchQuery = ref("");
-const chatDrafts = ref<Record<string, string>>({});
+const chatDrafts = ref<Record<string | number, string>>({});
 
 // Typing State untuk Group
 const typingUsers = ref<string[]>([]);
@@ -119,13 +121,15 @@ const shouldShowDateDivider = (index: number) => {
 
 // --- FETCH GROUPS ---
 const fetchGroups = async () => {
-    isLoadingGroups.value = true;
     try {
-        // Asumsi endpoint untuk list grup
+        isLoadingGroups.value = true;
         const response = await axios.get("/chat/groups");
-        groups.value = response.data;
+        groups.value = response.data.map((g: any) => ({
+            ...g,
+            unread_count: Number(g.unread_count) || 0,
+        }));
     } catch (error) {
-        console.error("Gagal memuat grup", error);
+        console.error("Gagal memuat grup:", error);
     } finally {
         isLoadingGroups.value = false;
     }
@@ -140,11 +144,26 @@ const selectGroup = async (group: any) => {
     activeGroup.value = group;
     messages.value = [];
     globalChatStore.setActiveGroup(group.id);
+    try {
+        const fullGroupResponse = await axios.get(`/chat/groups/${group.id}`);
+        if (fullGroupResponse.data.success) {
+            activeGroup.value = fullGroupResponse.data.data;
+        } else {
+            activeGroup.value = fullGroupResponse.data;
+        }
+    } catch (err) {
+        console.error("Gagal memuat detail grup", err);
+    }
 
-    newMessage.value = chatDrafts.value[group.id] || "";
+    newMessage.value = chatDrafts.value[String(group.id)] || "";
     const idx = groups.value.findIndex((g) => g.id === group.id);
     if (idx !== -1) {
         groups.value[idx].unread_count = 0;
+    }
+    try {
+        axios.post(`/chat/groups/${group.id}/read`);
+    } catch (error) {
+        console.error("Gagal update status read:", error);
     }
 
     setupGroupListener(group.id);
@@ -203,6 +222,13 @@ const sendMessage = async () => {
     if (!activeGroup.value) return;
 
     const tempId = Date.now();
+    let tempType = "text";
+    if (file) {
+        if (file.type.startsWith("image/")) tempType = "image";
+        else if (file.type.startsWith("video/"))
+            tempType = "video"; // Tambahkan ini
+        else tempType = "file";
+    }
 
     // Structure message object
     const tempMessage = {
@@ -211,11 +237,9 @@ const sendMessage = async () => {
         group_id: activeGroup.value.id,
         message: textContent,
         file_path: file ? URL.createObjectURL(file) : null,
-        type: file
-            ? file.type.startsWith("image")
-                ? "image"
-                : "file"
-            : "text",
+        type: tempType,
+        file_size: file ? file.size : 0,
+        file_name: file ? file.name : null,
         created_at: new Date().toISOString(),
         read_at: null,
         reply_to: replyingTo.value ? replyingTo.value : null,
@@ -269,6 +293,29 @@ const sendMessage = async () => {
     }
 };
 
+const groupMembersHeader = computed(() => {
+    if (
+        !activeGroup.value ||
+        !activeGroup.value.members ||
+        activeGroup.value.members.length === 0
+    ) {
+        return "Memuat anggota...";
+    }
+
+    const names = activeGroup.value.members.map((m: any) =>
+        m.id === currentUser.value?.id ? "Anda" : m.name.split(" ")[0]
+    );
+
+    const limit = 5;
+    if (names.length <= limit) {
+        return names.join(", ");
+    } else {
+        const visibleNames = names.slice(0, limit).join(", ");
+        const remaining = names.length - limit;
+        return `${visibleNames}, +${remaining} lainnya`;
+    }
+});
+
 const setReply = (msg: any) => {
     replyingTo.value = msg;
     nextTick(() => {
@@ -293,18 +340,9 @@ const STORAGE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const getFileUrl = (path: string) => {
     if (!path) return "";
+    if (path.startsWith("blob:")) return path;
     if (path.startsWith("http")) return path;
-
-    const baseUrl = STORAGE_URL.endsWith("/")
-        ? STORAGE_URL.slice(0, -1)
-        : STORAGE_URL;
-    const cleanPath = path.startsWith("/") ? path.substring(1) : path;
-
-    if (cleanPath.startsWith("storage/")) {
-        return `${baseUrl}/${cleanPath}`;
-    } else {
-        return `${baseUrl}/storage/${cleanPath}`;
-    }
+    return `/storage/${path}`;
 };
 
 const downloadAttachment = (msg: any) => {
@@ -553,6 +591,58 @@ const handleEscKey = (e: KeyboardEvent) => {
     }
 };
 
+const setupSidebarListeners = () => {
+    // Kurangi 2 detik untuk toleransi waktu server vs client
+    const timeThreshold = pageLoadTime - 2000;
+
+    groups.value.forEach((group) => {
+        // Cek duplikasi listener
+        if (sidebarUnsubscribes[group.id]) return;
+
+        const messagesRef = firebaseRef(db, `group_messages/${group.id}`);
+        const q = query(messagesRef, limitToLast(1));
+
+        const unsub = onChildAdded(q, (snapshot) => {
+            const msg = snapshot.val();
+            if (!msg) return;
+
+            // 1. Cari Index Grup di Array (Bukan find object biasa)
+            const index = groups.value.findIndex((g) => g.id == group.id);
+            if (index === -1) return;
+
+            // 2. Filter Pesan Lama (History)
+            const msgTime = new Date(msg.created_at).getTime();
+            if (msgTime <= timeThreshold) return;
+
+            // --- UPDATE REALTIME ---
+            groups.value[index].last_message_preview =
+                msg.type === "text"
+                    ? msg.message
+                    : msg.type === "image"
+                    ? "📷 Foto"
+                    : "📎 Berkas";
+            groups.value[index].last_message_time = msg.created_at;
+            const isMyMessage = msg.sender_id === authStore.user.id;
+            const isGroupOpen =
+                activeGroup.value && activeGroup.value.id === group.id;
+
+            if (!isMyMessage && !isGroupOpen) {
+                const currentCount =
+                    Number(groups.value[index].unread_count) || 0;
+
+                // Tambah 1
+                const newCount = currentCount + 1;
+
+                groups.value[index].unread_count = newCount;
+                const movedGroup = groups.value.splice(index, 1)[0];
+                groups.value.unshift(movedGroup);
+            }
+        });
+
+        sidebarUnsubscribes[group.id] = unsub;
+    });
+};
+
 // --- LISTENER GROUP CHAT ---
 const setupGroupListener = (groupId: number) => {
     if (unsubscribeGroupChats) {
@@ -623,7 +713,7 @@ watch(
 
 onMounted(async () => {
     await fetchGroups();
-
+    setupSidebarListeners();
     if (currentUser.value) {
         onAuthStateChanged(auth, (firebaseUser) => {
             if (!firebaseUser) {
@@ -645,7 +735,7 @@ onUnmounted(() => {
         set(myRef, null);
     }
     globalChatStore.setActiveGroup(null);
-
+    Object.values(sidebarUnsubscribes).forEach((unsub) => unsub());
     window.removeEventListener("keydown", handleEscKey);
 });
 </script>
@@ -735,24 +825,28 @@ onUnmounted(() => {
                                         class="d-flex align-items-center justify-content-between"
                                     >
                                         <span
-                                            v-if="
-                                                (
-                                                    chatDrafts[
-                                                        String(group.id)
-                                                    ] || ''
-                                                ).length > 0
-                                            "
-                                            class="text-danger fs-7 text-truncate pe-2 fst-italic"
-                                            style="max-width: 150px"
-                                        >
-                                            Draft: {{ chatDrafts[group.id] }}
-                                        </span>
-                                        <span
-                                            v-else
                                             class="text-muted fs-7 text-truncate pe-2"
                                             style="max-width: 150px"
                                         >
-                                            {{ group.members_count }} Anggota
+                                            <span
+                                                v-if="
+                                                    chatDrafts[group.id]?.trim()
+                                                "
+                                                class="text-danger fst-italic"
+                                            >
+                                                <span class="me-1">Draft:</span>
+                                                <span class="text-gray-800">{{
+                                                    chatDrafts[group.id]
+                                                }}</span>
+                                            </span>
+
+                                            <span v-else>
+                                                {{
+                                                    group.last_message ||
+                                                    group.members_count +
+                                                        " Anggota"
+                                                }}
+                                            </span>
                                         </span>
 
                                         <span
@@ -811,8 +905,12 @@ onUnmounted(() => {
                                 <span class="fw-bold text-gray-800 fs-6">
                                     {{ activeGroup.name }}
                                 </span>
-                                <span class="text-muted fs-8">
-                                    {{ activeGroup.members_count || 0 }} Anggota
+                                <span
+                                    class="text-muted fs-8 d-block text-truncate"
+                                    style="max-width: 100%; cursor: pointer"
+                                    :title="activeGroup?.members?.map((m:any) => m.name).join(', ')"
+                                >
+                                    {{ groupMembersHeader }}
                                 </span>
                             </div>
                         </div>
@@ -1070,7 +1168,8 @@ onUnmounted(() => {
                                                     <source
                                                         :src="
                                                             getFileUrl(
-                                                                msg.file_path
+                                                                msg.file_path ||
+                                                                    msg.message
                                                             )
                                                         "
                                                         type="video/mp4"
@@ -1259,6 +1358,7 @@ onUnmounted(() => {
                                             >
                                                 {{ formatTime(msg.created_at) }}
                                             </span>
+
                                             <div
                                                 v-if="
                                                     msg.sender_id ===
@@ -1266,9 +1366,26 @@ onUnmounted(() => {
                                                 "
                                                 class="ms-1"
                                             >
-                                                <i
-                                                    class="fas fa-check-double text-white text-opacity-50 fs-9"
-                                                ></i>
+                                                <span
+                                                    v-if="
+                                                        msg.is_temp ||
+                                                        (typeof isTempId ===
+                                                            'function' &&
+                                                            isTempId(msg.id))
+                                                    "
+                                                    title="Mengirim..."
+                                                >
+                                                    <Loader2
+                                                        class="spin-animation text-white text-opacity-75"
+                                                        :size="14"
+                                                    />
+                                                </span>
+
+                                                <span v-else title="Terkirim">
+                                                    <i
+                                                        class="fas fa-check-double text-white text-opacity-50 fs-9"
+                                                    ></i>
+                                                </span>
                                             </div>
                                         </div>
 
@@ -1395,7 +1512,14 @@ onUnmounted(() => {
                                 v-model="newMessage"
                                 @keyup.enter="sendMessage"
                                 type="text"
-                                @input="handleTyping"
+                                @input="
+                                    (e) => {
+                                        handleTyping();
+                                        if (activeGroup)
+                                            chatDrafts[activeGroup.id] =
+                                                newMessage;
+                                    }
+                                "
                                 class="form-control form-control-solid me-3"
                                 placeholder="Ketik pesan..."
                             />
@@ -1536,31 +1660,80 @@ onUnmounted(() => {
 
                 <div
                     class="text-start bg-light rounded p-4 mt-4 overflow-auto"
-                    style="max-height: 200px"
+                    style="max-height: 250px"
                 >
-                    <h6 class="text-gray-600 mb-3">Anggota</h6>
+                    <h6 class="text-gray-600 mb-3">
+                        Anggota ({{ activeGroup?.members?.length || 0 }})
+                    </h6>
+
                     <div
-                        v-for="member in activeGroup?.members"
-                        :key="member.id"
-                        class="d-flex align-items-center mb-2"
+                        v-if="
+                            activeGroup?.members &&
+                            activeGroup.members.length > 0
+                        "
                     >
-                        <div class="symbol symbol-30px symbol-circle me-2">
-                            <img
-                                :src="
-                                    member.photo
-                                        ? `/storage/${member.photo}`
-                                        : '/media/avatars/blank.png'
-                                "
-                            />
-                        </div>
-                        <span class="fs-7 fw-bold text-gray-800">{{
-                            member.name
-                        }}</span>
-                        <span
-                            v-if="member.is_admin"
-                            class="badge badge-light-success ms-auto fs-9"
-                            >Admin</span
+                        <div
+                            v-for="member in activeGroup.members"
+                            :key="member.id"
+                            class="d-flex align-items-center mb-3 border-bottom pb-2"
                         >
+                            <div class="symbol symbol-35px symbol-circle me-3">
+                                <img
+                                    :src="
+                                        member.photo
+                                            ? `/storage/${member.photo}`
+                                            : '/media/avatars/blank.png'
+                                    "
+                                    alt="foto"
+                                    style="object-fit: cover"
+                                />
+                            </div>
+
+                            <div
+                                class="d-flex flex-grow-1 justify-content-between align-items-center"
+                            >
+                                <div class="d-flex flex-column">
+                                    <span class="fs-7 fw-bold text-gray-800">
+                                        {{ member.name }}
+                                        <span
+                                            v-if="member.id === currentUser?.id"
+                                            class="text-muted fs-9 fw-normal ms-1"
+                                            >(Anda)</span
+                                        >
+                                    </span>
+                                    <span
+                                        v-if="!member.is_admin"
+                                        class="text-gray-500 fs-9"
+                                    >
+                                        {{
+                                            member.phone ||
+                                            member.phone_number ||
+                                            "-"
+                                        }}
+                                    </span>
+                                </div>
+
+                                <div v-if="member.is_admin">
+                                    <span
+                                        class="badge badge-light-success fw-bold fs-9"
+                                        >Admin</span
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-else class="text-center py-5">
+                        <span class="text-muted fs-7">
+                            <i class="fas fa-exclamation-circle me-1"></i>
+                            Data anggota belum dimuat.
+                        </span>
+                        <button
+                            @click="fetchGroups"
+                            class="btn btn-sm btn-link text-primary d-block mx-auto mt-2"
+                        >
+                            Refresh Data
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1701,6 +1874,20 @@ onUnmounted(() => {
     }
     to {
         opacity: 1;
+    }
+}
+
+/* Animasi Putar untuk Loader */
+.spin-animation {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
     }
 }
 

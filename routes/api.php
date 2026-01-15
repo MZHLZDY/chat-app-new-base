@@ -84,6 +84,7 @@ Route::middleware(['auth', 'json'])->group(function () {
         // Group Chat Routes
         Route::get('groups', [GroupController::class, 'index']);
         Route::post('groups', [GroupController::class, 'store']); 
+        Route::post('groups/{id}/read', [GroupController::class, 'markAsRead']);
         Route::get('groups/{id}', [GroupController::class, 'show']);
         Route::put('groups/{id}', [GroupController::class, 'update']); 
         Route::post('group/{id}/leave', [GroupController::class, 'leaveGroup']); 

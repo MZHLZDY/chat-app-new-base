@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { useCallStore } from '@/stores/callStore';
 import { useAuthStore } from '@/stores/authStore';  // Asumsi ada auth store
 import * as callService from '@/services/callServices';
-import type { CallType, User } from '@/types/call';
+import type { CallStatus, CallType, User, PersonalCall } from '@/types/call';
 
 export const usePersonalCall = () => {
     const callStore = useCallStore();
@@ -13,34 +13,97 @@ export const usePersonalCall = () => {
 
     // Invite call (caller)
     const initiateCall = async (callee: User, callType: CallType) => {
+        // Validasi authStore.user
+        if (!authStore.user?.id) {
+            error.value = 'User belum login';
+            throw new Error('User belum login');
+        }
+
+        // Validasi callee
+        if (!callee?.id) {
+            error.value = 'Penerima panggilan tidak valid';
+            throw new Error('Penerima panggilan tidak valid');
+        }
+
         try {
             isLoading.value = true;
             error.value = null;
 
+            console.log('📞Memulai panggilan ke:', callee.name, 'Type:', callType);
+
             // Hit API backend
             const response = await callService.inviteCall(callee.id, callType);
 
+            console.log('✅ Respon API:', response);
+
+            // Parse response sesuai struktur backend
+            const callId = response.call_id;
+            const token = response.agora_token;
+            const channelName = response.channel_name;
+            const status= response.status || 'ringing';
+
+            console.log('📦 Data diuraikan:', { callId, token, channelName, status });
+
+            if (!callId || !token || !channelName) {
+                console.error('❌ Bidang yang diperlukan hilang:', {
+                    hasCallId: !!callId,
+                    hasToken: !!token,
+                    hasChannelName: !!channelName,
+                });
+                throw new Error('Respon tidak valid dari server');
+            }
+
+            // Buat personal object lengkap
+            const backendCall: PersonalCall = {
+                id: callId,
+                caller_id: authStore.user!.id,
+                callee_id: callee.id,
+                call_type: callType,
+                channel_name: channelName,
+                status: status,
+                answered_at: null,
+                ended_at: null,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                duration: null,
+                ended_by: null,
+            }
+
             // Simpan data backend ke store
             callStore.setBackendCall(
-                response.call,
-                response.token,
-                response.channel_name
+                backendCall,
+                token,
+                channelName
             );
 
             // Set current call (untuk UI)
             callStore.setCurrentCall({
-                id: response.call.id,
+                id: callId,
                 type: callType,
                 caller: authStore.user!,  // User yang login
                 receiver: callee,
-                status: 'ringing',
-                token: response.token,
-                channel: response.channel_name,
+                status: status as CallStatus,
+                token: token,
+                channel: channelName,
             });
+
+            console.log('✅ Memulai panggilan berhasil');
+
+            // Log state setelah set
+            console.log('State setelah setCurrentCall');
+            console.log('callStore.currentCall:', callStore.currentCall);
+            console.log('callStore.backendCall:', callStore.backendCall);
+            console.log('callStore.agoraToken:', callStore.agoraToken);
+            console.log('callStore.channelName:', callStore.channelName);
 
             return response;
         } catch (err: any) {
+            console.error('❌ Gagal untuk memulai panggilan:', err);
             error.value = err.response?.data?.message || 'Gagal untuk menginisiasi panggilan';
+
+            // Clear current call jika ada error
+            callStore.clearCurrentCall();
+
             throw err;
         } finally {
             isLoading.value = false;

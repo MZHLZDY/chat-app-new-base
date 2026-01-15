@@ -16,6 +16,7 @@ use App\Events\CallAccepted;
 use App\Events\CallCancelled;
 use App\Events\CallRejected;
 use App\Events\CallEnded;
+use Kreait\Firebase\Factory;
 
 class AgoraController extends Controller
 {
@@ -82,7 +83,7 @@ class AgoraController extends Controller
                 return response()->json(['error' => 'Kamu tidak dapat menelpon diri sendiri'], 400);
             }
 
-            // Generate unique channel name
+            // Generate Agora channel name dan token
             $channelName = 'call_' . Str::random(16);
 
             // Buat catatan panggilan
@@ -124,6 +125,38 @@ class AgoraController extends Controller
                 $calleeToken,
                 $call,
             ));
+
+            // Tulis ke Firebase
+            try {
+                $firebase = (new Factory)
+                    ->withServiceAccount(base_path(env('FIREBASE_CREDENTIALS')))
+                    ->withDatabaseUri(env('FIREBASE_DATABASE_URL'))
+                    ->createDatabase();
+
+                $firebase->getReference("calls/{$callee->id}/incoming")
+                    ->set([
+                        'call_id' => $call->id,
+                        'call_type' => $request->call_type,
+                        'caller' => [
+                            'id' => $caller->id,
+                            'name' => $caller->name,
+                            'email' => $caller->email,
+                            'avatar' => $caller->avatar_url ?? null,
+                        ],
+                        'agora_token' => $calleeToken,
+                        'channel_name' => $channelName,
+                        'status' => 'ringing',
+                        'timestamp' => now()->timestamp,
+                    ]);
+
+                Log::info('✅ Firebase: Panggilan masuk ditulis ke Firebase', [
+                    'callee_id' => $callee->id,
+                    'call_id' => $call->id,
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('❌ Firebase: Gagal menulis panggilan masuk ke firebaase:' . $e->getMessage());
+            }
 
             DB::commit();
 
@@ -234,6 +267,30 @@ class AgoraController extends Controller
                 $call->call_type
             ));
 
+            // Tulis ke firebase untuk notifikasi panggilan masuk dari penelpon
+            try {
+                $firebase = (new Factory)
+                    ->withServiceAccount(base_path(env('FIREBASE_CREDENTIALS')))
+                    ->withDatabaseUri(env('FIREBASE_DATABASE_URL'))
+                    ->createDatabase();
+
+                $firebase->getReference("calls/{$call->caller_id}/status")
+                    ->set([
+                        'call_id' => $call->id,
+                        'status' => 'accepted',
+                        'call_type' => $call->call_type,
+                        'timestamp' => now()->timestamp,
+                    ]);
+
+                Log::info('✅ Firebase: Panggilan diterima', [
+                    'caller_id' => $call->caller_id,
+                    'call_id' => $call->id,
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('❌ Firebase: Gagal menulis notifikasi panggilan masuk ke firebase: ' . $e->getMessage());
+            }
+
             DB::commit();
 
             Log::info('✅ [ANSWER CALL] Success', ['call_id' => $call->id]);
@@ -318,6 +375,30 @@ class AgoraController extends Controller
                 $request->reason ?? null,
             ));
 
+            //  Tulis firebase untuk notifikasi panggilan ditolak dari callee untuk penelpon
+            try {
+                $firebase = (new Factory)
+                    ->withServiceAccount(base_path(env('FIREBASE_CREDENTIALS')))
+                    ->withDatabaseUri(env('FIREBASE_DATABASE_URL'))
+                    ->createDatabase();
+
+                $firebase->getReference("calls/{$call->caller_id}/status")
+                    ->set([
+                        'call_id' => $call->id,
+                        'status' => 'rejected',
+                        'call_type' => $call->call_type,
+                        'timestamp' => now()->timestamp,
+                    ]);
+
+                Log::info('✅ Firebase: Panggilan ditolak', [
+                    'caller_id' => $call->caller_id,
+                    'call_id' => $call->id,
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('❌ Firebase: Gagal menulis status panggilan ditolak ke firebase: ' . $e->getMessage());
+            }
+
             DB::commit();
 
             Log::info('✅ [REJECT CALL] Success', ['call_id' => $call->id]);
@@ -390,6 +471,30 @@ class AgoraController extends Controller
                 $call->callee_id,
                 $call->call_type,
             ));
+
+            // Tulis ke firebase untuk membatalkan panggilan dari POV caller
+            try {
+                $firebase = (new Factory)
+                    ->withServiceAccount(base_path(env('FIREBASE_CREDENTIALS')))
+                    ->withDatabaseUri(env('FIREBASE_DATABASE_URL'))
+                    ->createDatabase();
+
+                $firebase->getReference("calls/{$call->callee_id}/status")
+                    ->set([
+                        'call_id' => $call->id,
+                        'status' => 'cancelled',
+                        'call_type' => $call->call_type,
+                        'timestamp' => now()->timestamp,
+                    ]);
+
+                Log::info('✅ Firebase: Panggilan dibatalkan', [
+                    'callee_id' => $call->callee_id,
+                    'call_id' => $call->id,
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('❌ Firebase: Gagal menulis status panggilan dibatalkan ke firebase: ' . $e->getMessage());
+            }
 
             DB::commit();
 
@@ -475,6 +580,36 @@ class AgoraController extends Controller
                 $duration ?? 0,
                 $call->call_type,
             ));
+
+            // Tulis ke firebase untuk notifikasi panggilan diakhiri
+            try {
+                // Deteksi user lawan bicara
+                $otherUserId = ($call->caller_id === auth()->id())
+                    ? $call->callee_id
+                    : $call->caller_id;
+
+                $firebase = (new Factory)
+                    ->withServiceAccount(base_path(env('FIREBASE_CREDENTIALS')))
+                    ->withDatabaseUri(env('FIREBASE_DATABASE_URL'))
+                    ->createDatabase();
+
+                $firebase->getReference("calls/{$otherUserId}/status")
+                    ->set([
+                        'call_id' => $call->id,
+                        'status' => 'ended',
+                        'call_type' => $call->call_type,
+                        'timestamp' => now()->timestamp,
+                    ]);
+
+                Log::info('✅ Firebase: Panggilan diakhiri', [
+                    'other_user_id' => $otherUserId,
+                    'call_id' => $call->id,
+                    'duration' => $duration,
+                ]);
+
+            } catch (\Exception $e) {
+                Log::error('❌ Firebase: Gagal menulis status panggilan diakhiri ke firebase: ' . $e->getMessage());
+            }
 
             DB::commit();
 

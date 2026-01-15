@@ -240,14 +240,13 @@ class ChatController extends Controller
                     return response()->json(['message' => 'File korup atau gagal upload'], 400);
                 }
 
-                // AMBIL DATA ASLI
                 $originalName = $file->getClientOriginalName();
                 $fileName = $originalName; 
                 $fileMime = $file->getMimeType();
-                $fileSize = $file->getSize(); 
-                
-                // --- LOGIKA VIDEO (FFMPEG) ---
+                $fileSize = $file->getSize();
                 if (str_starts_with($fileMime, 'video/')) {
+                    set_time_limit(0); 
+                    
                     $physicalName = 'vid_' . time() . '_' . Str::random(10) . '.mp4';
                     $tempPath = 'chat_files/temp/' . $physicalName;
                     $finalPath = 'chat_files/' . $physicalName;
@@ -255,28 +254,28 @@ class ChatController extends Controller
                     $file->storeAs('chat_files/temp', $physicalName, 'public');
 
                     try {
-                        // Proses Kompresi
+                        $format = new X264('aac', 'libx264');
+                        $format->setKiloBitrate(1000); 
+
                         FFMpeg::fromDisk('public')
                             ->open($tempPath)
                             ->export()
                             ->toDisk('public')
-                            ->inFormat(new X264('aac', 'libx264'))
+                            ->inFormat($format)
                             ->resize(1280, 720) 
                             ->save($finalPath);
 
-                        // Hapus file mentahan
                         Storage::disk('public')->delete($tempPath);
                         
                         $filePath = $finalPath;
                         $fileMime = 'video/mp4'; 
-                        
-                        // Update Size
                         if (Storage::disk('public')->exists($finalPath)) {
                             $fileSize = Storage::disk('public')->size($finalPath);
                         }
 
                     } catch (\Exception $e) {
-                        // Fallback jika gagal kompres
+                        // DEBUG: Cek errornya di Laravel.log jika gagal lagi
+                        \Log::error("Gagal kompres video: " . $e->getMessage());
                         if (Storage::disk('public')->exists($tempPath)) {
                             Storage::disk('public')->move($tempPath, $finalPath);
                         }
@@ -284,7 +283,6 @@ class ChatController extends Controller
                     }
                     $msgType = 'video';
                 }
-                // --- LOGIKA GAMBAR / FILE LAIN ---
                 else {
                     $physicalName = time() . '_' . str_replace(' ', '_', $originalName);
                     $filePath = $file->storeAs('chat_files', $physicalName, 'public');
@@ -297,7 +295,6 @@ class ChatController extends Controller
                 }
             }
 
-            // Simpan ke DB
             $message = ChatMessage::create([
                 'sender_id'      => $senderId,
                 'receiver_id'    => $request->receiver_id,
@@ -315,7 +312,6 @@ class ChatController extends Controller
 
             $message->load(['sender', 'replyTo.sender']);
 
-            // Push Firebase
             $firebaseData = [
                 'id'             => $message->id,
                 'sender_id'      => $message->sender_id,
@@ -335,11 +331,21 @@ class ChatController extends Controller
             ];
             $this->database->getReference('chats/' . $request->receiver_id)->push($firebaseData);
 
+            $notifMessage = $request->message;
+            if (empty($notifMessage)) {
+                if ($msgType === 'video') {
+                    $notifMessage = '🎥 Mengirim video';
+                } elseif ($msgType === 'image') {
+                    $notifMessage = '📷 Mengirim foto';
+                } elseif ($msgType === 'file') {
+                    $notifMessage = '📁 Mengirim berkas';
+                }
+            }
             $this->sendNotification(
                 $request->receiver_id,
                 $sender->id,
                 $sender->name,
-                $request->message ?? '',
+                $notifMessage, 
                 $msgType
             );
 

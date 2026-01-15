@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, watch, onMounted } from 'vue';
 import { useCallStore } from '@/stores/callStore';
 import { useVideoCall } from '@/composables/useVideoCall';
 import { usePersonalCall } from '@/composables/usePersonalCall';
 import CallAvatar from '../shared/CallAvatar.vue';
 import { X, Video } from 'lucide-vue-next';
+import { useAuthStore } from '@/stores/authStore';
+
+// Import untuk firebase
+import { ref as dbRef, onValue, remove } from 'firebase/database';
+import { database } from '@/libs/firebase';
 
 const store = useCallStore();
 const { cancelCall } = usePersonalCall();
@@ -43,6 +48,37 @@ watch(() => store.callStatus, (newStatus) => {
         setTimeout(() => {
             store.clearCurrentCall();
         }, 2000)
+    }
+});
+
+// Firebase listener untuk status 'accepted' dari sisi penerima
+onMounted(() => {
+    const authStore = useAuthStore();
+    const userId = authStore.user?.id;
+
+    if (userId && backendCall.value) {
+        console.log(`📡 Penelpon: Listening to calls/${userId}/status`);
+
+        const statusRef = dbRef(database, `calls/${userId}/status`);
+
+        onValue(statusRef, (snapshot) => {
+            const data = snapshot.val();
+
+            if (data && data.call_id === backendCall.value?.id) {
+                console.log('📡 Penelpon: Update status firebase:', data);
+
+                if (data.status === 'accepted') {
+                    console.log('✅ Panggilan diterima! Redirecting ke VideoCallModal...');
+
+                    // Update store status
+                    store.updateCallStatus('ongoing');
+                    store.setInCall(true);
+
+                    // Hapus data dari firebase
+                    remove(statusRef);
+                }
+            }
+        });
     }
 });
 </script>

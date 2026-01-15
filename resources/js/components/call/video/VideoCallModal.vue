@@ -4,6 +4,7 @@ import { useCallStore } from '@/stores/callStore';
 import { useVideoCall } from '@/composables/useVideoCall';
 import { usePersonalCall } from '@/composables/usePersonalCall';
 import { useAgora } from '@/composables/useAgora';
+import { useAuthStore } from '@/stores/authStore';
 import VideoPlayer from './VideoPlayer.vue';
 import CallTimer from '../shared/CallTimer.vue';
 import CallControls from '../shared/CallControls.vue';
@@ -11,7 +12,8 @@ import { usePage } from '@inertiajs/vue3';
 
 const store = useCallStore();
 const page = usePage();
-const currentUser = (page.props.auth as any)?.user;
+const authStore = useAuthStore();
+const currentUser = computed(() => authStore.user);
 
 const { toggleAudio, toggleVideo } = useVideoCall();
 const { endCall } = usePersonalCall();
@@ -44,7 +46,7 @@ const remoteUser = computed(() => {
             uid,
             videoTrack: remoteVideoTracks.value.get(uid),
             audioTrack: remoteAudioTracks.value.get(uid),
-            name: currentCall.value?.caller.id === currentUser?.id
+            name: currentCall.value?.caller.id === currentUser.value?.id
                 ? currentCall.value?.receiver.name
                 : currentCall.value?.caller.name
         };
@@ -54,16 +56,44 @@ const remoteUser = computed(() => {
 
 // join agora channel saat modal muncul
 onMounted(async () => {
-    if (isVideoCallActive.value && store.agoraToken && store.channelName) {
-        try {
-            await joinChannel(
-                store.channelName,
-                store.agoraToken,
-                currentUser?.id || 0
-            );
-        } catch (error) {
-            console.error('Gagal bergabung ke channel Agora:', error);
-        }
+    console.log('📹 VideoCallModal mounted');
+    console.log('📦 IsVideoCallActive:', isVideoCallActive.value);
+    console.log('📦 agoraToken:', store.agoraToken);
+    console.log('📦 channelName:', store.channelName);
+    console.log('📦 currentUser:', currentUser.value);
+
+    if (!isVideoCallActive.value) {
+        console.warn('⚠️ Video call tidak aktif, skip join channel');
+        return;
+    }
+
+    if (!store.agoraToken || !store.channelName) {
+        console.error('❌ Token atau channel name tidak ada!');
+        return;
+    }
+
+    if (!currentUser.value?.id) {
+        console.error('❌ User ID tidak ditemukan!');
+        return;
+    }
+
+    try {
+        console.log('🚀 Bergabung ke Agora Channel...');
+        console.log('📦 Channel:', store.channelName);
+        console.log('📦 UID:', currentUser.value.id);
+
+        await joinChannel(
+            store.channelName,
+            store.agoraToken,
+            currentUser.value.id
+        );
+
+        console.log('✅ Berhasil bergabung ke channel Agora');
+        console.log('📹 Local video track:', localVideoTrack.value);
+        console.log('🎤 Local audio track:', localAudioTrack);
+
+    } catch (error) {
+        console.error('❌ Gagal bergabung ke channel Agora:', error);
     }
 });
 
@@ -91,14 +121,35 @@ watch(() => store.callStatus, (newStatus) => {
 
 // watch remote user (auto end klo remote disconnect)
 watch(() => remoteUsers.value.length, (count, oldCount) => {
+    console.log(`👥 Hitungan remote users berubah: ${oldCount} -> ${count}`);
+    console.log('👥 Remote users:', remoteUsers.value);
+
     if (oldCount > 0 && count === 0 && isVideoCallActive.value) {
         console.log('Remote user disconnect, panggilan otomatis ditutup dalam 5 detik...');
         setTimeout(() => {
             if (remoteUsers.value.length === 0) {
+                console.log('Otomatis menutup panggilan (Remote disconnect)');
                 handleEndCall(); // otomatis menutup panggilan
             }
         }, 5000);
     }
+});
+
+// Watch Agora token & channel changes
+watch(() => store.agoraToken, (newToken) => {
+    console.log('🔑 Agora token updated:', newToken ? 'AVAILABLE' : 'NULL');
+});
+
+watch(() => store.channelName, (newChannel) => {
+    console.log('📺 Channel name updated:', newChannel);
+});
+
+watch(() => localVideoTrack.value, (track) => {
+    console.log('📹 Local video track updated:', track ? 'AVAILABLE' : 'NULL');
+});
+
+watch(() => remoteVideoTracks.value.size, (size) => {
+    console.log('📹 Remote video tracks count:', size);
 });
 </script>
 
