@@ -85,24 +85,23 @@ export const useAuthStore = defineStore("auth", () => {
         JwtService.destroyToken();
     }
 
-    async function login(credentials: { email: string; password: string }) {
+    // === Update Login (email -> identifier) ===
+    async function login(credentials: { identifier: string; password: string }) {
         return ApiService.post("auth/login", credentials)
             .then(({ data }) => {
                 // Handle response structure
                 const userData = data.user || data.data?.user;
-                const token = data.token || data.data?.token || data.data?.access_token;
-                
-                if (!userData) {
-                    throw new Error('Invalid response: user data not found');
-                }
-                
-                setAuth(userData, token);
-                return data;
-            })
-            .catch(({ response }) => {
-                error.value = response?.data?.message || 'Login failed';
-                throw error.value;
-            });
+            const token = data.token || data.data?.token || data.data?.access_token; // Mengakomodir respon AuthController Anda
+            
+            if (!userData) throw new Error('Invalid response');
+            
+            setAuth(userData, token);
+            return data;
+        })
+        .catch(({ response }) => {
+            error.value = response?.data?.message || 'Login failed';
+            throw error.value;
+        });
     }
 
     async function logout() {

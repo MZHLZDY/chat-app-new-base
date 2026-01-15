@@ -24,7 +24,7 @@
                     class="nav-link active"
                     data-bs-toggle="tab"
                     href="#with-email"
-                    >Email</a
+                    >LOGIN</a
                 >
             </li>
             <!-- <li class="nav-item">

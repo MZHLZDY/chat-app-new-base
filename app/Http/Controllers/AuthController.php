@@ -48,34 +48,47 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function login(Request $request)
-    {
-        $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
+    // Di dalam class AuthController extends Controller
 
-        if (!$token = auth()->attempt($credentials)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Email atau password salah'
-            ], 401);
-        }
+public function login(Request $request)
+{
+    // 1. Validasi Input (Ubah 'email' jadi 'identifier')
+    $request->validate([
+        'identifier' => 'required|string', // Bisa berisi nama, email, atau hp
+        'password' => 'required|string',
+    ]);
 
-        $user = auth()->user();
+    // 2. Cari User Berdasarkan Email ATAU Phone ATAU Name
+    $input = $request->identifier;
+    
+    $user = User::where('email', $input)
+        ->orWhere('phone', $input)
+        ->orWhere('name', $input)
+        ->first();
 
-        // Check if email is verified
-        if (!$user->hasVerifiedEmail()) {
-            auth()->logout();
-            return response()->json([
-                'success' => false,
-                'message' => 'Email Anda belum diverifikasi. Silakan cek email Anda.',
-                'email_verified' => false
-            ], 403);
-        }
-
-        return $this->respondWithToken($token);
+    // 3. Cek Ketersediaan User & Password
+    if (!$user || !Hash::check($request->password, $user->password)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Login gagal. Nama, Email, No. Telepon, atau Password salah.'
+        ], 401);
     }
+
+    // 4. Cek Verifikasi Email (Logic bawaan Anda)
+    if (!$user->hasVerifiedEmail()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Email Anda belum diverifikasi. Silakan cek email Anda.',
+            'email_verified' => false
+        ], 403);
+    }
+
+    // 5. Generate Token Manual
+    // Karena Anda pakai JWT (auth()->attempt), kita bisa generate token user ini secara langsung
+    $token = auth()->login($user);
+
+    return $this->respondWithToken($token);
+}
 
     public function me()
     {

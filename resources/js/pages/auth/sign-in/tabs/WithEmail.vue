@@ -7,21 +7,21 @@
     >
         <!--begin::Input group-->
         <div class="fv-row mb-8">
-            <!--begin::Email-->
-            <label class="form-label fs-6 fw-bold text-dark">Email</label>
-            <Field
-                class="form-control bg-transparent"
-                type="email"
-                name="email"
-                autocomplete="off"
-            />
-            <div class="fv-plugins-message-container">
-                <div class="fv-help-block">
-                    <ErrorMessage name="email" />
-                </div>
-            </div>
-            <!--end::Email-->
+    <label class="form-label fs-6 fw-bold text-dark">Nama, Email, atau No Telepon</label>
+    
+    <Field
+        class="form-control bg-transparent"
+        type="text" 
+        name="identifier" 
+        autocomplete="off"
+    />
+    
+    <div class="fv-plugins-message-container">
+        <div class="fv-help-block">
+            <ErrorMessage name="identifier" />
         </div>
+    </div>
+</div>
         <!--end::Input group-->
 
         <!--begin::Input group-->
@@ -101,53 +101,46 @@ export default defineComponent({
         const submitButton = ref<HTMLButtonElement | null>(null);
 
         const loginSchema = Yup.object().shape({
-            email: Yup.string()
-                .email("Format email tidak valid")
-                .required("Email tidak boleh kosong")
-                .label("Email"),
-            password: Yup.string()
-                .min(8, "Password minimal 8 karakter")
-                .required("Password tidak boleh kosong")
-                .label("Password"),
-        });
+        identifier: Yup.string() // Gunakan key 'identifier'
+            .required("Nama, Email, atau No. Telepon wajib diisi")
+            .label("Identifier"), 
+            // HAPUS .email() agar validasi tidak menolak nama/no hp
+        password: Yup.string()
+            .min(8, "Password minimal 8 karakter")
+            .required("Password tidak boleh kosong")
+            .label("Password"),
+    });
 
-        const onSubmitLogin = async (values: any) => {
-            if (!submitButton.value) return;
+    const onSubmitLogin = async (values: any) => {
+        if (!submitButton.value) return;
 
-            // Disable button
-            submitButton.value.disabled = true;
-            submitButton.value.setAttribute("data-kt-indicator", "on");
+        submitButton.value.disabled = true;
+        submitButton.value.setAttribute("data-kt-indicator", "on");
 
-            try {
-                await store.login({
-                    email: values.email,
-                    password: values.password,
-                });
+        try {
+            // 2. UPDATE PAYLOAD LOGIN
+            await store.login({
+                identifier: values.identifier, // Kirim sebagai identifier
+                password: values.password,
+            });
 
-                toast.success("Login berhasil!");
-                
-                // Small delay to ensure state is updated
-                setTimeout(() => {
-                    router.push({ name: "dashboard" });
-                }, 100);
+            toast.success("Login berhasil!");
+            setTimeout(() => {
+                router.push({ name: "dashboard" });
+            }, 100);
 
-            } catch (error: any) {
-                console.error("Login error:", error);
-                toast.error(error || "Login gagal. Silakan coba lagi.");
-            } finally {
-                // Enable button
-                if (submitButton.value) {
-                    submitButton.value.disabled = false;
-                    submitButton.value.removeAttribute("data-kt-indicator");
-                }
-            }
-        };
+        } catch (error: any) {
+            // ... error handling
+        } finally {
+            // ... cleanup
+        }
+    };
 
-        return {
-            loginSchema,
-            onSubmitLogin,
-            submitButton,
-        };
+    return {
+        loginSchema,
+        onSubmitLogin,
+        submitButton,
+    };
     },
 });
 </script>
