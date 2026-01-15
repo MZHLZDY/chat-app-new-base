@@ -76,7 +76,7 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::get('messages/{id}', [ChatController::class, 'getMessages']);
         Route::post('send', [ChatController::class, 'sendMessage']);
         Route::post('send-file', [ChatController::class, 'sendMessage']);
-        Route::get('download/{id}', [ChatController::class, 'downloadFile']);
+        Route::get('download/{id}', [ChatController::class, 'download']);
         Route::delete('delete/{id}', [ChatController::class, 'deleteMessage']);
         Route::put('message/{id}/read', [ChatController::class, 'markAsRead']);
         Route::post('clear/{id}', [ChatController::class, 'clearChat']);

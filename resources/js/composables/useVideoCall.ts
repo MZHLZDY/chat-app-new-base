@@ -4,7 +4,6 @@ import { useAgora } from "./useAgora";
 import * as callService from "@/services/callServices";
 import type { Call, CallType } from "@/types/call";
 import { usePage } from "@inertiajs/vue3";
-import { toast } from "vue3-toastify/index";
 
 export const useVideoCall = () => {
     const store = useCallStore();
@@ -29,7 +28,7 @@ export const useVideoCall = () => {
 
         } catch (error: any) {
             console.error(error);
-            toast.error(error.response?.data?.message || "Gagal memulai panggilan");
+            console.error(error.response?.data?.message || "Gagal memulai panggilan");
         } finally {
             processing.value = false;
         }
@@ -52,7 +51,7 @@ export const useVideoCall = () => {
 
         } catch (error: any) {
             console.error(error);
-            toast.error("Gagal menjawab panggilan");
+            console.error("Gagal menjawab panggilan");
             store.clearIncomingCall();
         } finally {
             processing.value = false;
@@ -110,7 +109,7 @@ export const useVideoCall = () => {
     };
 
     const handleCallRejected = () => {
-        toast.info("Panggilan ditolak");
+        console.info("Panggilan ditolak");
         store.clearCurrentCall();
         // Suara memanggil berhenti
     };
@@ -118,7 +117,7 @@ export const useVideoCall = () => {
     const handleCallEnded = async () => {
         await leaveChannel();
         store.clearCurrentCall();
-        toast.info("Panggilan berakhir");
+        console.info("Panggilan berakhir");
     };
 
     return {
