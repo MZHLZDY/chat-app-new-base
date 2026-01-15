@@ -10,6 +10,7 @@ export const useVoiceCall = () => {
     const store = useCallStore();
     const authStore = useAuthStore();
     
+    // Asumsi: joinChannel di useAgora definisinya (channel, token, uid)
     const { 
         joinChannel, 
         leaveChannel, 
@@ -22,42 +23,69 @@ export const useVoiceCall = () => {
     
     // @ts-ignore
     const appId = import.meta.env.VITE_AGORA_APP_ID;
-
+    
     // --- ACTIONS ---
 
-    const startVoiceCall = async (receiverId: number, type: CallType = 'voice') => {
+    const startVoiceCall = async (receiver: any, type: CallType = 'voice') => {
         if (processing.value) return;
         processing.value = true;
 
+        // 1. OPTIMISTIC UPDATE
+        const tempCall = {
+            id: 0,
+            type: type,
+            status: 'calling',
+            caller: authStore.user,
+            receiver: receiver, // Pakai data receiver lengkap dari UI
+            token: '',
+            channel: ''
+        };
+        
+        store.setCurrentCall(tempCall as any);
+        store.updateCallStatus('calling' as any);
+
         try {
-            const response = await callService.inviteCall(receiverId, type);
-            
+            const response = await callService.inviteCall(receiver.id, type);
             console.log('📞 Response dari inviteCall:', response);
             
-            store.setCurrentCall(response);
+            const mergedCall = {
+                ...response.call,
+                receiver: receiver // Paksa pakai data receiver UI
+            };
+
+            store.setCurrentCall(mergedCall);
             store.updateCallStatus('calling' as any);
+            
         } catch (error: any) {
             console.error('❌ Error startVoiceCall:', error);
-            toast.error(error.response?.data?.message || "Gagal memulai panggilan suara");
+            toast.error(error.response?.data?.message || "Gagal memulai panggilan");
+            store.clearCurrentCall();
         } finally {
             processing.value = false;
         }
-    };
+    }
 
-    const acceptVoiceCall = async (callId: string) => {
+    // Ubah tipe parameter jadi string | number agar fleksibel
+    const acceptVoiceCall = async (callId: string | number) => {
         if (processing.value) return;
         processing.value = true;
 
         try {
-            const callData = await callService.answerCall(callId);
+            // FIX ERROR 1: Convert ke Number
+            const callData = await callService.answerCall(Number(callId));
             
             console.log('📞 Response dari answerCall:', callData);
             
             store.setCurrentCall(callData);
             
             if (authStore.user && authStore.user.id) {
-                await joinChannel(appId, callData.channel_name, callData.agora_token, authStore.user.id);
-                await toggleAudio(false); // Unmute audio
+                // FIX ERROR 2: Hapus appId (karena expected 3 arguments)
+                await joinChannel(
+                    callData.channel_name, 
+                    callData.agora_token, 
+                    authStore.user.id
+                );
+                await toggleAudio(false); 
             } else {
                 throw new Error("User tidak terautentikasi");
             }
@@ -70,9 +98,10 @@ export const useVoiceCall = () => {
         }
     };
 
-    const rejectVoiceCall = async (callId: string) => {
+    const rejectVoiceCall = async (callId: string | number) => {
         try {
-            await callService.rejectCall(callId);
+            // FIX ERROR 3: Convert ke Number
+            await callService.rejectCall(Number(callId));
             store.clearIncomingCall();
         } catch (error) {
             console.error('❌ Error rejectVoiceCall:', error);
@@ -82,58 +111,81 @@ export const useVoiceCall = () => {
     const endVoiceCall = async (callId: string | number) => {
         try {
             await leaveChannel();
-            await callService.endCall(String(callId)); 
+            // FIX ERROR 4: Convert ke Number
+            await callService.endCall(Number(callId)); 
             store.clearCurrentCall();
         } catch (error) {
             console.error('❌ Error endVoiceCall:', error);
         }
     };
 
-    // --- EVENT HANDLERS (FIXED) ---
+    // --- EVENT HANDLERS ---
     
-    // ✅ FIX: Tambahkan console.log untuk debug dan pastikan struktur data benar
     const handleIncomingCall = (event: any) => {
-        // 🔍 Debug: Pastikan data masuk
-        console.log("📥 Handle Incoming:", event);
+    console.log("📥 Handle Incoming Data Raw:", event);
 
-        // KARENA BACKEND MENGIRIM DATA FLAT (tanpa wrapper 'call'),
-        // Kita harus mapping manual agar sesuai format Store (Call Interface)
+    // --- SOLUSI AVATAR INCOMING ---
+    const baseUrl = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000'; 
+
+    // Helper untuk memperbaiki URL avatar dengan prioritas field
+    const fixAvatarUrl = (user: any) => {
+        if (!user) return null;
         
-        // Cek struktur IncomingCall.php function broadcastWith()
-        const mappedCall = {
-            id: event.call_id,          // Backend: 'call_id'
-            type: event.call_type,      // Backend: 'call_type'
-            status: 'calling',          // Default status saat masuk
-            channel_name: event.channel_name, // Backend: 'channel_name'
-            agora_token: event.agora_token,   // Backend: 'agora_token'
-            
-            // Backend mengirim object 'caller' berisi {id, name, avatar}
-            caller: {
-                id: event.caller.id,
-                name: event.caller.name,
-                avatar: event.caller.avatar || 'default-avatar.png', // Handle null
-            },
-            
-            // Backend mengirim object 'callee' (penerima)
-            receiver: {
-                id: event.callee?.id,
-                name: event.callee?.name,
-                avatar: event.callee?.avatar || null
-            },
-
-            // Tambahan properti lain jika Store membutuhkannya
-            created_at: new Date().toISOString()
-        };
-
-        if (!store.isInCall) {
-            // Masukkan data hasil mapping ke store
-            store.setIncomingCall(mappedCall as any); 
-            
-            // Opsional: Mainkan ringtone disini jika belum ada
-        } else {
-            console.log("⚠️ Sedang dalam panggilan, mengabaikan panggilan baru.");
-        }
+        // Priority: profile_photo_url > photo > avatar
+        const photoField = user.profile_photo_url || user.photo || user.avatar;
+        
+        console.log('🖼️ Avatar Fix Input:', {
+            name: user.name,
+            profile_photo_url: user.profile_photo_url,
+            photo: user.photo,
+            avatar: user.avatar,
+            selected: photoField
+        });
+        
+        if (!photoField) return null;
+        if (photoField.startsWith('http')) return photoField; // Sudah URL lengkap
+        
+        const cleanPath = photoField.startsWith('/') ? photoField : `/${photoField}`;
+        const result = `${baseUrl}${cleanPath}`;
+        
+        console.log('✅ Avatar Fixed URL:', result);
+        return result;
     };
+    // -----------------------------
+
+    const mappedCall = {
+        id: event.call_id,     
+        type: event.call_type,      
+        status: 'calling',          
+        channel_name: event.channel_name, 
+        agora_token: event.agora_token,   
+        
+        caller: {
+            id: event.caller.id,
+            name: event.caller.name,
+            // PERBAIKAN: Gunakan helper dengan prioritas lengkap
+            profile_photo_url: fixAvatarUrl(event.caller),
+            photo: fixAvatarUrl(event.caller),
+            avatar: fixAvatarUrl(event.caller), 
+        },
+        
+        receiver: {
+            id: event.callee?.id,
+            name: event.callee?.name,
+            profile_photo_url: fixAvatarUrl(event.callee),
+            photo: fixAvatarUrl(event.callee),
+            avatar: fixAvatarUrl(event.callee),
+        },
+
+        created_at: new Date().toISOString()
+    };
+
+    if (!store.isInCall) {
+        store.setIncomingCall(mappedCall as any); 
+    } else {
+        console.log("⚠️ Sedang dalam panggilan, mengabaikan panggilan baru.");
+    }
+};
 
     const handleCallAccepted = async (event: any) => {
         console.log('✅ handleCallAccepted dipanggil:', event);
@@ -142,13 +194,13 @@ export const useVoiceCall = () => {
             store.updateCallStatus('ongoing');
 
             if (authStore.user && authStore.user.id && event.call.agora_token) {
+                // FIX ERROR 5: Hapus appId, sesuaikan argumen
                 await joinChannel(
-                    appId, 
                     event.call.channel_name, 
                     event.call.agora_token, 
                     authStore.user.id
                 );
-                await toggleAudio(false); // Unmute audio
+                await toggleAudio(false); 
             }
         }
     };

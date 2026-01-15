@@ -11,7 +11,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  callStatus: 'Incoming Voice Call...',
+  callStatus: 'Panggilan Suara Masuk...',
 });
 
 const emit = defineEmits(['accept', 'reject']);
@@ -30,12 +30,13 @@ const currentThemeMode = computed(() => themeMode.value);
           :display-name="props.callerName"
           size="140px" 
           :is-calling="true" 
+          :allow-auth-fallback="false"
         />
       </div>
 
-      <div class="info-section">
-        <p class="status-text">{{ props.callStatus }}</p>
+      <div class="info-section">  
         <h2 class="caller-name">{{ props.callerName }}</h2>
+        <p class="status-text">{{ props.callStatus }}</p>
       </div>
 
       <div class="action-buttons">
@@ -107,8 +108,13 @@ const currentThemeMode = computed(() => themeMode.value);
 .status-text {
   font-size: 0.9rem;
   opacity: 0.8;
+  color: gray;
   margin-bottom: 8px;
   letter-spacing: 0.5px;
+}
+
+.dark-mode .status-text {
+  color: white;
 }
 
 .caller-name {
@@ -189,7 +195,7 @@ const currentThemeMode = computed(() => themeMode.value);
 }
 
 /* Responsivitas */
-@media (max-width: 480px) {
+@media (max-width: 580px) {
   .glass-card {
     width: 100%;
     height: 100%;

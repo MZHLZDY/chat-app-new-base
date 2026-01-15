@@ -149,6 +149,66 @@ const remoteUser = computed(() => {
     }
 });
 
+const outgoingCalleeInfo = computed(() => {
+    const c = callStore.currentCall as any;
+    
+    // Default value jika call null
+    if (!c) return { name: 'Unknown', photo: '' };
+
+    // 1. Cek struktur Response API InviteCall (Outgoing) -> call.callee
+    if (c.call && c.call.callee) {
+        return {
+            name: c.call.callee.name || 'Unknown',
+            photo: c.call.callee.profile_photo_url || c.call.callee.photo || ''
+        };
+    }
+
+    // 2. Cek struktur standar (Incoming/Ongoing) -> call.receiver
+    if (c.receiver) {
+        return {
+            name: c.receiver.name || 'Unknown',
+            photo: c.receiver.profile_photo_url || c.receiver.photo || ''
+        };
+    }
+
+    // 3. Cek struktur alternatif flat -> call.callee
+    if (c.callee) {
+        return {
+            name: c.callee.name || 'Unknown',
+            photo: c.callee.profile_photo_url || c.callee.photo || ''
+        };
+    }
+
+    return { name: 'Unknown', photo: '' };
+});
+
+/**
+ * Helper function untuk mendapatkan foto caller dengan fallback priority
+ */
+const getCallerPhoto = (caller: any) => {
+    if (!caller) return '';
+    
+    // Priority: profile_photo_url > photo > avatar
+    return caller.profile_photo_url || 
+           caller.photo || 
+           caller.avatar || 
+           '';
+};
+
+/**
+ * Helper function untuk mendapatkan foto remote user
+ */
+const getRemoteUserPhoto = (user: any) => {
+    if (!user) return '';
+    
+    return user.profile_photo_url || 
+           user.photo || 
+           user.avatar || 
+           '';
+};
+
+
+
 // Pastikan destructuring ini sekarang sudah cocok dengan export useVoiceCall.ts di atas
 const {
     startVoiceCall,

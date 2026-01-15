@@ -53,7 +53,8 @@ const isErrorStatus = computed(() => {
           :photo-url="props.calleePhoto" 
           :display-name="props.calleeName"
           size="140px" 
-          :is-calling="isPulsing" 
+          :is-calling="isPulsing"
+          :allow-auth-fallback="false" 
         />
       </div>
 
@@ -202,5 +203,18 @@ const isErrorStatus = computed(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 580px) {
+  .glass-card {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    justify-content: center;
+  }
+  
+  .caller-name {
+    font-size: 1.5rem;
+  }
 }
 </style>
