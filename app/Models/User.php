@@ -34,7 +34,7 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
     ];
 
     protected $appends = [
-        'profile_photo_url', 'role', 'permission'
+        'profile_photo_url', 'avatar_url', 'role', 'permission'
     ];
 
     protected $casts = [
@@ -77,6 +77,19 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
             ? asset('storage/' . $this->photo) 
             : 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=7F9CF5&background=EBF4FF';
     }
+
+    public function getAvatarUrlAttribute()
+    {
+        return $this->profile_photo_url;
+    }
+
+/**
+ * Accessor untuk avatar (fallback ke photo field)
+ */
+public function getAvatarAttribute()
+{
+    return $this->attributes['photo'] ?? null;
+}
 
     // --- CHAT RELATIONS ---
     public function sentMessages() 

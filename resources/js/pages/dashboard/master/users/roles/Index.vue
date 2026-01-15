@@ -207,8 +207,6 @@ const getRemoteUserPhoto = (user: any) => {
            '';
 };
 
-
-
 // Pastikan destructuring ini sekarang sudah cocok dengan export useVoiceCall.ts di atas
 const {
     startVoiceCall,

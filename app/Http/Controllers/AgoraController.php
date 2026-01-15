@@ -166,19 +166,35 @@ class AgoraController extends Controller
                 'channel_name' => $channelName
             ]);
 
-            // Return response JSON
-            return response()->json([
-                'call_id' => $call->id,
-                'channel_name' => $channelName,
-                'agora_token' => $callerToken,
-                'app_id' => $this->agoraService->getAppId(),
-                'status' => 'ringing',
-                'caller' => [
-                    'id' => $caller->id,
-                    'name' => $caller->name,
-                    'avatar' => $caller->avatar_url ?? null,
-                ],
-            ]);
+           return response()->json([
+    'call_id' => $call->id,
+    'channel_name' => $channelName,
+    'agora_token' => $callerToken,
+    'app_id' => $this->agoraService->getAppId(),
+    'status' => 'ringing',
+    'call' => [
+        'id' => $call->id,
+        'caller_id' => $caller->id,
+        'callee_id' => $callee->id,
+        'call_type' => $request->call_type,
+        'status' => 'ringing',
+        'channel_name' => $channelName,
+        'caller' => [
+            'id' => $caller->id,
+            'name' => $caller->name,
+            'email' => $caller->email,
+            'photo' => $caller->photo,
+            'profile_photo_url' => $caller->profile_photo_url,
+        ],
+        'callee' => [
+            'id' => $callee->id,
+            'name' => $callee->name,
+            'email' => $callee->email,
+            'photo' => $callee->photo,
+            'profile_photo_url' => $callee->profile_photo_url,
+        ],
+    ],
+]);
 
         } catch (\Exception $e) {
             DB::rollback();
