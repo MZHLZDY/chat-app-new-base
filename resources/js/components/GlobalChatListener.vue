@@ -33,7 +33,7 @@ const playSound = async () => {
     try {
         audio.currentTime = 0;
         await audio.play();
-    } catch (e) { console.log("Audio blocked auto-play"); }
+    } catch (e) { console.log('Audio blocked auto-play'); }
 };
 
 // --- 2. INIT LISTENER ---
@@ -59,7 +59,7 @@ const initNotificationListener = () => {
     };
     onChildAdded(notificationDbRef, notificationCallback);
     
-    console.log("GlobalChat: Listening initialized for user", userId);
+    console.log('GlobalChat: Listening initialized for user', userId);
 };
 
 // --- 3. HANDLE NOTIFIKASI (LOGIKA UTAMA) ---
