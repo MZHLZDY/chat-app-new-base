@@ -16,13 +16,13 @@ const emit = defineEmits([
     "group-updated",
 ]);
 
+const authStore = useAuthStore();
+const currentUser = computed(() => authStore.user);
+
 // State
 const activeTab = ref<"info" | "members">("info");
 const isLoading = ref(false);
 const isFetching = ref(false);
-
-const authStore = useAuthStore();
-const currentUser = computed(() => authStore.user);
 
 // Data Grup & Foto
 const form = ref({
@@ -42,6 +42,11 @@ const selectedUsersToAdd = ref<number[]>([]);
 const isSearching = ref(false);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 
+// State untuk Modal Kick
+const showKickModal = ref(false);
+const memberToKick = ref<any>(null);
+const isKicking = ref(false);
+
 // Judul Modal
 const modalTitle = computed(() =>
     props.groupId ? "Kelola Grup" : "Buat Grup Baru"
@@ -54,7 +59,7 @@ const fetchGroupData = async () => {
     isFetching.value = true;
     try {
         const response = await axios.get(`/chat/groups/${props.groupId}`);
-        const data = response.data.data; 
+        const data = response.data.data;
 
         form.value.name = data.name;
         existingPhotoUrl.value = data.photo ? `/storage/${data.photo}` : "";
@@ -88,7 +93,7 @@ const handleFileChange = (event: Event) => {
     }
 };
 
-// --- LOGIC TAB 1: EDIT INFO (NAMA & FOTO) ---
+// --- LOGIC TAB 1: EDIT INFO ---
 const submitInfo = async () => {
     if (!form.value.name) {
         toast.error("Nama grup tidak boleh kosong.");
@@ -99,12 +104,12 @@ const submitInfo = async () => {
     try {
         const formData = new FormData();
         formData.append("name", form.value.name);
+
         if (photoFile.value) {
             formData.append("photo", photoFile.value);
         }
 
         if (props.groupId) {
-            // EDIT MODE
             formData.append("_method", "PUT");
 
             const response = await axios.post(
@@ -125,7 +130,7 @@ const submitInfo = async () => {
 
             emit("group-updated", response.data.data);
         } else {
-            const response = await axios.post(`/chat/groups`, formData, {
+            await axios.post(`/chat/groups`, formData, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
             toast.success("Grup dibuat");
@@ -141,6 +146,7 @@ const submitInfo = async () => {
 };
 
 // --- LOGIC TAB 2: MEMBERS ---
+
 const searchUsers = async () => {
     if (searchQuery.value.length < 2) return;
     isSearching.value = true;
@@ -191,17 +197,37 @@ const addSelectedMembers = async () => {
     }
 };
 
-const kickMember = async (userId: number, memberName: string) => {
-    if (!confirm(`Yakin ingin mengeluarkan ${memberName} dari grup?`)) return;
+// LOGIC KICK MEMBER
+const confirmKick = (member: any) => {
+    memberToKick.value = member;
+    showKickModal.value = true;
+};
 
+const processKickMember = async () => {
+    if (!memberToKick.value || !props.groupId) return;
+
+    isKicking.value = true;
     try {
-        await axios.delete(`/chat/groups/${props.groupId}/members/${userId}`);
-        members.value = members.value.filter((m) => m.id !== userId);
-        toast.success(`${memberName} dikeluarkan.`);
-        emit("refresh");
-    } catch (error) {
-        toast.error("Gagal mengeluarkan anggota.");
+        await axios.delete(
+            `/chat/groups/${props.groupId}/members/${memberToKick.value.id}`
+        );
+
+        toast.success(`${memberToKick.value.name} berhasil dikeluarkan.`);
+        await fetchGroupData();
+        cancelKick();
+    } catch (error: any) {
+        console.error("Gagal kick member:", error);
+        toast.error(
+            error.response?.data?.message || "Gagal mengeluarkan anggota."
+        );
+    } finally {
+        isKicking.value = false;
     }
+};
+
+const cancelKick = () => {
+    showKickModal.value = false;
+    memberToKick.value = null;
 };
 
 // Watcher
@@ -217,6 +243,9 @@ watch(
             form.value.name = "";
             existingPhotoUrl.value = "";
             members.value = [];
+            searchQuery.value = "";
+            searchResults.value = [];
+            selectedUsersToAdd.value = [];
         }
     },
     { immediate: true }
@@ -312,7 +341,6 @@ watch(
                                 <div class="text-muted fs-8 mt-2">
                                     Klik ikon kamera untuk mengganti
                                 </div>
-
                                 <input
                                     type="file"
                                     ref="fileInputRef"
@@ -358,7 +386,7 @@ watch(
                                 ></span>
                             </div>
 
-                            <button
+                            <div
                                 v-if="searchResults.length > 0"
                                 class="list-group mb-3 shadow-sm"
                             >
@@ -408,7 +436,7 @@ watch(
                                         </div>
                                     </div>
                                 </div>
-                            </button>
+                            </div>
 
                             <button
                                 v-if="selectedUsersToAdd.length > 0"
@@ -449,7 +477,6 @@ watch(
                                         style="object-fit: cover"
                                     />
                                 </div>
-
                                 <div class="d-flex flex-column">
                                     <span class="text-gray-800 fw-bold">
                                         {{
@@ -462,7 +489,6 @@ watch(
                                         member.email
                                     }}</span>
                                 </div>
-
                                 <span
                                     v-if="member.pivot?.is_admin"
                                     class="badge badge-light-success ms-2"
@@ -472,9 +498,10 @@ watch(
 
                             <button
                                 v-if="member.id !== currentUser?.id"
-                                @click="kickMember(member.id, member.name)"
+                                @click="confirmKick(member)"
                                 class="btn btn-icon btn-sm btn-light-danger btn-active-danger"
                                 title="Keluarkan"
+                                type="button"
                             >
                                 <i class="fas fa-user-times"></i>
                             </button>
@@ -509,6 +536,52 @@ watch(
             </div>
         </div>
     </div>
+
+    <div v-if="showKickModal" class="confirmation-overlay">
+        <div class="confirmation-box shadow-lg rounded">
+            <div class="text-center mb-4">
+                <div class="symbol symbol-60px symbol-circle bg-light-warning">
+                    <span class="symbol-label">
+                        <i
+                            class="fas fa-exclamation-triangle fs-1 text-warning"
+                        ></i>
+                    </span>
+                </div>
+            </div>
+            <div class="text-center mb-5">
+                <h3 class="fw-bold text-gray-900 mb-2">Keluarkan Anggota?</h3>
+                <div class="text-muted fs-6">
+                    Apakah Anda yakin ingin mengeluarkan
+                    <span class="fw-bold text-danger">{{
+                        memberToKick?.name
+                    }}</span>
+                    dari grup ini?
+                </div>
+            </div>
+            <div class="d-flex justify-content-center gap-3">
+                <button
+                    type="button"
+                    class="btn btn-light"
+                    @click="cancelKick"
+                    :disabled="isKicking"
+                >
+                    Batal
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-danger"
+                    @click="processKickMember"
+                    :disabled="isKicking"
+                >
+                    <span
+                        v-if="isKicking"
+                        class="spinner-border spinner-border-sm me-1"
+                    ></span>
+                    Ya, Keluarkan
+                </button>
+            </div>
+        </div>
+    </div>
 </template>
 
 <style scoped>
@@ -518,7 +591,8 @@ watch(
 .hover-bg-light:hover {
     background-color: #f8f9fa;
 }
-.modal-overlay {
+.modal-overlay,
+.confirmation-overlay {
     position: fixed;
     top: 0;
     left: 0;
@@ -530,6 +604,9 @@ watch(
     justify-content: center;
     align-items: center;
     backdrop-filter: blur(2px);
+}
+.confirmation-overlay {
+    z-index: 1100;
 }
 .modal-content {
     position: relative;
@@ -543,6 +620,26 @@ watch(
     border-radius: 0.475rem;
     outline: 0;
 }
+.confirmation-box {
+    background: white;
+    padding: 30px;
+    width: 90%;
+    max-width: 400px;
+    animation: popIn 0.2s ease-out;
+    border-radius: 0.475rem;
+}
+@keyframes popIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Dark Mode Support */
 [data-bs-theme="dark"] .bg-body {
     background-color: #1e1e2d !important;
 }
@@ -551,7 +648,8 @@ watch(
 [data-bs-theme="dark"] .border-bottom {
     border-color: #2b2b40 !important;
 }
-[data-bs-theme="dark"] .text-gray-800 {
+[data-bs-theme="dark"] .text-gray-800,
+[data-bs-theme="dark"] .text-gray-900 {
     color: #ffffff !important;
 }
 [data-bs-theme="dark"] .bg-light-subtle {
@@ -559,5 +657,20 @@ watch(
 }
 [data-bs-theme="dark"] .hover-bg-light:hover {
     background-color: #2b2b40;
+}
+[data-bs-theme="dark"] .confirmation-box {
+    background-color: #1e1e2d;
+    border: 1px solid #323248;
+}
+
+[data-bs-theme="dark"] .list-group-item {
+    background-color: #1e1e2d;
+    border-color: #2b2b40;
+    color: #ffffff;
+}
+[data-bs-theme="dark"] .list-group-item-action:hover,
+[data-bs-theme="dark"] .list-group-item-action:focus {
+    background-color: #2b2b40;
+    color: #ffffff;
 }
 </style>
