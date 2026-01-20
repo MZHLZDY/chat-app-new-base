@@ -7,7 +7,8 @@
     >
         <!--begin::Input group-->
         <div class="fv-row mb-8">
-    <label class="form-label fs-6 fw-bold text-dark">Nama, Email, atau No Telepon</label>
+    <label class="form-label fs-6 fw-bold text-white"
+    style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Nama, Email, atau No Telepon</label>
     
     <Field
         class="form-control bg-transparent"
@@ -27,7 +28,8 @@
         <!--begin::Input group-->
         <div class="fv-row mb-3">
             <!--begin::Password-->
-            <label class="form-label fw-bold text-dark fs-6 mb-0">Password</label>
+            <label class="form-label fw-bold text-white fs-6 mb-0"
+            style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Password</label>
             <Field
                 class="form-control bg-transparent"
                 type="password"

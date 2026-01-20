@@ -1,151 +1,119 @@
 <template>
-    <!--begin::Form-->
-    <div class="w-100">
-        <!--begin::Heading-->
-        <div class="text-center mb-10">
-            <router-link to="/">
-                <img
-                    :src="setting?.logo"
-                    :alt="setting?.app"
-                    class="w-200px mb-8"
-                />
-            </router-link>
-            <!--begin::Title-->
-            <h1 class="mb-3">
-                Masuk ke <span class="text-primary">{{ setting?.app }}</span>
-            </h1>
-            <!--end::Title-->
-        </div>
-        <!--begin::Heading-->
-
-        <ul class="nav nav-tabs nav-line-tabs mb-5 fs-6">
-            <li class="nav-item">
-                <a
-                    class="nav-link active"
-                    data-bs-toggle="tab"
-                    href="#with-email"
-                    >LOGIN</a
-                >
-            </li>
-            <!-- <li class="nav-item">
-                <a class="nav-link" data-bs-toggle="tab" href="#with-phone">{{ $t('login.telepon') }}</a>
-            </li> -->
-        </ul>
-
-        <div class="tab-content" id="myTabContent">
-            <div
-                class="tab-pane fade show active"
-                id="with-email"
-                role="tabpanel"
-            >
-                <WithEmail />
+    <div class="d-flex flex-column flex-lg-row flex-column-fluid h-100">
+        
+        <div class="d-flex flex-lg-row-fluid w-lg-50 bgi-size-cover bgi-position-center order-1 order-lg-1 position-relative aside-img"
+            :style="`background-image: url('${bgImage}')`">
+            
+            <div class="d-flex flex-column flex-center py-15 px-5 px-md-15 w-100 h-100 bg-overlay-gradient">
+                <router-link to="/" class="mb-12">
+                    <img :src="setting?.logo" class="h-70px" alt="Logo" />
+                </router-link>
+                
+                <h1 class="text-white fs-2qx fw-bolder text-center mb-7">
+                    Login ke ChatApp
+                </h1>
+                <div class="text-white fs-base text-center opacity-75">
+                    Bergabunglah dengan komunitas kami dan rasakan pengalaman <br> komunikasi yang lebih baik dan aman.
+                </div>
             </div>
         </div>
 
-        <div class="border-bottom border-gray-300 w-100 mt-5 mb-10"></div>
+        <div class="d-flex flex-column flex-lg-row-fluid w-lg-50 p-10 order-2 order-lg-2 justify-content-center" 
+        style="background-color: rgba(255, 255, 255, 0.3); backdrop-filter: blur(9px);">
+            <div class="d-flex flex-center flex-column flex-lg-row-fluid">
+                <div class="w-100 w-md-400px w-lg-500px p-10 p-lg-15 mx-auto">
+                    
+                    <div class="text-start mb-10">
+                        <h1 class="text-white mb-5 fs-3x fw-bold"
+                        style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Sign In</h1>
+                    </div>
 
-        <!--begin::Link-->
-        <div class="text-gray-700 fw-bold fs-4 text-center">
-            BELUM PUNYA AKUN?
+                    <div class="form-wrapper">
+                        <WithEmail />
+                    </div>
 
-            <router-link to="/sign-up" class="link-primary fw-bold">
-                DAFTAR DISINI
-            </router-link>
+                    <div class="text-center text-gray-200 fw-semibold fs-4">
+                            Belum punya akun? 
+                            <router-link to="/sign-up" class="link-primary fw-bold">DAFTAR DISINI</router-link>
+                    </div>
+
+                    <!-- <div class="d-flex flex-center flex-wrap fs-6 p-5 pb-0">
+                        <div class="d-flex flex-center fw-semibold fs-6">
+                            <a href="#" class="text-muted text-hover-primary px-2" target="_blank">Tentang</a>
+                            <a href="#" class="text-muted text-hover-primary px-2" target="_blank">Support</a>
+                        </div>
+                    </div> -->
+
+                </div>
+            </div>
         </div>
-        <!--end::Link-->
+        
     </div>
-    <!--end::Form-->
 </template>
 
-<script>
-import { getAssetPath } from "@/core/helpers/assets";
+<script lang="ts">
 import { defineComponent, ref } from "vue";
-import { useAuthStore } from "@/stores/auth";
-import { useRouter } from "vue-router";
-import * as Yup from "yup";
-import axios from "@/libs/axios";
-import { toast } from "vue3-toastify";
-import { blockBtn, unblockBtn } from "@/libs/utils";
-import { MessagesSquare } from 'lucide-vue-next';
-import WithEmail from "./tabs/WithEmail.vue";
-import WithPhone from "./tabs/WithPhone.vue";
-import { useSetting } from "@/services";
+import { getAssetPath } from "@/core/helpers/assets";
+import SignInWithEmail from "@/pages/auth/sign-in/tabs/WithEmail.vue";
 
 export default defineComponent({
-    name: "sign-in",
+    name: "SignInSideDesign",
     components: {
-        WithEmail,
-        WithPhone,
+        WithEmail: SignInWithEmail,
     },
     setup() {
-        const store = useAuthStore();
-        const router = useRouter();
-        const { data: setting = {} } = useSetting();
-
-        const submitButton = ref(null);
-
-        //Create form validation object
-        const login = Yup.object().shape({
-            identifier: Yup.string()
-                .email("Email/No. Telepon tidak valid")
-                .required("Harap masukkan Email/No. Telepon")
-                .label("Email"),
-            password: Yup.string()
-                .min(8, "Password minimal terdiri dari 8 karakter")
-                .required("Harap masukkan password")
-                .label("Password"),
+        // Ganti gambar ini dengan gambar aesthetic (unsplash/pexels)
+        const bgImage = getAssetPath("media/auth/bg10.jpeg"); 
+        
+        const setting = ref({
+            logo: getAssetPath("media/logos/default-dark.svg"), // Logo versi putih jika ada, atau sesuaikan
+            app: "ChatApp"
         });
 
         return {
-            login,
-            submitButton,
-            getAssetPath,
-            store,
-            router,
-            setting,
+            bgImage,
+            setting
         };
-    },
-    data() {
-        return {
-            data: {
-                identifier: null,
-                password: null,
-            },
-            check: {
-                type: "",
-                error: "",
-            },
-        };
-    },
-    methods: {
-        submit() {
-            blockBtn(this.submitButton);
-
-            axios
-                .post("/auth/login", { ...this.data, type: this.check.type })
-                .then((res) => {
-                    this.store.setAuth(res.data.user, res.data.token);
-                    this.router.push("/dashboard");
-                })
-                .catch((error) => {
-                    toast.error(error.response.data.message);
-                })
-                .finally(() => {
-                    unblockBtn(this.submitButton);
-                });
-        },
-        checkInput(value) {
-            this.check.type = "";
-            if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(value)) {
-                this.check.type = "email";
-            } else {
-                this.check.type = "phone";
-                if (isNaN(this.data.identifier)) {
-                    this.check.type =
-                        "Masukkan Email / No. Telepon Yang Valid!";
-                }
-            }
-        },
     },
 });
 </script>
+
+<style lang="scss" scoped>
+/* Custom Style untuk nuansa Instagramable */
+
+.aside-img {
+    min-height: 300px; /* Tinggi minimal di mobile */
+}
+
+/* Gradient Overlay: Membuat teks putih di atas gambar selalu terbaca & terlihat elegan */
+.bg-overlay-gradient {
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.2));
+}
+
+@media (min-width: 992px) {
+    .aside-img {
+        height: 100vh; /* Full height di desktop */
+    }
+}
+
+/* Sedikit styling tambahan untuk input form agar lebih modern (opsional) */
+:deep(.form-control) {
+    border-radius: 12px; /* Lebih rounded */
+    padding: 12px 15px;
+    background-color: #f5f8fa; /* Abu-abu sangat muda, bukan transparan lagi */
+    border: 1px solid transparent;
+}
+
+:deep(.form-control:focus) {
+    background-color: #ffffff;
+    border-color: #009ef7; /* Primary color */
+    box-shadow: 0 0 0 3px rgba(0, 158, 247, 0.1);
+}
+
+:deep(.btn) {
+    border-radius: 12px;
+    padding: 12px;
+    font-weight: 700;
+}
+</style>
+// ini index.vue untuk sign-in
