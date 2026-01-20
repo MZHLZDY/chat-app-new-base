@@ -1,7 +1,7 @@
 <template>
     <div class="d-flex flex-column flex-lg-row flex-column-fluid h-100">
 
-        <div class="d-flex flex-lg-row-fluid w-lg-50 bgi-size-cover bgi-position-center order-1 order-lg-1 position-relative"
+        <div class="d-flex flex-lg-row-fluid w-lg-50 bgi-size-cover bgi-position-center order-1 order-lg-1 position-relative aside-img"
              :style="`background-image: url('${getAssetPath('media/misc/auth-bg.png')}')`">
 
             <div class="position-absolute top-0 start-0 w-100 h-100"
@@ -13,10 +13,10 @@
                     <img :src="setting?.logo_depan" alt="Logo" class="h-60px h-lg-75px" />
                 </router-link>
 
-                <h1 class="d-none d-lg-block text-white fs-2qx fw-bolder text-center mb-7">
+                <h1 class="text-white fs-2qx fw-bolder text-center mb-7">
                     Registrasi Akun
                 </h1>
-                <div class="d-none d-lg-block text-white fs-base text-center">
+                <div class="text-white fs-base text-center opacity-75">
                     Bergabunglah dengan komunitas kami dan rasakan pengalaman <br>
                     komunikasi yang lebih baik dan aman.
                 </div>
@@ -25,7 +25,7 @@
 
         <div class="d-flex flex-column flex-lg-row-fluid w-lg-50 p-10 order-2 order-lg-2 justify-content-center" style="background-color: rgba(255, 255, 255, 0.3); backdrop-filter: blur(9px);">
             <div class="d-flex flex-center flex-column flex-lg-row-fluid">
-                <div class="w-lg-500px p-10 shadow-sm">
+                <div class="w-lg-500px p-10">
 
                     <div class="text-center mb-10">
                         <h1 class="text-white mb-5 fs-3x fw-bold"
