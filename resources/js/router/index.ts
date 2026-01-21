@@ -74,6 +74,16 @@ const routes: Array<RouteRecordRaw> = [
                     breadcrumbs: ["Group Chat"],
                 },
             },
+            {
+                path: "/dashboard/ai-chat",
+                name: "dashboard.ai-chat",
+                component: () =>
+                    import("@/pages/dashboard/master/users/Ai Chat/index.vue"),
+                meta: {
+                    pageTitle: "AI Chat",
+                    breadcrumbs: ["AI Chat"],
+                },
+            },
         ],
     },
     {

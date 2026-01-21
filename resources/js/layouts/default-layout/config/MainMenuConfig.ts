@@ -38,6 +38,12 @@ const MainMenuConfig: Array<MenuItem> = [
                 ],
             },
             {
+                heading: "Asisten AI",
+                route: "/dashboard/ai-chat",
+                name: "ai-chat",
+                keenthemesIcon: "technology-4",
+            },
+            {
                 heading: "Profile Setting",
                 route: "/dashboard/profile",
                 name: "profile-setting",

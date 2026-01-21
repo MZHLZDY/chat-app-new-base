@@ -6,6 +6,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\ChatController;
+use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\DashboardController;
@@ -80,6 +81,10 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::delete('delete/{id}', [ChatController::class, 'deleteMessage']);
         Route::put('message/{id}/read', [ChatController::class, 'markAsRead']);
         Route::post('clear/{id}', [ChatController::class, 'clearChat']);
+
+        // Ai Chat Routes
+        Route::get('ai-messages', [AiChatController::class, 'index']);
+        Route::post('ai-messages/send', [AiChatController::class, 'store']);
 
         // Group Chat Routes
         Route::get('groups', [GroupController::class, 'index']);
