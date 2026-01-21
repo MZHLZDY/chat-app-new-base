@@ -138,29 +138,34 @@ class GroupController extends Controller
     }
 
     // 1. GET MESSAGES DARI FIREBASE
-    public function getMessages($groupId)
-    {
-        $userId = Auth::id();
+    public function getMessages(Request $request, $groupId)
+{
+    $userId = Auth::id();
+    $memberData = DB::table('group_user')
+        ->where('group_id', $groupId)
+        ->where('user_id', $userId)
+        ->first();
 
-        $memberData = DB::table('group_user')
-            ->where('group_id', $groupId)
-            ->where('user_id', $userId)
-            ->first();
-
-        if (!$memberData)
-            return response()->json(['message' => 'Unauthorized'], 403);
-
-        $query = GroupMessage::where('group_id', $groupId)
-            ->with(['sender', 'replyTo.sender'])
-            ->orderBy('created_at', 'asc');
-        if (!empty($memberData->last_cleared_at)) {
-            $query->where('created_at', '>', $memberData->last_cleared_at);
-        }
-
-        $messages = $query->get();
-
-        return response()->json(['data' => $messages]);
+    if (!$memberData) {
+        return response()->json(['message' => 'Unauthorized'], 403);
     }
+
+    $query = GroupMessage::where('group_id', $groupId)
+        ->with(['sender', 'replyTo.sender']);
+    if (!empty($memberData->last_cleared_at)) {
+        $query->where('created_at', '>', $memberData->last_cleared_at);
+    }
+
+    $query->orderBy('created_at', 'desc');
+    $messages = $query->simplePaginate(20);
+    $data = collect($messages->items())->reverse()->values();
+    
+    return response()->json([
+        'data' => $data,
+        'has_more' => $messages->hasMorePages(),
+        'next_page_url' => $messages->nextPageUrl()
+    ]);
+}
 
     // 2. SEND MESSAGE DENGAN FIREBASE PUSH (Realtime)
     public function sendMessage(Request $request)
