@@ -13,7 +13,8 @@
     <Field
         class="form-control bg-transparent"
         type="text" 
-        name="identifier" 
+        name="identifier"
+        placeholder="Masukkan Nama, Email, atau No Telepon" 
         autocomplete="off"
     />
     
@@ -34,6 +35,7 @@
                 class="form-control bg-transparent"
                 type="password"
                 name="password"
+                placeholder="Masukkan Password"
                 autocomplete="off"
             />
             <div class="fv-plugins-message-container">
@@ -146,3 +148,25 @@ export default defineComponent({
     },
 });
 </script>
+<style lang="scss" scoped>
+.form-control {
+    /* Border Biru Muda Permanen */
+    border: 1px solid #009ef7 !important;
+    
+    /* Background transparan gelap */
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    
+    /* Warna teks putih */
+    color: #ffffff !important;
+    
+    border-radius: 10px;
+}
+
+.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.form-control:focus {
+    box-shadow: 0 0 10px rgba(0, 158, 247, 0.3) !important;
+}
+</style>

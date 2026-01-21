@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, onActivated } from 'vue';
 import { useAuthStore } from "@/stores/auth"; 
 import { themeMode } from "@/layouts/default-layout/config/helper"; 
 import { Phone, MessagesSquare } from 'lucide-vue-next';
@@ -24,6 +24,11 @@ onMounted(() => {
   
   // Load dashboard stats
   loadDashboardStats();
+});
+
+onActivated(() => {
+    console.log('Page Active: Refreshing Stats...');
+    loadDashboardStats();
 });
 
 onUnmounted(() => {
@@ -56,53 +61,34 @@ const isLoading = ref(false);
 
 // Fungsi untuk load data dari API
 const loadDashboardStats = async () => {
+  isLoading.value = true;
   try {
-    isLoading.value = true;
+    const response = await ApiService.get("dashboard/stats");
     
-    console.log('🔄 Loading dashboard stats...');
+    // Debugging: Cek apa isi response di Console browser
+    console.log('Dashboard Response:', response.data);
+
+    // LOGIKA BARU:
+    // Sesuaikan path ini dengan struktur JSON dari DashboardController
+    // Controller mengembalikan: { success: true, data: { summary: { ... } } }
     
-    // Panggil API untuk mendapatkan statistik dashboard
-    const response = await ApiService.get('/dashboard/stats');
-    
-    console.log('📡 API Response:', response);
-    console.log('📊 Response Data:', response.data);
-    
-    // PERBAIKAN: Cek struktur response
-    // Laravel Anda return: { success: true, data: { unread_messages: 1, ... } }
-    if (response.data && response.data.success && response.data.data) {
-      console.log('✅ Data ditemukan:', response.data.data);
-      
-      unreadMessages.value = response.data.data.unread_messages || 0;
-      totalContacts.value = response.data.data.total_contacts || 0;
-      totalGroups.value = response.data.data.total_groups || 0;
-      
-      console.log('📈 Updated Values:', {
-        unreadMessages: unreadMessages.value,
-        totalContacts: totalContacts.value,
-        totalGroups: totalGroups.value
-      });
-    } else if (response.data) {
-      // Fallback jika struktur berbeda
-      console.log('⚠️ Struktur response berbeda, mencoba alternatif...');
-      
-      unreadMessages.value = response.data.unread_messages || 0;
-      totalContacts.value = response.data.total_contacts || 0;
-      totalGroups.value = response.data.total_groups || 0;
-    } else {
-      console.error('❌ Response data tidak valid:', response);
+    if (response.data && response.data.data) {
+        const stats = response.data.data;
+        
+        // Ambil data dari 'summary' untuk total gabungan
+        if (stats.summary) {
+            unreadMessages.value = stats.summary.unread_messages || 0;
+            totalContacts.value = stats.summary.total_contacts || 0;
+            totalGroups.value = stats.summary.total_groups || 0;
+        } else {
+            // Fallback jika summary tidak ada (untuk jaga-jaga)
+            unreadMessages.value = (stats.personal?.unread || 0) + (stats.groups?.unread_messages || 0);
+        }
     }
-  } catch (error: unknown) {
-    const err = error as { response?: { data?: any } };
-    console.error('❌ Error loading dashboard stats:', error);
-    console.error('Error details:', err.response?.data);
-    
-    // Set default values jika error
-    unreadMessages.value = 0;
-    totalContacts.value = 0;
-    totalGroups.value = 0;
+  } catch (error) {
+    console.error("Gagal memuat statistik dashboard:", error);
   } finally {
     isLoading.value = false;
-    console.log('✅ Loading selesai');
   }
 };
 

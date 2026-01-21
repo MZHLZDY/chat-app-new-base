@@ -12,6 +12,7 @@
                 <h1 class="text-white fs-2qx fw-bolder text-center mb-7">
                     Login ke ChatApp
                 </h1>
+
                 <div class="text-white fs-base text-center opacity-75">
                     Bergabunglah dengan komunitas kami dan rasakan pengalaman <br> komunikasi yang lebih baik dan aman.
                 </div>
@@ -98,16 +99,25 @@ export default defineComponent({
 
 /* Sedikit styling tambahan untuk input form agar lebih modern (opsional) */
 :deep(.form-control) {
-    border-radius: 12px; /* Lebih rounded */
-    padding: 12px 15px;
-    background-color: #f5f8fa; /* Abu-abu sangat muda, bukan transparan lagi */
-    border: 1px solid transparent;
+    /* Border Biru Muda Permanen (tidak hanya saat hover/focus) */
+    border: 3px solid #54b7f0 !important; 
+    /* Opsional: Ubah background jadi transparan gelap agar border lebih menonjol */
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    /* Pastikan teks yang diketik berwarna putih/terang agar kontras */
+    color: #ffffff !important;
+    border-radius: 10px; /* Sedikit melengkung agar modern */
 }
 
+/* Mengatur warna placeholder (teks petunjuk) agar terlihat di background gelap */
+:deep(.form-control::placeholder) {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Saat diklik (Focus), border bisa dibuat lebih tebal atau bersinar */
 :deep(.form-control:focus) {
     background-color: #ffffff;
     border-color: #009ef7; /* Primary color */
-    box-shadow: 0 0 0 3px rgba(0, 158, 247, 0.1);
+    box-shadow: 0 0 10px rgba(0, 158, 247, 0.3) !important; /* Efek glow biru */
 }
 
 :deep(.btn) {

@@ -286,4 +286,39 @@ export default defineComponent({
     },
 });
 </script>
-// ini index.vue untuk sign-up
+<style lang="scss" scoped>
+/* MENGGUNAKAN :deep() 
+   Ini akan memaksa style ini menembus ke dalam component anak (Credential.vue & Password.vue)
+*/
+
+:deep(.form-control) {
+    /* 1. Background Transparan Gelap (Glass Effect) */
+    background-color: rgba(0, 0, 0, 0.2) !important; 
+    
+    /* 2. Border Biru Muda Permanen */
+    border: 3px solid #54b7f0 !important; 
+    
+    /* 3. Teks Putih (agar kontras dengan background gelap) */
+    color: #ffffff !important;
+    
+    /* 4. Radius Melengkung */
+    border-radius: 10px;
+}
+
+/* Mengatur warna placeholder (teks petunjuk "Email", "Password", dll) */
+:deep(.form-control::placeholder) {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Efek Glow saat kolom diklik */
+:deep(.form-control:focus) {
+    box-shadow: 0 0 10px rgba(0, 158, 247, 0.3) !important;
+    background-color: rgba(0, 0, 0, 0.3) !important; /* Sedikit lebih gelap saat fokus */
+}
+
+/* Menyesuaikan warna label form agar putih & punya bayangan (opsional jika belum di-set di component anak) */
+:deep(.form-label) {
+    color: #ffffff;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+</style>

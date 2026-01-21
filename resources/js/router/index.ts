@@ -43,15 +43,15 @@ const routes: Array<RouteRecordRaw> = [
                     breadcrumbs: ["Profile"],
                 },
             },
-            // {
-            //     path: "/dashboard/setting",
-            //     name: "dashboard.setting",
-            //     component: () => import("@/pages/dashboard/setting/Index.vue"),
-            //     meta: {
-            //         pageTitle: "Website Setting",
-            //         breadcrumbs: ["Website", "Setting"],
-            //     },
-            // },
+            {
+                path: "/dashboard/setting",
+                name: "dashboard.setting",
+                component: () => import("@/pages/dashboard/setting/Index.vue"),
+                meta: {
+                    pageTitle: "Website Setting",
+                    breadcrumbs: ["Website", "Setting"],
+                },
+            },
 
             // MASTER
             {
