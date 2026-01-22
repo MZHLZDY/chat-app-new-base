@@ -28,6 +28,10 @@ use Inertia\Inertia;
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login']);
     Route::post('register', [AuthController::class, 'register']);
+    Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('reset-password', [AuthController::class, 'resetPassword']);
+    Route::post('forgot-password/send-otp', [AuthController::class, 'sendResetOtp']);
+    Route::post('forgot-password/reset', [AuthController::class, 'resetWithOtp']);
     
     // Email Verification Routes (Redirect to Frontend)
     Route::get('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])

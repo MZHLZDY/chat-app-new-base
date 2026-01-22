@@ -28,21 +28,29 @@
 
         <!--begin::Input group-->
         <div class="fv-row mb-3">
-            <!--begin::Password-->
-            <label class="form-label fw-bold text-white fs-6 mb-0"
-            style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Password</label>
-            <Field
-                class="form-control bg-transparent"
-                type="password"
-                name="password"
-                placeholder="Masukkan Password"
-                autocomplete="off"
-            />
-            <div class="fv-plugins-message-container">
-                <div class="fv-help-block">
-                    <ErrorMessage name="password" />
-                </div>
-            </div>
+    <label class="form-label fw-bold text-white fs-6">Password</label>
+    
+    <div class="position-relative mb-3">
+        <Field 
+            class="form-control form-control-lg bg-transparent" 
+            :type="showPassword ? 'text' : 'password'" 
+            name="password" 
+            placeholder="Minimal 8 karakter"
+            autocomplete="off" 
+        />
+        
+        <span class="btn btn-sm btn-icon position-absolute translate-middle top-50 end-0 me-n2"
+            @click="showPassword = !showPassword">
+            <i class="bi fs-2 text-white" 
+               :class="showPassword ? 'bi-eye' : 'bi-eye-slash'"></i>
+        </span>
+    </div>
+
+    <div class="fv-plugins-message-container">
+        <div class="fv-help-block">
+            <ErrorMessage name="password" />
+        </div>
+    </div>
             <!--end::Password-->
         </div>
         <!--end::Input group-->
@@ -51,9 +59,9 @@
         <div class="d-flex flex-stack flex-wrap gap-3 fs-base fw-semobold mb-8">
             <div></div>
             <!--begin::Link-->
-            <!-- <router-link to="/auth/password-reset" class="link-primary">
+            <router-link to="/password-reset" class="link-warning">
                 Lupa Password?
-            </router-link> -->
+            </router-link>
             <!--end::Link-->
         </div>
         <!--end::Wrapper-->
@@ -104,6 +112,9 @@ export default defineComponent({
         const router = useRouter();
         const submitButton = ref<HTMLButtonElement | null>(null);
 
+        const showPassword = ref(false);
+        const showConfirmPassword = ref(false);    
+
         const loginSchema = Yup.object().shape({
         identifier: Yup.string() // Gunakan key 'identifier'
             .required("Nama, Email, atau No. Telepon wajib diisi")
@@ -144,6 +155,8 @@ export default defineComponent({
         loginSchema,
         onSubmitLogin,
         submitButton,
+        showPassword,
+        showConfirmPassword
     };
     },
 });

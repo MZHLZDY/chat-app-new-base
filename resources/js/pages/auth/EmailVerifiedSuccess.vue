@@ -1,6 +1,6 @@
 <template>
     <center>
-    <div class="w-lg-500px w-100">
+    <div class="w-lg-500px w-100" >
         <div class="text-center mb-10">
             <img
                 v-if="setting?.logo"
@@ -10,8 +10,8 @@
             />
         </div>
 
-        <div class="card shadow-sm">
-            <div class="card-body p-10 text-center">
+        <div class="card shadow-sm" style="background-color: rgba(255, 255, 255, 0.3) !important; backdrop-filter: blur(9px);">
+            <div class="card-body p-10 text-center" >
                 <!-- Success Icon -->
                 <div class="mb-10">
                     <div class="symbol symbol-circle symbol-100px bg-light-success mx-auto">
@@ -23,7 +23,8 @@
                 </div>
 
                 <!-- Title -->
-                <h1 class="fw-bolder text-gray-900 mb-5">
+                <h1 class="fw-bolder text-white mb-5"
+                style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
                     Email Berhasil Diverifikasi!
                 </h1>
                 
@@ -31,7 +32,8 @@
                 <div class="fw-semibold fs-6 text-gray-600 mb-10">
                     {{ message || 'Email Anda telah berhasil diverifikasi.' }}
                     <br>
-                    <span class="text-gray-800">Sekarang Anda dapat login ke aplikasi.</span>
+                    <span class="text-gray-300"
+                    style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Sekarang Anda dapat login ke aplikasi.</span>
                 </div>
 
                 <!-- Action Button -->
@@ -86,9 +88,9 @@ export default defineComponent({
     justify-content: center;
 }
 
-.bg-light-success {
+/* .bg-light-success {
     background-color: #e8fff3;
-}
+} */
 
 .symbol-100px {
     width: 100px;

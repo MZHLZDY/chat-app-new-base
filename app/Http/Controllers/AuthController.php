@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Carbon\Carbon;
 
 class AuthController extends Controller
 {
@@ -168,4 +171,130 @@ public function login(Request $request)
 
         return redirect($baseUrl . "/email/verify/{$userId}/already-verified?message=Email sudah terverifikasi.");
     }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->validate(['email' => 'required|email|exists:users,email']);
+
+        $token = Str::random(64);
+
+        // Simpan token ke tabel password_reset_tokens
+        DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $request->email],
+            [
+                'email' => $request->email,
+                'token' => $token, // Token plain text untuk simplifikasi API
+                'created_at' => Carbon::now()
+            ]
+        );
+
+        // TODO: Di production, kirim email berisi link: http://frontend-url/password-reset?token=$token&email=$request->email
+        // Untuk testing sekarang, kita return tokennya di response JSON
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Link reset password telah digenerate (Cek console/response untuk token)',
+            'token' => $token // HANYA UNTUK DEV/TESTING
+        ]);
+    }
+
+    // 2. Eksekusi Reset Password
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|exists:users,email',
+            'password' => 'required|string|min:8|confirmed',
+            'token' => 'required'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validasi gagal',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Cek kecocokan token di database
+        $checkToken = DB::table('password_reset_tokens')
+            ->where([
+                'email' => $request->email,
+                'token' => $request->token
+            ])
+            ->first();
+
+        if (!$checkToken) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token tidak valid atau email salah.'
+            ], 400);
+        }
+
+        // Update Password User
+        $user = User::where('email', $request->email)->first();
+        $user->update([
+            'password' => Hash::make($request->password)
+        ]);
+
+        // Hapus token agar tidak bisa dipakai lagi
+        DB::table('password_reset_tokens')->where(['email' => $request->email])->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password berhasil diubah! Silakan login.'
+        ]);
+    }
+    public function sendResetOtp(Request $request)
+{
+    $request->validate(['email' => 'required|email|exists:users,email']);
+
+    // 1. Generate 6 Digit Code
+    $otp = rand(100000, 999999);
+
+    // 2. Simpan ke tabel password_reset_tokens (Update jika ada, Insert jika baru)
+    DB::table('password_reset_tokens')->updateOrInsert(
+        ['email' => $request->email],
+        [
+            'token' => $otp, // Simpan OTP mentah (atau di-hash jika ingin lebih aman)
+            'created_at' => Carbon::now()
+        ]
+    );
+
+    // 3. Kirim Email (Gunakan Mail::raw biar simpel tanpa buat Class Mail baru)
+    Mail::raw("Kode reset password Anda adalah: $otp", function ($message) use ($request) {
+        $message->to($request->email)
+                ->subject('Kode Verifikasi Reset Password');
+    });
+
+    return response()->json(['message' => 'Kode verifikasi telah dikirim ke email Anda.']);
+}
+
+public function resetWithOtp(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email|exists:users,email',
+        'otp'   => 'required|numeric',
+        'password' => 'required|string|min:8|confirmed',
+    ]);
+
+    // 1. Cek Token di Database
+    $record = DB::table('password_reset_tokens')
+                ->where('email', $request->email)
+                ->first();
+
+    // 2. Validasi: Ada token? Token cocok? Token belum expired (misal 15 menit)?
+    if (!$record || $record->token != $request->otp) {
+        return response()->json(['message' => 'Kode verifikasi salah atau tidak valid.'], 400);
+    }
+
+    // 3. Update Password User
+    User::where('email', $request->email)->update([
+        'password' => Hash::make($request->password)
+    ]);
+
+    // 4. Hapus Token agar tidak bisa dipakai lagi
+    DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+    return response()->json(['success' => true, 'message' => 'Password berhasil diubah!']);
+}
 }

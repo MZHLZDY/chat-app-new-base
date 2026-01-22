@@ -99,6 +99,15 @@ const routes: Array<RouteRecordRaw> = [
                     middleware: "guest",
                 },
             },
+            {
+              path: "/password-reset",
+              name: "password-reset",
+              component: () => import("@/pages/auth/PasswordReset.vue"),
+              meta: {
+                 pageTitle: "Password Reset",
+                 middleware: "guest",
+                },
+            },
         ],
     },
     {
@@ -114,7 +123,17 @@ const routes: Array<RouteRecordRaw> = [
                     middleware: "guest",
                 },
             },
+            {
+              path: "/email/verify/:id/:hash",
+              name: "email-verify",
+              component: () => import("@/pages/auth/EmailVerifiedSuccess.vue"),
+              meta: {
+                 pageTitle: "Email Verification",
+                 middleware: "guest",
+                },
+            },
         ],
+        
     },
     {
         path: "/",
@@ -137,15 +156,7 @@ const routes: Array<RouteRecordRaw> = [
                     pageTitle: "Error 500",
                 },
             },
-            {
-              path: "/email/verify/:id/:hash",
-              name: "email-verify",
-              component: () => import("@/pages/auth/EmailVerifiedSuccess.vue"),
-              meta: {
-                 pageTitle: "Email Verification",
-                 middleware: "guest",
-                },
-            },
+            
             {
               path: "/email/verify/failed",
               name: "email-verify-failed",
@@ -155,6 +166,7 @@ const routes: Array<RouteRecordRaw> = [
                  middleware: "guest",
                 },
             },
+            
         ],
     },
     {
