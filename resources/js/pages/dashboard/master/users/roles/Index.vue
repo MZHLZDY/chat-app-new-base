@@ -34,6 +34,7 @@ import { database } from "@/libs/firebase";
 import {
     ref as firebaseRef,
     onChildAdded,
+    onChildChanged, // <-- Tambahkan ini
     onChildRemoved,
     onValue,
     off,
@@ -208,12 +209,14 @@ const {
     acceptVoiceCall,
     rejectVoiceCall,
     endVoiceCall,
+    cancelVoiceCall,
     toggleAudio,
     // toggleVideo,
     handleIncomingCall,
     handleCallAccepted,
     handleCallRejected,
     handleCallEnded,
+    handleCallCancelled,
     processing: voiceProcessing,
 } = useVoiceCall();
 
@@ -1091,6 +1094,14 @@ const setupFirebaseListeners = () => {
 
         processedNotifKeys.add(notifKey);
 
+        if (notif.type === "cancel_call" || notif.type === "canceled") { // Sesuaikan tipe dari backend
+          console.log("Notifikasi cancel diterima!");
+          // Panggil fungsi handleCallCancelled dari useVoiceCall
+          handleCallCancelled(); 
+          // (Opsional) Hapus notif agar tidak diproses ulang
+          // remove(firebaseRef(db, `notifications/${myId}/${notifKey}`));
+        }
+
         if (notif.type === "read_receipt") {
             if (
                 activeContact.value &&
@@ -1331,6 +1342,10 @@ onMounted(async () => {
                                 callStore.clearCurrentCall();
                                 callStore.clearIncomingCall();
                             }, 2000);
+                        } else {
+                            // TAMBAHKAN INI UNTUK VOICE CALL
+                            console.log('Eksekusi handleCallCancelled untuk Voice');
+                            handleCallCancelled(); 
                         }
 
                         // Hapus status dari firebase
@@ -1540,13 +1555,13 @@ onUnmounted(() => {
                 @reject="handleRejectCall"
             />
 
-            <VoiceCallingModal
-                v-if="showCallingModal"
-                :callee-name="callingModalProps.calleeName"
-                :callee-photo="callingModalProps.calleePhoto"
-                :call-status="callingModalProps.callStatus"
-                @cancel="handleEndVoiceCall"
-            />
+    <VoiceCallingModal
+        v-if="showCallingModal"
+        :callee-name="callingModalProps.calleeName"
+        :callee-photo="callingModalProps.calleePhoto"
+        :call-status="callingModalProps.callStatus"
+        @cancel="cancelVoiceCall"
+    />
 
             <VoiceCallModal
                 v-if="showOngoingModal"

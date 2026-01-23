@@ -131,6 +131,22 @@ export const useVoiceCall = () => {
         }
     };
 
+    const cancelVoiceCall = async () => {
+    if (!store.currentCall) return;
+
+    try {
+        // 1. Panggil API ke Backend memberitahu panggilan dibatalkan
+        // (Pastikan endpoint ini mentrigger event Firebase ke lawan bicara)
+        await callService.cancelCall(store.currentCall.id); 
+    } catch (error) {
+        console.error("Gagal mengirim sinyal cancel ke server", error);
+    } finally {
+        // 2. Bersihkan state di sisi penelepon sendiri
+        store.clearCurrentCall();
+        store.updateCallStatus('ended'); // atau reset status
+    }
+};
+
     // --- EVENT HANDLERS ---
     
     const handleIncomingCall = (event: any) => {
@@ -258,15 +274,38 @@ export const useVoiceCall = () => {
         toast.info("Panggilan berakhir");
     };
 
+    // di dalam useVoiceCall.ts
+
+const handleCallCancelled = () => {
+    console.log('🚫 Panggilan dibatalkan oleh penelepon');
+
+    // 1. Cek apakah user sedang membuka modal Incoming Call
+    if (store.incomingCall) {
+         // 2. Munculkan Notifikasi
+         toast.info("Panggilan Dibatalkan", {
+            autoClose: 3000,
+            position: toast.POSITION.TOP_CENTER,
+         });
+
+         // 3. "Redirect" / Tutup Modal
+         store.clearIncomingCall(); 
+    }
+    
+    // Bersihkan state lain jika perlu
+    store.clearCurrentCall();
+};
+
     return {
         startVoiceCall,
         acceptVoiceCall,
         rejectVoiceCall,
         endVoiceCall,
+        cancelVoiceCall,
         handleIncomingCall,
         handleCallAccepted,
         handleCallRejected,
         handleCallEnded,
+        handleCallCancelled,
         toggleAudio,
         toggleVideo,
         localAudioTrack,

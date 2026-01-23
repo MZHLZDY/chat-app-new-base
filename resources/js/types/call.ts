@@ -9,7 +9,7 @@ export interface User {
 
 export type CallType = 'video' | 'voice';
 
-export type CallStatus = 'calling' | 'ringing' | 'ongoing' | 'ended' | 'rejected' | 'missed' | 'cancelled';
+export type CallStatus = 'calling' | 'ringing' | 'ongoing' | 'ended' | 'rejected' | 'missed' | 'cancelled' | 'incoming';
 
 export interface Call {
     id: number;
