@@ -61,6 +61,7 @@ const isHeaderMenuOpen = ref(false);
 const isInfoModalOpen = ref(false);
 const searchQuery = ref("");
 const chatDrafts = ref<Record<string | number, string>>({});
+const openMessageMenuId = ref<number | string | null>(null);
 
 // Typing State untuk Group
 const typingUsers = ref<string[]>([]);
@@ -129,7 +130,7 @@ const fetchGroups = async () => {
             unread_count: Number(g.unread_count) || 0,
         }));
     } catch (error) {
-        console.error('Gagal memuat grup:', error);
+        console.error("Gagal memuat grup:", error);
     } finally {
         isLoadingGroups.value = false;
     }
@@ -163,7 +164,7 @@ const selectGroup = async (group: any) => {
     try {
         axios.post(`/chat/groups/${group.id}/read`);
     } catch (error) {
-        console.error('Gagal update status read:', error);
+        console.error("Gagal update status read:", error);
     }
 
     setupGroupListener(group.id);
@@ -286,8 +287,8 @@ const sendMessage = async () => {
 
         refreshGroupOrder(activeGroup.value.id);
     } catch (error) {
-        console.error('Gagal kirim pesan grup', error);
-        toast.error('Gagal mengirim pesan');
+        console.error("Gagal kirim pesan grup", error);
+        toast.error("Gagal mengirim pesan");
         messages.value = messages.value.filter((m) => m.id !== tempId);
         replyingTo.value = tempReply;
     }
@@ -421,9 +422,9 @@ const confirmDelete = async (type: "me" | "everyone") => {
         );
         closeDeleteModal();
     } catch (error: any) {
-        console.error('Error delete:', error);
+        console.error("Error delete:", error);
         const errorMsg =
-            error.response?.data?.message || 'Gagal menghapus pesan';
+            error.response?.data?.message || "Gagal menghapus pesan";
         toast.error(errorMsg);
     }
 };
@@ -455,10 +456,10 @@ const processClearChat = async () => {
         messages.value = [];
 
         isClearChatModalOpen.value = false;
-        toast.success('Riwayat chat berhasil dibersihkan');
+        toast.success("Riwayat chat berhasil dibersihkan");
     } catch (error) {
-        console.error('Gagal clear chat', error);
-        toast.error('Gagal membersihkan chat');
+        console.error("Gagal clear chat", error);
+        toast.error("Gagal membersihkan chat");
         isClearChatModalOpen.value = false;
     }
 };
@@ -559,6 +560,19 @@ const listenToGroupTyping = (groupId: number) => {
             }
         }
     });
+};
+
+const toggleMessageMenu = (id: number | string) => {
+    if (openMessageMenuId.value === id) {
+        openMessageMenuId.value = null;
+    } else {
+        openMessageMenuId.value = id;
+    }
+};
+
+const handleMessageAction = (action: Function, msg: any) => {
+    action(msg);
+    openMessageMenuId.value = null;
 };
 
 const handleEscKey = (e: KeyboardEvent) => {
@@ -1390,36 +1404,91 @@ onUnmounted(() => {
                                         </div>
 
                                         <div
-                                            class="position-absolute top-0 end-0 mt-n2 me-n2 d-flex gap-1"
-                                            style="
-                                                opacity: 0;
-                                                transition: opacity 0.2s;
+                                            class="position-absolute top-0 end-0 mt-n2 me-n2"
+                                            :class="
+                                                msg.sender_id ===
+                                                currentUser?.id
+                                                    ? 'start-0 ms-n2'
+                                                    : 'end-0 me-n2'
                                             "
-                                            onmouseover="this.style.opacity=1"
-                                            onmouseout="this.style.opacity=0"
                                         >
                                             <button
-                                                @click="setReply(msg)"
-                                                class="btn btn-sm btn-icon btn-circle btn-white shadow w-20px h-20px"
-                                                title="Balas"
-                                            >
-                                                <i
-                                                    class="fas fa-reply fs-9 text-warning"
-                                                ></i>
-                                            </button>
-                                            <button
-                                                v-if="
-                                                    msg.sender_id ===
-                                                    currentUser?.id
+                                                @click.stop="
+                                                    toggleMessageMenu(msg.id)
                                                 "
-                                                @click="openDeleteModal(msg)"
-                                                class="btn btn-sm btn-icon btn-circle btn-white shadow w-20px h-20px"
-                                                title="Hapus"
+                                                class="btn btn-sm btn-icon btn-circle shadow-sm w-20px h-20px"
+                                                style="
+                                                    z-index: 10;
+                                                    background-color: rgba(
+                                                        255,
+                                                        255,
+                                                        255,
+                                                        0.85
+                                                    );
+                                                "
                                             >
                                                 <i
-                                                    class="fas fa-trash fs-9 text-danger"
+                                                    class="fas fa-ellipsis-v fs-9 text-gray-600"
                                                 ></i>
                                             </button>
+
+                                            <div
+                                                v-if="
+                                                    openMessageMenuId === msg.id
+                                                "
+                                                class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-bold w-150px py-2 show position-absolute end-0 mt-1 shadow-lg bg-white"
+                                                style="z-index: 105"
+                                            >
+                                                <div class="menu-item px-3">
+                                                    <a
+                                                        href="#"
+                                                        class="menu-link px-3 fs-7"
+                                                        @click.prevent="
+                                                            handleMessageAction(
+                                                                setReply,
+                                                                msg
+                                                            )
+                                                        "
+                                                    >
+                                                        <i
+                                                            class="fas fa-reply me-2 text-warning fs-8"
+                                                        ></i>
+                                                        Balas
+                                                    </a>
+                                                </div>
+
+                                                <div class="menu-item px-3">
+                                                    <a
+                                                        href="#"
+                                                        class="menu-link px-3 fs-7 text-danger"
+                                                        @click.prevent="
+                                                            handleMessageAction(
+                                                                openDeleteModal,
+                                                                msg
+                                                            )
+                                                        "
+                                                    >
+                                                        <i
+                                                            class="fas fa-trash me-2 text-danger fs-8"
+                                                        ></i>
+                                                        Hapus
+                                                    </a>
+                                                </div>
+                                            </div>
+
+                                            <div
+                                                v-if="
+                                                    openMessageMenuId === msg.id
+                                                "
+                                                @click.stop="
+                                                    openMessageMenuId = null
+                                                "
+                                                class="position-fixed top-0 start-0 w-100 h-100"
+                                                style="
+                                                    z-index: 104;
+                                                    cursor: default;
+                                                "
+                                            ></div>
                                         </div>
                                     </div>
                                 </div>

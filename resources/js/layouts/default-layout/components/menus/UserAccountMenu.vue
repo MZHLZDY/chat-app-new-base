@@ -4,11 +4,14 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
+
 import Swal from "sweetalert2/dist/sweetalert2.js";
 
 const router = useRouter();
 const i18n = useI18n();
 const store = useAuthStore();
+const authStore = useAuthStore();
+const user = computed(() => authStore.user);
 
 i18n.locale.value = localStorage.getItem("lang")
     ? (localStorage.getItem("lang") as string)
@@ -75,6 +78,16 @@ const currentLanguage = computed(() => {
 const currentLangugeLocale = computed(() => {
     return countries[i18n.locale.value as keyof typeof countries];
 });
+
+const getUserAvatar = (photoPath: string | null | undefined) => {
+    if (!photoPath) {
+        return getAssetPath('media/avatars/blank.png'); 
+    }
+    if (photoPath.startsWith('http')) {
+        return photoPath;
+    }
+    return `/storage/${photoPath}`;
+};
 </script>
 
 <template>
@@ -91,9 +104,7 @@ const currentLangugeLocale = computed(() => {
                     <img
                         alt="User"
                         :src="
-                            getAssetPath(
-                                store.user.photo ?? 'media/avatars/300-3.jpg'
-                            )
+                            getUserAvatar(user?.photo)
                         "
                     />
                 </div>

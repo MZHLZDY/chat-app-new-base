@@ -97,6 +97,7 @@ const isInfoModalOpen = ref(false);
 const isFriendTyping = ref(false);
 const isMuted = ref(false);
 const isClearChatModalOpen = ref(false);
+const openMessageMenuId = ref<number | string | null>(null);
 let typingTimeout: ReturnType<typeof setTimeout> | null = null;
 let typingListenerOff: Unsubscribe | null = null;
 
@@ -145,66 +146,60 @@ const remoteUser = computed(() => {
         // @ts-ignore (jika receiver kadang null di type definition)
         return call.receiver || { name: "User", avatar: "" };
     } else {
-        return call.caller || { name: 'User', avatar: '' };
+        return call.caller || { name: "User", avatar: "" };
     }
 });
 
 const outgoingCalleeInfo = computed(() => {
     const c = callStore.currentCall as any;
-    
+
     // Default value jika call null
-    if (!c) return { name: 'Unknown', photo: '' };
+    if (!c) return { name: "Unknown", photo: "" };
 
     // 1. Cek struktur Response API InviteCall (Outgoing) -> call.callee
     if (c.call && c.call.callee) {
         return {
-            name: c.call.callee.name || 'Unknown',
-            photo: c.call.callee.profile_photo_url || c.call.callee.photo || ''
+            name: c.call.callee.name || "Unknown",
+            photo: c.call.callee.profile_photo_url || c.call.callee.photo || "",
         };
     }
 
     // 2. Cek struktur standar (Incoming/Ongoing) -> call.receiver
     if (c.receiver) {
         return {
-            name: c.receiver.name || 'Unknown',
-            photo: c.receiver.profile_photo_url || c.receiver.photo || ''
+            name: c.receiver.name || "Unknown",
+            photo: c.receiver.profile_photo_url || c.receiver.photo || "",
         };
     }
 
     // 3. Cek struktur alternatif flat -> call.callee
     if (c.callee) {
         return {
-            name: c.callee.name || 'Unknown',
-            photo: c.callee.profile_photo_url || c.callee.photo || ''
+            name: c.callee.name || "Unknown",
+            photo: c.callee.profile_photo_url || c.callee.photo || "",
         };
     }
 
-    return { name: 'Unknown', photo: '' };
+    return { name: "Unknown", photo: "" };
 });
 
 /**
  * Helper function untuk mendapatkan foto caller dengan fallback priority
  */
 const getCallerPhoto = (caller: any) => {
-    if (!caller) return '';
-    
+    if (!caller) return "";
+
     // Priority: profile_photo_url > photo > avatar
-    return caller.profile_photo_url || 
-           caller.photo || 
-           caller.avatar || 
-           '';
+    return caller.profile_photo_url || caller.photo || caller.avatar || "";
 };
 
 /**
  * Helper function untuk mendapatkan foto remote user
  */
 const getRemoteUserPhoto = (user: any) => {
-    if (!user) return '';
-    
-    return user.profile_photo_url || 
-           user.photo || 
-           user.avatar || 
-           '';
+    if (!user) return "";
+
+    return user.profile_photo_url || user.photo || user.avatar || "";
 };
 
 // Pastikan destructuring ini sekarang sudah cocok dengan export useVoiceCall.ts di atas
@@ -233,8 +228,8 @@ const handleVoiceCall = () => {
         return;
     }
 
-    console.log('📞 Memulai voice call ke:', activeContact.value);
-    startVoiceCall(activeContact.value, 'voice'); // ✅ Kirim object lengkap!
+    console.log("📞 Memulai voice call ke:", activeContact.value);
+    startVoiceCall(activeContact.value, "voice"); // ✅ Kirim object lengkap!
 };
 
 const handleAcceptCall = async () => {
@@ -282,7 +277,7 @@ const handleEndVoiceCall = () => {
         endVoiceCall(callId);
     } else {
         // Fallback: Jika ID entah kenapa hilang, force cleanup di lokal saja
-        console.warn('Call ID missing, forcing local cleanup.');
+        console.warn("Call ID missing, forcing local cleanup.");
         callStore.clearCurrentCall();
     }
 
@@ -292,22 +287,22 @@ const handleEndVoiceCall = () => {
 
 // Handler video call
 const handleVideoCall = async () => {
-    console.log('📹 Tombol video call diklik');
+    console.log("📹 Tombol video call diklik");
 
     // Pastikan authStore.user terinisialisasi
     if (!authStore.user) {
         console.warn(
-            '⚠️ authStore.user tidak terdefinisi, mencoba inisialisasi...'
+            "⚠️ authStore.user tidak terdefinisi, mencoba inisialisasi..."
         );
 
         if (currentUser.value?.id) {
             authStore.setUser(currentUser.value);
-            console.log('✅ authStore.user terinisialisasi:', authStore.user);
+            console.log("✅ authStore.user terinisialisasi:", authStore.user);
         } else {
             console.error(
-                '❌ Gagal inisialisasi authStore.user, tidak ada currentUser'
+                "❌ Gagal inisialisasi authStore.user, tidak ada currentUser"
             );
-            toast.error('Silahkan refresh halaman');
+            toast.error("Silahkan refresh halaman");
             return;
         }
     }
@@ -315,25 +310,25 @@ const handleVideoCall = async () => {
     // Double check setelah inisialisasi
     if (!authStore.user?.id) {
         console.error(
-            '❌ authStore.user masih tidak terdefinisi setelah inisialisasi'
+            "❌ authStore.user masih tidak terdefinisi setelah inisialisasi"
         );
-        toast.error('Gagal mendapatkan data user');
+        toast.error("Gagal mendapatkan data user");
         return;
     }
 
     // Validasi kontak aktif
     if (!activeContact.value) {
         console.error(
-            '❌ Tidak ada kontak yang dipilih untuk panggilan video.'
+            "❌ Tidak ada kontak yang dipilih untuk panggilan video."
         );
-        toast.error('Pilih kontak terlebih dahulu');
+        toast.error("Pilih kontak terlebih dahulu");
         return;
     }
 
     try {
-        console.log('🚀 Memulai panggilan video ke:', activeContact.value.name);
-        console.log('📦 Caller ID:', authStore.user.id);
-        console.log('📦 Receiver ID:', activeContact.value.id);
+        console.log("🚀 Memulai panggilan video ke:", activeContact.value.name);
+        console.log("📦 Caller ID:", authStore.user.id);
+        console.log("📦 Receiver ID:", activeContact.value.id);
 
         // Convert activeContact ke tipe User
         const receiveUser: User = {
@@ -345,25 +340,25 @@ const handleVideoCall = async () => {
                 : undefined,
         };
 
-        console.log('📦 Receiver User:', receiveUser);
+        console.log("📦 Receiver User:", receiveUser);
 
-        await initiateCall(receiveUser, 'video'); // Panggil API /call/invite
+        await initiateCall(receiveUser, "video"); // Panggil API /call/invite
 
-        console.log('✅ Memulai panggilan video');
+        console.log("✅ Memulai panggilan video");
 
         // Log state setelah initiateCall
-        console.log('State setelah initiate');
-        console.log('callStore.currentCall:', callStore.currentCall);
-        console.log('callStore.incomingCall:', callStore.incomingCall);
-        console.log('callStore.isInCall:', callStore.isInCall);
-        console.log('callStore.callStatus:', callStore.callStatus);
-        console.log('showVideoCallingModal:', showVideoCallingModal.value);
-        console.log('showVideoIncomingModal:', showVideoIncomingModal.value);
-        console.log('showVideoCallModal:', showVideoCallModal.value);
+        console.log("State setelah initiate");
+        console.log("callStore.currentCall:", callStore.currentCall);
+        console.log("callStore.incomingCall:", callStore.incomingCall);
+        console.log("callStore.isInCall:", callStore.isInCall);
+        console.log("callStore.callStatus:", callStore.callStatus);
+        console.log("showVideoCallingModal:", showVideoCallingModal.value);
+        console.log("showVideoIncomingModal:", showVideoIncomingModal.value);
+        console.log("showVideoCallModal:", showVideoCallModal.value);
 
-        toast.success('Memanggil...');
+        toast.success("Memanggil...");
     } catch (error: any) {
-        console.error('❌ Gagal memulai panggilan video:', error);
+        console.error("❌ Gagal memulai panggilan video:", error);
 
         // Clear call state kalau error
         callStore.clearCurrentCall();
@@ -372,7 +367,7 @@ const handleVideoCall = async () => {
         const errorMsg =
             error.response?.data?.message ||
             error.message ||
-            'Gagal memulai panggilan video';
+            "Gagal memulai panggilan video";
         toast.error(errorMsg);
     }
 };
@@ -380,55 +375,68 @@ const handleVideoCall = async () => {
 // Props untuk modal voice call
 const incomingCallProps = computed(() => {
     if (!callStore.incomingCall) {
-        return { callerName: 'Unknown', callerPhoto: '' };
+        return { callerName: "Unknown", callerPhoto: "" };
     }
-    
+
     const caller = callStore.incomingCall.caller;
     return {
-        callerName: caller?.name || 'Unknown',
-        callerPhoto: caller?.profile_photo_url || caller?.photo || caller?.avatar || ''
+        callerName: caller?.name || "Unknown",
+        callerPhoto:
+            caller?.profile_photo_url || caller?.photo || caller?.avatar || "",
     };
 });
 
 const callingModalProps = computed(() => {
     if (!callStore.currentCall) {
-        return { calleeName: 'Unknown', calleePhoto: '', callStatus: 'calling' };
+        return {
+            calleeName: "Unknown",
+            calleePhoto: "",
+            callStatus: "calling",
+        };
     }
-    
+
     const call = callStore.currentCall as any;
     const myId = authStore.user?.id;
-    
+
     if (call.caller?.id === myId) {
         const callee = call.receiver || call.callee;
         return {
-            calleeName: callee?.name || callee?.display_name || 'Unknown',
-            calleePhoto: callee?.profile_photo_url || callee?.photo || callee?.avatar || '',
-            callStatus: callStore.callStatus || 'calling'
+            calleeName: callee?.name || callee?.display_name || "Unknown",
+            calleePhoto:
+                callee?.profile_photo_url ||
+                callee?.photo ||
+                callee?.avatar ||
+                "",
+            callStatus: callStore.callStatus || "calling",
         };
     } else {
         return {
-            calleeName: call.caller?.name || 'Unknown',
-            calleePhoto: call.caller?.profile_photo_url || call.caller?.photo || '',
-            callStatus: callStore.callStatus || 'calling'
+            calleeName: call.caller?.name || "Unknown",
+            calleePhoto:
+                call.caller?.profile_photo_url || call.caller?.photo || "",
+            callStatus: callStore.callStatus || "calling",
         };
     }
 });
 
 const ongoingCallProps = computed(() => {
     if (!callStore.currentCall) {
-        return { remoteName: 'Unknown', remotePhoto: '' };
+        return { remoteName: "Unknown", remotePhoto: "" };
     }
-    
+
     const call = callStore.currentCall as any;
     const myId = authStore.user?.id;
-    
-    const remoteUser = call.caller?.id === myId 
-        ? (call.receiver || call.callee)
-        : call.caller;
-    
+
+    const remoteUser =
+        call.caller?.id === myId ? call.receiver || call.callee : call.caller;
+
     return {
-        remoteName: remoteUser?.name || remoteUser?.display_name || 'Unknown',
-        remotePhoto: remoteUser?.profile_photo_url || remoteUser?.photo || remoteUser?.avatar || ''
+        remoteName: remoteUser?.name || remoteUser?.display_name || "Unknown",
+        remotePhoto:
+            remoteUser?.profile_photo_url ||
+            remoteUser?.photo ||
+            remoteUser?.avatar ||
+            "",
     };
 });
 
@@ -545,10 +553,10 @@ const shouldShowDateDivider = (index: number) => {
 const fetchContacts = async () => {
     isLoadingContact.value = true;
     try {
-        const response = await axios.get('/chat/contacts');
+        const response = await axios.get("/chat/contacts");
         contacts.value = response.data;
     } catch (error) {
-        console.error('Gagal memuat kontak', error);
+        console.error("Gagal memuat kontak", error);
     } finally {
         isLoadingContact.value = false;
     }
@@ -655,8 +663,8 @@ const sendMessage = async () => {
 
         refreshContactOrder(activeContact.value.id);
     } catch (error) {
-        console.error('Gagal kirim pesan', error);
-        toast.error('Gagal mengirim pesan');
+        console.error("Gagal kirim pesan", error);
+        toast.error("Gagal mengirim pesan");
         messages.value = messages.value.filter((m) => m.id !== tempId);
         replyingTo.value = tempReply;
     }
@@ -768,9 +776,9 @@ const confirmDelete = async (type: "me" | "everyone") => {
         );
         closeDeleteModal();
     } catch (error: any) {
-        console.error('Error delete:', error);
+        console.error("Error delete:", error);
         const errorMsg =
-            error.response?.data?.message || 'Gagal menghapus pesan';
+            error.response?.data?.message || "Gagal menghapus pesan";
         toast.error(errorMsg);
     }
 };
@@ -958,6 +966,19 @@ const handleEscKey = (e: KeyboardEvent) => {
     }
 };
 
+const toggleMessageMenu = (id: number | string) => {
+    if (openMessageMenuId.value === id) {
+        openMessageMenuId.value = null;
+    } else {
+        openMessageMenuId.value = id;
+    }
+};
+
+const handleMessageAction = (action: Function, msg: any) => {
+    action(msg);
+    openMessageMenuId.value = null;
+};
+
 // --- SETUP LISTENER YANG BENAR ---
 const setupFirebaseListeners = () => {
     if (!currentUser.value) return;
@@ -1141,7 +1162,7 @@ watch(activeContact, (newVal, oldVal) => {
 });
 
 onMounted(async () => {
-    console.log('🚀 Komponen terpasang');
+    console.log("🚀 Komponen terpasang");
 
     // Expose ke window untuk debug
     if (import.meta.env.DEV) {
@@ -1150,13 +1171,13 @@ onMounted(async () => {
         (window as any).showVideoCallingModal = showVideoCallingModal;
         (window as any).showVideoIncomingModal = showVideoIncomingModal;
         (window as any).showVideoCallModal = showVideoCallModal;
-        console.log('✅ Debug Variabel diekspos ke window');
+        console.log("✅ Debug Variabel diekspos ke window");
     }
 
     // Init authStore dari current user
     if (!authStore.user && currentUser.value) {
         authStore.setUser(currentUser.value);
-        console.log('✅ authStore.user terinisialisasi dari computed');
+        console.log("✅ authStore.user terinisialisasi dari computed");
     }
 
     requestNotificationPermission();
@@ -1190,13 +1211,13 @@ onMounted(async () => {
             const data = snapshot.val();
 
             if (data) {
-                console.log('🔔Firebase: Panggilan masuk:', data);
+                console.log("🔔Firebase: Panggilan masuk:", data);
 
                 // Video call
-                if (data.call_type === 'video') {
+                if (data.call_type === "video") {
                     if (!authStore.user?.id) {
                         console.error(
-                            '❌ authStore.user tidak terdefinisi saat panggilan masuk video'
+                            "❌ authStore.user tidak terdefinisi saat panggilan masuk video"
                         );
                         return;
                     }
@@ -1243,11 +1264,11 @@ onMounted(async () => {
                         data.channel_name
                     );
 
-                    console.log('✅ Panggilan video terhandle (Firebase)');
-                } else if (data.call_type === 'voice') {
+                    console.log("✅ Panggilan video terhandle (Firebase)");
+                } else if (data.call_type === "voice") {
                     // Voice call
                     handleIncomingCall(data);
-                    console.log('✅ Panggilan suara terhandle (Firebase)');
+                    console.log("✅ Panggilan suara terhandle (Firebase)");
                 }
 
                 // Hapus data dari firebase ketika sudah dibaca
@@ -1262,11 +1283,11 @@ onMounted(async () => {
             const data = snapshot.val();
 
             if (data) {
-                console.log('📡 Firebase: Status panggilan terupdate:', data);
+                console.log("📡 Firebase: Status panggilan terupdate:", data);
 
                 switch (data.status) {
-                    case 'accepted':
-                        console.log('✅ Firebase: Panggilan diterima');
+                    case "accepted":
+                        console.log("✅ Firebase: Panggilan diterima");
 
                         if (data.call_type === "video") {
                             callStore.updateCallStatus("ongoing");
@@ -1284,8 +1305,8 @@ onMounted(async () => {
                         remove(statusRef);
                         break;
 
-                    case 'rejected':
-                        console.log('❌ Firebase: Panggilan ditolak');
+                    case "rejected":
+                        console.log("❌ Firebase: Panggilan ditolak");
 
                         if (data.call_type === "video") {
                             callStore.updateCallStatus("rejected");
@@ -1301,8 +1322,8 @@ onMounted(async () => {
                         remove(statusRef);
                         break;
 
-                    case 'cancelled':
-                        console.log('❌ Firebase: Panggilan dibatalkan');
+                    case "cancelled":
+                        console.log("❌ Firebase: Panggilan dibatalkan");
 
                         if (data.call_type === "video") {
                             callStore.updateCallStatus("cancelled");
@@ -1316,8 +1337,8 @@ onMounted(async () => {
                         remove(statusRef);
                         break;
 
-                    case 'ended':
-                        console.log('📴 Firebase: Panggilan diakhiri');
+                    case "ended":
+                        console.log("📴 Firebase: Panggilan diakhiri");
 
                         if (data.call_type === "video") {
                             callStore.updateCallStatus("ended");
@@ -1492,9 +1513,7 @@ onUnmounted(() => {
                                                     ></i>
                                                 </span>
 
-                                                {{
-                                                    contact.email
-                                                }}
+                                                {{ contact.email }}
                                             </span>
                                         </span>
                                         <span
@@ -1513,46 +1532,46 @@ onUnmounted(() => {
         </div>
 
         <Teleport to="body">
-    <VoiceIncomingModal
-        v-if="showIncomingModal"
-        :caller-name="incomingCallProps.callerName"
-        :caller-photo="incomingCallProps.callerPhoto"
-        @accept="handleAcceptCall"
-        @reject="handleRejectCall"
-    />
+            <VoiceIncomingModal
+                v-if="showIncomingModal"
+                :caller-name="incomingCallProps.callerName"
+                :caller-photo="incomingCallProps.callerPhoto"
+                @accept="handleAcceptCall"
+                @reject="handleRejectCall"
+            />
 
-    <VoiceCallingModal
-        v-if="showCallingModal"
-        :callee-name="callingModalProps.calleeName"
-        :callee-photo="callingModalProps.calleePhoto"
-        :call-status="callingModalProps.callStatus"
-        @cancel="handleEndVoiceCall"
-    />
+            <VoiceCallingModal
+                v-if="showCallingModal"
+                :callee-name="callingModalProps.calleeName"
+                :callee-photo="callingModalProps.calleePhoto"
+                :call-status="callingModalProps.callStatus"
+                @cancel="handleEndVoiceCall"
+            />
 
-    <VoiceCallModal
-        v-if="showOngoingModal"
-        :remote-name="ongoingCallProps.remoteName"
-        :remote-photo="ongoingCallProps.remotePhoto"
-        :is-muted="false"
-        :is-speaker-on="false"
-        @end-call="handleEndVoiceCall"
-        @minimize="callStore.toggleMinimize"
-    />
+            <VoiceCallModal
+                v-if="showOngoingModal"
+                :remote-name="ongoingCallProps.remoteName"
+                :remote-photo="ongoingCallProps.remotePhoto"
+                :is-muted="false"
+                :is-speaker-on="false"
+                @end-call="handleEndVoiceCall"
+                @minimize="callStore.toggleMinimize"
+            />
 
-    <VoiceFloating
-        v-if="showFloatingModal"
-        :remote-name="ongoingCallProps.remoteName"
-        :remote-photo="ongoingCallProps.remotePhoto"
-        :is-muted="false"
-        @maximize="callStore.toggleMinimize"
-        @end-call="handleEndVoiceCall"
-    />
+            <VoiceFloating
+                v-if="showFloatingModal"
+                :remote-name="ongoingCallProps.remoteName"
+                :remote-photo="ongoingCallProps.remotePhoto"
+                :is-muted="false"
+                @maximize="callStore.toggleMinimize"
+                @end-call="handleEndVoiceCall"
+            />
 
-    <!-- Video call modals tetap sama -->
-    <VideoCallingModal v-if="showVideoCallingModal" />
-    <VideoIncomingModal v-if="showVideoIncomingModal" />
-    <VideoCallModal v-if="showVideoCallModal" />
-</Teleport>
+            <!-- Video call modals tetap sama -->
+            <VideoCallingModal v-if="showVideoCallingModal" />
+            <VideoIncomingModal v-if="showVideoIncomingModal" />
+            <VideoCallModal v-if="showVideoCallModal" />
+        </Teleport>
 
         <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10" style="min-width: 0">
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
@@ -1623,15 +1642,24 @@ onUnmounted(() => {
                                 Simpan
                             </button>
 
-                        <button @click="startVoiceCall(activeContact)" :disabled="voiceProcessing" class="btn btn-icon btn-sm text-gray-500"><Phone class="w-20px h-20px" /></button>
-                        <button class="btn btn-icon btn-sm text-gray-500"><Video class="w-20px h-20px" /></button>
-
-                        
-                        
-                        <div class="position-relative">
-                            <button class="btn btn-icon btn-sm text-gray-500" @click.stop="toggleHeaderMenu">
-                                <i class="fas fa-ellipsis-v fs-4"></i>
+                            <button
+                                @click="startVoiceCall(activeContact)"
+                                :disabled="voiceProcessing"
+                                class="btn btn-icon btn-sm text-gray-500"
+                            >
+                                <Phone class="w-20px h-20px" />
                             </button>
+                            <button class="btn btn-icon btn-sm text-gray-500">
+                                <Video class="w-20px h-20px" />
+                            </button>
+
+                            <div class="position-relative">
+                                <button
+                                    class="btn btn-icon btn-sm text-gray-500"
+                                    @click.stop="toggleHeaderMenu"
+                                >
+                                    <i class="fas fa-ellipsis-v fs-4"></i>
+                                </button>
 
                                 <div
                                     v-if="isHeaderMenuOpen"
@@ -2092,32 +2120,97 @@ onUnmounted(() => {
                                         </div>
 
                                         <div
-                                            class="position-absolute top-0 end-0 mt-n2 me-n2 d-flex gap-1"
-                                            style="
-                                                opacity: 0;
-                                                transition: opacity 0.2s;
+                                            class="position-absolute top-0 end-0 mt-n2 me-n2"
+                                            :class="
+                                                msg.sender_id ===
+                                                currentUser?.id
+                                                    ? 'start-0 ms-n2'
+                                                    : 'end-0 me-n2'
                                             "
-                                            onmouseover="this.style.opacity=1"
-                                            onmouseout="this.style.opacity=0"
                                         >
                                             <button
-                                                @click="setReply(msg)"
-                                                class="btn btn-sm btn-icon btn-circle btn-white shadow w-20px h-20px"
-                                                title="Balas"
+                                                @click.stop="
+                                                    toggleMessageMenu(msg.id)
+                                                "
+                                                class="btn btn-sm btn-icon btn-circle shadow-sm w-20px h-20px"
+                                                style="
+                                                    z-index: 10;
+                                                    background-color: rgba(
+                                                        255,
+                                                        255,
+                                                        255,
+                                                        0.85
+                                                    );
+                                                "
                                             >
                                                 <i
-                                                    class="fas fa-reply fs-9 text-warning"
+                                                    class="fas fa-ellipsis-v fs-9 text-gray-600"
                                                 ></i>
                                             </button>
-                                            <button
-                                                @click="openDeleteModal(msg)"
-                                                class="btn btn-sm btn-icon btn-circle btn-white shadow w-20px h-20px"
-                                                title="Hapus"
+
+                                            <div
+                                                v-if="
+                                                    openMessageMenuId === msg.id
+                                                "
+                                                class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-bold w-100px py-1 show position-absolute mt-1 shadow-lg bg-white"
+                                                :class="
+                                                    msg.sender_id ===
+                                                    currentUser?.id
+                                                        ? 'start-0'
+                                                        : 'end-0'
+                                                "
+                                                style="z-index: 105"
                                             >
-                                                <i
-                                                    class="fas fa-trash fs-9 text-danger"
-                                                ></i>
-                                            </button>
+                                                <div class="menu-item px-2">
+                                                    <a
+                                                        href="#"
+                                                        class="menu-link px-2 fs-7"
+                                                        @click.prevent="
+                                                            handleMessageAction(
+                                                                setReply,
+                                                                msg
+                                                            )
+                                                        "
+                                                    >
+                                                        <i
+                                                            class="fas fa-reply me-2 text-warning fs-8"
+                                                        ></i>
+                                                        Balas
+                                                    </a>
+                                                </div>
+
+                                                <div class="menu-item px-2">
+                                                    <a
+                                                        href="#"
+                                                        class="menu-link px-2 fs-7 text-danger"
+                                                        @click.prevent="
+                                                            handleMessageAction(
+                                                                openDeleteModal,
+                                                                msg
+                                                            )
+                                                        "
+                                                    >
+                                                        <i
+                                                            class="fas fa-trash me-2 text-danger fs-8"
+                                                        ></i>
+                                                        Hapus
+                                                    </a>
+                                                </div>
+                                            </div>
+
+                                            <div
+                                                v-if="
+                                                    openMessageMenuId === msg.id
+                                                "
+                                                @click.stop="
+                                                    openMessageMenuId = null
+                                                "
+                                                class="position-fixed top-0 start-0 w-100 h-100"
+                                                style="
+                                                    z-index: 104;
+                                                    cursor: default;
+                                                "
+                                            ></div>
                                         </div>
                                     </div>
                                 </div>
@@ -2451,7 +2544,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Scrollbar Customization */
 .scroll-y {
     overflow-y: auto;
     scrollbar-width: thin;
@@ -2648,7 +2740,6 @@ onUnmounted(() => {
 }
 
 /* fix button video / voice call agar transparan */
-/* Target button di card-header yang wrap Video & Phone icon */
 .card-header .d-flex button {
     background: transparent !important;
     border: none !important;

@@ -18,11 +18,21 @@ const themeMode = computed(() => {
     return store.mode;
 });
 
-const tahun = useTahunStore()
-const tahuns = ref<Array<Number>>([])
+const tahun = useTahunStore();
+const tahuns = ref<Array<Number>>([]);
 for (let i = new Date().getFullYear(); i >= new Date().getFullYear() - 2; i--) {
-    tahuns.value.push(i)
+    tahuns.value.push(i);
 }
+
+const getUserAvatar = (photoPath: string | null | undefined) => {
+    if (!photoPath) {
+        return getAssetPath("media/avatars/blank.png");
+    }
+    if (photoPath.startsWith("http")) {
+        return photoPath;
+    }
+    return `/storage/${photoPath}`;
+};
 </script>
 
 <template>
@@ -37,11 +47,18 @@ for (let i = new Date().getFullYear(); i >= new Date().getFullYear() - 2; i--) {
         <!--begin::Theme mode-->
         <div class="app-navbar-item ms-1 ms-md-3">
             <!--begin::Menu toggle-->
-            <a href="#"
+            <a
+                href="#"
                 class="btn btn-icon btn-custom btn-icon-muted btn-active-light btn-active-color-primary w-30px h-30px w-md-40px h-md-40px"
-                data-kt-menu-trigger="{default:'click', lg: 'hover'}" data-kt-menu-attach="parent"
-                data-kt-menu-placement="bottom-end">
-                <KTIcon v-if="themeMode === 'light'" icon-name="night-day" icon-class="fs-2" />
+                data-kt-menu-trigger="{default:'click', lg: 'hover'}"
+                data-kt-menu-attach="parent"
+                data-kt-menu-placement="bottom-end"
+            >
+                <KTIcon
+                    v-if="themeMode === 'light'"
+                    icon-name="night-day"
+                    icon-class="fs-2"
+                />
                 <KTIcon v-else icon-name="moon" icon-class="fs-2" />
             </a>
             <!--begin::Menu toggle-->
@@ -50,11 +67,23 @@ for (let i = new Date().getFullYear(); i >= new Date().getFullYear() - 2; i--) {
         <!--end::Theme mode-->
 
         <!--begin::User menu-->
-        <div class="app-navbar-item ms-1 ms-md-4" id="kt_header_user_menu_toggle">
+        <div
+            class="app-navbar-item ms-1 ms-md-4"
+            id="kt_header_user_menu_toggle"
+        >
             <!--begin::Menu wrapper-->
-            <div class="cursor-pointer symbol symbol-35px" data-kt-menu-trigger="{default: 'click', lg: 'hover'}"
-                data-kt-menu-attach="parent" data-kt-menu-placement="bottom-end">
-                <img :src="getAssetPath(user.photo ?? 'media/avatars/300-3.jpg')" class="rounded-3" alt="user" />
+            <div
+                class="cursor-pointer symbol symbol-35px"
+                data-kt-menu-trigger="{default: 'click', lg: 'hover'}"
+                data-kt-menu-attach="parent"
+                data-kt-menu-placement="bottom-end"
+            >
+                <img
+                    :src="getUserAvatar(user?.photo)"
+                    alt="user profile"
+                    class="rounded-3"
+                    style="object-fit: cover"
+                />
             </div>
             <KTUserMenu />
             <!--end::Menu wrapper-->
@@ -62,8 +91,15 @@ for (let i = new Date().getFullYear(); i >= new Date().getFullYear() - 2; i--) {
         <!--end::User menu-->
 
         <!--begin::Header menu toggle-->
-        <div class="app-navbar-item d-lg-none ms-2 me-n2" v-tooltip title="Show header menu">
-            <div class="btn btn-flex btn-icon btn-active-color-primary w-30px h-30px" id="kt_app_header_menu_toggle">
+        <div
+            class="app-navbar-item d-lg-none ms-2 me-n2"
+            v-tooltip
+            title="Show header menu"
+        >
+            <div
+                class="btn btn-flex btn-icon btn-active-color-primary w-30px h-30px"
+                id="kt_app_header_menu_toggle"
+            >
                 <KTIcon icon-name="element-4" icon-class="fs-2" />
             </div>
         </div>
