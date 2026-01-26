@@ -94,7 +94,7 @@ const currentThemeMode = computed(() => themeMode.value);
   max-width: 90%;
   animation: slide-up-fade 0.5s ease-out;
 }
- 
+  
 .dark-mode .glass-card {
   background: rgba(105, 104, 104, 0.5);
 }

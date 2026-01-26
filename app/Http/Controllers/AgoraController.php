@@ -432,39 +432,36 @@ class AgoraController extends Controller
             ]);
             
             $call = PersonalCall::findOrFail($request->call_id);
+            $targetUserId = ($call->caller_id === auth()->id()) ? $call->callee_id : $call->caller_id;
 
-            // Validate: Hanya caller yang bisa membatalkan panggilan
-            if ($call->caller_id !== auth()->id()) {
-                Log::warning('⚠️ [CANCEL CALL] Unauthorized', [
-                    'user_id' => auth()->id(),
-                    'caller_id' => $call->caller_id,
-                ]);
-                return response()->json(['error' => 'Kamu tidak diizinkan untuk membatalkan panggilan ini'], 403);
-            }
-
-            // Validate: pastikan panggilan masih berstatus 'ringing'
-            if ($call->status !== 'ringing') {
+            // --- PERBAIKAN VALIDASI ---
+            // Kita izinkan lanjut jika statusnya 'ringing' ATAU 'missed'
+            // Jika 'missed', berarti job timeout sudah jalan duluan, tapi kita tetap perlu kirim notifikasi ke lawan agar dering berhenti.
+            if ($call->status !== 'ringing' && $call->status !== 'missed') {
                 Log::warning('⚠️ [CANCEL CALL] Invalid Call Status', [
                     'status' => $call->status
                 ]);
-                return response()->json(['error' => 'Panggilan tidak berdering'], 400);
+                return response()->json(['error' => 'Panggilan tidak berdering atau sudah berakhir'], 400);
             }
 
-            // Update Status
-            $call->update([
-                'status' => 'cancelled',
-                'ended_at' => now(),
-            ]);
+            // Update Status dan Log Event HANYA jika status sebelumnya masih 'ringing'
+            // Jika sudah 'missed', biarkan saja statusnya missed di DB.
+            if ($call->status === 'ringing') {
+                $call->update([
+                    'status' => 'cancelled',
+                    'ended_at' => now(),
+                ]);
 
-            // Log Event: Cancelled
-            CallEvent::create([
-                'call_id' => $call->id,
-                'user_id' => auth()->id(),
-                'event_type' => 'cancelled',
-                'created_at' => now(),
-            ]);
+                // Log Event: Cancelled
+                CallEvent::create([
+                    'call_id' => $call->id,
+                    'user_id' => auth()->id(),
+                    'event_type' => 'cancelled',
+                    'created_at' => now(),
+                ]);
+            }
 
-            // Broadcast ke callee
+            // Broadcast ke callee (Laravel Echo)
             broadcast(new CallCancelled(
                 $call->id,
                 $call->caller_id,
@@ -472,28 +469,32 @@ class AgoraController extends Controller
                 $call->call_type,
             ));
 
-            // Tulis ke firebase untuk membatalkan panggilan dari POV caller
+            // --- BAGIAN PENTING: NOTIFIKASI FIREBASE ---
+            // Kode ini sekarang akan tetap dijalankan meskipun status sudah 'missed'
             try {
                 $firebase = (new Factory)
                     ->withServiceAccount(base_path(env('FIREBASE_CREDENTIALS')))
                     ->withDatabaseUri(env('FIREBASE_DATABASE_URL'))
                     ->createDatabase();
 
-                $firebase->getReference("calls/{$call->callee_id}/status")
-                    ->set([
+                // 1. Kirim notifikasi 'cancel_call' agar modal tertutup
+                $firebase->getReference("notifications/{$targetUserId}")
+                    ->push([
+                        'type' => 'cancel_call', // Pastikan tipe ini sama dengan yang dicek di Index.vue
                         'call_id' => $call->id,
-                        'status' => 'cancelled',
-                        'call_type' => $call->call_type,
-                        'timestamp' => now()->timestamp,
+                        'caller_id' => auth()->id(),
+                        'title' => 'Panggilan Berakhir',
+                        'body' => 'Panggilan dibatalkan atau tidak terjawab',
+                        'timestamp' => now()->timestamp * 1000,
                     ]);
+                    
+                // 2. HAPUS node incoming call agar HP lawan berhenti berdering (PENTING)
+                $firebase->getReference("calls/{$targetUserId}/incoming")->remove();
 
-                Log::info('✅ Firebase: Panggilan dibatalkan', [
-                    'callee_id' => $call->callee_id,
-                    'call_id' => $call->id,
-                ]);
+                Log::info('✅ Firebase: Notifikasi cancel dikirim ke target', ['target' => $targetUserId]);
 
             } catch (\Exception $e) {
-                Log::error('❌ Firebase: Gagal menulis status panggilan dibatalkan ke firebase: ' . $e->getMessage());
+                Log::error('❌ Gagal kirim notifikasi cancel ke Firebase: ' . $e->getMessage());
             }
 
             DB::commit();

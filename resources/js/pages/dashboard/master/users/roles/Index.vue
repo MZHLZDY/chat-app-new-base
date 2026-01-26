@@ -1175,6 +1175,8 @@ watch(activeContact, (newVal, oldVal) => {
 onMounted(async () => {
     console.log("🚀 Komponen terpasang");
 
+    setupFirebaseListeners();
+
     // Expose ke window untuk debug
     if (import.meta.env.DEV) {
         (window as any).authStore = authStore;
