@@ -284,7 +284,6 @@ const handleCallCancelled = () => {
          // 2. Munculkan Notifikasi
          toast.info("Panggilan Dibatalkan", {
             autoClose: 3000,
-            position: toast.POSITION.TOP_CENTER,
          });
 
          // 3. "Redirect" / Tutup Modal
