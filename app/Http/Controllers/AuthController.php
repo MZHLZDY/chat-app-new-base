@@ -261,7 +261,8 @@ public function login(Request $request)
     );
 
     // 3. Kirim Email (Gunakan Mail::raw biar simpel tanpa buat Class Mail baru)
-    Mail::raw("Kode reset password Anda adalah: $otp", function ($message) use ($request) {
+    Mail::raw("Kami telah menerima permintaan anda untuk membuat ulang Password, 
+    Kode reset password Anda adalah: $otp", function ($message) use ($request) {
         $message->to($request->email)
                 ->subject('Kode Verifikasi Reset Password');
     });

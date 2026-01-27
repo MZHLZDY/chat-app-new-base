@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Jobs\EndMissedCall;
 use App\Models\CallEvent;
 use App\Models\PersonalCall;
+use App\Models\ChatMessage;
 use App\Services\AgoraTokenService;
 use App\Events\IncomingCall;
 use App\Events\CallAccepted;
@@ -343,19 +344,24 @@ class AgoraController extends Controller
                 return response()->json(['error' => 'Kamu tidak diizinkan untuk menolak panggilan ini'], 403);
             }
 
-            // Validate: Pastikan panggilan masih berstatus 'ringing'
-            if ($call->status !== 'ringing') {
+            // Validate: Pastikan panggilan masih berstatus 'ringing' atau 'missed'
+            if ($call->status !== 'ringing' && $call->status !== 'missed') {
                 Log::warning('⚠️ [REJECT CALL] Invalid Call Status', [
                     'status' => $call->status
                 ]);
                 return response()->json(['error' => 'Panggilan tidak berdering'], 400);
             }
 
-            // Update Status
-            $call->update([
+            // Update Status hanya jika masih ringing
+           if ($call->status === 'ringing') {
+              $call->update([
                 'status' => 'rejected',
                 'ended_at' => now(),
-            ]);
+              ]);
+        
+              // (Opsional) Buat pesan chat otomatis "Panggilan Ditolak"
+              // $chatMessage = ChatMessage::create([...]); 
+            }
 
             // Log Event: Rejected
             CallEvent::create([

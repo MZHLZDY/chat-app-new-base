@@ -59,7 +59,7 @@
         <div class="d-flex flex-stack flex-wrap gap-3 fs-base fw-semobold mb-8">
             <div></div>
             <!--begin::Link-->
-            <router-link to="/password-reset" class="link-warning">
+            <router-link to="/password-reset" class="link-warning" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
                 Lupa Password?
             </router-link>
             <!--end::Link-->

@@ -26,13 +26,15 @@ class CallRejected implements ShouldBroadcast
         int $callerId,
         int $calleeId,
         string $callType,
-        ?string $reason = null, 
+        ?string $reason = null,
+        $message = null // untuk toast
     ) {
         $this->callId = $callId;
         $this->callerId = $callerId;
         $this->calleeId = $calleeId;
         $this->callType = $callType;
         $this->reason = $reason;
+        $this->message = $message;
     }
 
     public function broadcastOn(): array

@@ -33,9 +33,10 @@
                         <WithEmail />
                     </div>
 
-                    <div class="text-center text-gray-200 fw-semibold fs-4">
+                    <div class="text-center text-gray-200 fw-semibold fs-4" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
                             Belum punya akun? 
-                            <router-link to="/sign-up" class="link-primary fw-bold">DAFTAR DISINI</router-link>
+                            <router-link to="/sign-up" class="link-primary fw-bold"
+                            style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">DAFTAR DISINI</router-link>
                     </div>
 
                     <!-- <div class="d-flex flex-center flex-wrap fs-6 p-5 pb-0">

@@ -103,15 +103,27 @@ export const useVoiceCall = () => {
         }
     };
 
-    const rejectVoiceCall = async (callId: string | number) => {
+    const rejectVoiceCall = async () => {
+       // Pastikan ada data incomingCall
+       if (!store.incomingCall) {
+          console.error("Tidak ada panggilan masuk untuk ditolak");
+          return; 
+        }
+    
+        // Simpan ID sebelum di-clear
+        const callId = store.incomingCall.id;
+
+        // Bersihkan UI dulu agar responsif (Optimistic UI)
+        store.clearIncomingCall();
+        store.clearCurrentCall();
+        await toggleAudio(false); // Matikan ringtone
+
         try {
-            // FIX ERROR 3: Convert ke Number
-            await callService.rejectCall(Number(callId));
-            store.clearIncomingCall();
-            toast.info("Panggilan ditolak");
-        } catch (error: any) {
-            console.error('❌ Error rejectVoiceCall:', error);
-            toast.error("Gagal menolak panggilan");
+           // Kirim request ke backend
+           await callService.rejectCall(callId);
+        } catch (error) {
+          console.error("Gagal reject di backend:", error);
+          // Tidak perlu memunculkan error toast ke user jika statusnya 400 (karena UI sudah tertutup)
         }
     };
 

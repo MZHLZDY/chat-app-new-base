@@ -127,9 +127,9 @@
                         </router-link>
                     </div>
 
-                    <div class="text-center text-gray-200 fw-bold fs-4">
+                    <div class="text-center text-gray-200 fw-bold fs-4" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
                             Sudah punya akun?
-                            <router-link to="/sign-in" class="link-primary fw-bolder">
+                            <router-link to="/sign-in" class="link-primary fw-bolder" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
                                 LOGIN DISINI
                             </router-link>
                     </div>
