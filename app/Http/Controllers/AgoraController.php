@@ -278,7 +278,7 @@ class AgoraController extends Controller
                     ->createDatabase();
 
                 $firebase->getReference("calls/{$call->caller_id}/status")
-                    ->push([
+                    ->set([
                         'call_id' => $call->id,
                         'status' => 'accepted',
                         'call_type' => $call->call_type,

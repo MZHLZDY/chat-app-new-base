@@ -11,7 +11,7 @@ import { ca } from 'date-fns/locale';
 export const usePersonalCall = () => {
     const callStore = useCallStore();
     const authStore = useAuthStore();
-    const { leaveChannel } = useAgora();
+    const { joinChannel ,leaveChannel } = useAgora();
     
     const isLoading = ref(false);
     const error = ref<string | null>(null);
@@ -91,6 +91,12 @@ export const usePersonalCall = () => {
                 token: token,
                 channel: channelName,
             });
+
+            await joinChannel(
+                channelName,
+                token,
+                Number(authStore.user.id)
+            );
 
             console.log('✅ Memulai panggilan berhasil');
 

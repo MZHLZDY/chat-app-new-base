@@ -50,6 +50,24 @@ export const useVideoCall = () => {
             console.log('📦 currentCall:', store.currentCall);
             console.log('📦 callStatus:', store.callStatus);
 
+            // Caller join channel langsung setelah invite berhasil
+            if (response.data.agora_token && response.data.channel_name) {
+                console.log('🚀 Caller bergabung ke channel Agora...');
+                console.log('📦 Channel:', response.data.channel_name);
+                console.log('📦 Token:', response.data.agora_token);
+                console.log('📦 UID:', currentUser.id);
+
+                await joinChannel(
+                    response.data.channel_name,
+                    response.data.agora_token,
+                    Number(currentUser.id)
+                );
+
+                console.log('✅ Caller berhasil bergabung ke channel Agora');
+            } else {
+                console.error('❌ Token atau channel_name Agora tidak tersedia di respon API');
+            }
+
         } catch (error: any) {
             console.error('❌ Error saat melakukan startCall:', error);
             console.error('Pesan:', error.response?.data?.message || error.message);
@@ -157,17 +175,11 @@ export const useVideoCall = () => {
         console.log('📦 Event:', event);
 
         // Update status di store
-        if (store.currentCall && store.currentCall.id === event.call.id) {
+        if (store.currentCall && store.currentCall.id === event.call_id) {
             store.updateCallStatus('ongoing');
-
-            if (!currentUser?.id) {
-                console.error('❌ Current user tidak ditemukan!');
-                return;
-            }
-
-            if (event.call.token) {
-                await joinChannel(event.call.channel, event.call.token, Number(currentUser.id));
-            }
+            console.log('✅ Call status di store diupdate ke ongoing');
+        } else {
+            console.warn('⚠️ Event call_id tidak sama dengan currentCall');
         }
     };
 

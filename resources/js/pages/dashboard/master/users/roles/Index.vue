@@ -1712,7 +1712,11 @@ onUnmounted(() => {
                             >
                                 <Phone class="w-20px h-20px" />
                             </button>
-                            <button class="btn btn-icon btn-sm text-gray-500">
+                            <button 
+                                @click="handleVideoCall"
+                                :disabled="callProcessing"
+                                class="btn btn-icon btn-sm text-gray-500"
+                            >
                                 <Video class="w-20px h-20px" />
                             </button>
 
