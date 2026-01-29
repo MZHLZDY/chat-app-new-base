@@ -195,7 +195,7 @@ const currentThemeMode = computed(() => themeMode.value);
 }
 
 /* Responsivitas */
-@media (max-width: 580px) {
+@media (max-width: 600px) {
   .glass-card {
     width: 100%;
     height: 100%;

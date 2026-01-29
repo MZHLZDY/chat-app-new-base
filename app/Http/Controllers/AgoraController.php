@@ -231,8 +231,8 @@ class AgoraController extends Controller
                 return response()->json(['error' => 'Kamu tidak diizinkan untuk menjawab panggilan ini'], 403);
             }
 
-            // Validate: Pastikan panggilan masih berstatus 'ringing'
-            if ($call->status !== 'ringing') {
+            // Validate: Pastikan panggilan masih berstatus 'ringing' atau 'missed'
+            if ($call->status !== 'ringing' && $call->status !== 'missed') {
                 Log::warning('⚠️ [ANSWER CALL] Invalid Call Status', [
                     'status' => $call->status
                 ]);
@@ -256,7 +256,9 @@ class AgoraController extends Controller
             // Generate Token untuk callee
             $calleeToken = $this->agoraService->generateRtcToken(
                 $call->channel_name,
-                auth()->id()
+                auth()->id(),
+                'publisher',
+                3600
             );
 
             // Broadcast ke caller
@@ -276,7 +278,7 @@ class AgoraController extends Controller
                     ->createDatabase();
 
                 $firebase->getReference("calls/{$call->caller_id}/status")
-                    ->set([
+                    ->push([
                         'call_id' => $call->id,
                         'status' => 'accepted',
                         'call_type' => $call->call_type,

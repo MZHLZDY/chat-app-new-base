@@ -91,7 +91,7 @@ export const useVideoCall = () => {
             console.log('📦 Token:', callData.token);
             console.log('📦 UID:', currentUser.id);
 
-            await joinChannel(callData.channel, callData.token, currentUser.id);
+            await joinChannel(callData.channel, callData.token, Number(currentUser.id));
 
         } catch (error: any) {
             console.error('❌ Error pada saat acceptCall:', error);
@@ -166,7 +166,7 @@ export const useVideoCall = () => {
             }
 
             if (event.call.token) {
-                await joinChannel(event.call.channel, event.call.token, currentUser.id);
+                await joinChannel(event.call.channel, event.call.token, Number(currentUser.id));
             }
         }
     };

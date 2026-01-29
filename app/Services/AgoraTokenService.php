@@ -43,8 +43,14 @@ class AgoraTokenService
         $roleValue = $role === 'publisher'
             ? \RtcTokenBuilder::RolePublisher
             : \RtcTokenBuilder::RoleSubscriber;
+
+            \Log::info('🔑 Membuat token Agora', [
+                'channel_name' => $channelName,
+                'uid' => $uid,
+                'uid_type' => gettype($uid),
+            ]);
         
-        return \RtcTokenBuilder::buildTokenWithUid(
+        $token = \RtcTokenBuilder::buildTokenWithUid(
             $this->appId,
             $this->appCertificate,
             $channelName,
@@ -52,6 +58,14 @@ class AgoraTokenService
             $roleValue,
             $privillegeExpiredTs
         );
+
+        \Log::info('✅ Token Agora berhasil dibuat', [
+            'uid' => $uid,
+            'token_first_50' => substr($token, 0, 50),
+            'token_length' => strlen($token),
+        ]);
+
+        return $token;
     }
 
     /** 

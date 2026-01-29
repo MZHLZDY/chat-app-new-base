@@ -27,7 +27,8 @@ const {
     remoteAudioTracks,
     remoteVideoTracks,
     isAudioEnabled,
-    isVideoEnabled
+    isVideoEnabled,
+    isJoined,
 } = useAgora();
 
 const currentCall = computed(() => store.currentCall);
@@ -41,16 +42,34 @@ const isVideoCallActive = computed(() =>
 // Ambil remote user
 const remoteUser = computed(() => {
     if (remoteUsers.value.length > 0) {
-        const uid = remoteUsers.value[0];
+        const user = remoteUsers.value[0];
+
+        if (!user || !user.uid) {
+            console.warn('⚠️ Remote user atau UID tidak didefinisikan');
+            return null;
+        }
+
+        console.log('📦 user:', user);
+        console.log('📦 user.uid:', user?.uid);
+
+        const uid = user.uid;
+        const uidStr = uid.toString();
+
+        console.log('📦 Checking tracks with key:', uidStr);
+        console.log('📦 remoteVideoTracks keys:', Array.from(remoteVideoTracks.value.keys()));
+        console.log('📦 remoteAudioTracks keys:', Array.from(remoteAudioTracks.value.keys()));
+
         return {
             uid,
-            videoTrack: remoteVideoTracks.value.get(uid),
-            audioTrack: remoteAudioTracks.value.get(uid),
+            videoTrack: user.videoTrack,
+            audioTrack: user.audioTrack,
             name: currentCall.value?.caller.id === currentUser.value?.id
                 ? currentCall.value?.receiver.name
                 : currentCall.value?.caller.name
         };
     }
+
+    console.log('⚠️ remoteUsers array kosong')
     return null;
 });
 
@@ -58,9 +77,13 @@ const remoteUser = computed(() => {
 onMounted(async () => {
     console.log('📹 VideoCallModal mounted');
     console.log('📦 IsVideoCallActive:', isVideoCallActive.value);
-    console.log('📦 agoraToken:', store.agoraToken);
-    console.log('📦 channelName:', store.channelName);
+    console.log('📦 isJoined:', isJoined.value);
+    console.log('📦 store.hasJoinedAgora:', store.hasJoinedAgora);
+    console.log('📦 localVideoTrack:', localVideoTrack.value ? 'AVAILABLE' : 'NULL');
     console.log('📦 currentUser:', currentUser.value);
+    console.log('📦 currentUser.id:', currentUser.value?.id);
+    console.log('📦 agoraToken:', store.agoraToken ? 'AVAILABLE' : 'NULL');
+    console.log('📦 channelName:', store.channelName);
 
     if (!isVideoCallActive.value) {
         console.warn('⚠️ Video call tidak aktif, skip join channel');
@@ -69,42 +92,98 @@ onMounted(async () => {
 
     if (!store.agoraToken || !store.channelName) {
         console.error('❌ Token atau channel name tidak ada!');
+        console.error('📦 agoraToken:', store.agoraToken);
+        console.error('📦 channelName:', store.channelName);
         return;
     }
 
     if (!currentUser.value?.id) {
         console.error('❌ User ID tidak ditemukan!');
+        console.error('📦 currentUser:', currentUser.value);
+        return;
+    }
+
+    // Cek apakah sudah bergabung (unutk callee yang sudah join di videoIncomingModal)
+    if (isJoined.value || store.hasJoinedAgora) {
+        console.log('✅ Sudah bergabung ke channel Agora via VideoIncomingModal, skip joinChannel');
+        console.log('📦 isJoined:', isJoined.value);
+        console.log('📦 hasJoinedAgora:', store.hasJoinedAgora);
+        console.log('📹 Local video track:', localVideoTrack.value ? 'AVAILABLE' : 'NULL');
+        console.log('🎤 Local audio track:', localAudioTrack.value ? 'AVAILABLE' : 'NULL');
+        console.log('👥 Remote users:', remoteUser.value);
         return;
     }
 
     try {
-        console.log('🚀 Bergabung ke Agora Channel...');
+        console.log('🚀 Bergabung ke Agora Channel (Caller)...');
         console.log('📦 Channel:', store.channelName);
-        console.log('📦 UID:', currentUser.value.id);
+
+        console.log('🔍 Verifikasi source UID');
+        console.log('📦 authStore.user.id:', authStore.user?.id);
+        console.log('📦 currentUser.value.id:', currentUser.value?.id);
+        console.log('📦 store.currentCall?.caller.id:', store.currentCall?.caller.id);
+        console.log('📦 store.currentCall?.receiver.id:', store.currentCall?.receiver.id);
+        console.log('📦 Akan memakai UID:', Number(currentUser.value.id));
+
+
+        console.log('📦 UID:', currentUser.value.id, '(type:', typeof currentUser.value.id, ')');
+        console.log('📦 Token:', store.agoraToken.substring(0, 20) + '...');
 
         await joinChannel(
             store.channelName,
             store.agoraToken,
-            currentUser.value.id
+            Number(currentUser.value.id)
         );
 
         console.log('✅ Berhasil bergabung ke channel Agora');
-        console.log('📹 Local video track:', localVideoTrack.value);
-        console.log('🎤 Local audio track:', localAudioTrack);
+        console.log('📹 Local video track:', localVideoTrack.value ? 'AVAILABLE' : 'NULL');
+        console.log('🎤 Local audio track:', localAudioTrack.value ? 'AVAILABLE' : 'NULL');
 
     } catch (error) {
         console.error('❌ Gagal bergabung ke channel Agora:', error);
+
+        if ((error as any).code === 'UID_CONFLICT') {
+            alert('⚠️ Gagal bergabung ke panggilan: UID sudah digunakan di channel ini. Silakan coba lagi.');
+        }
+
+        if ((error as any).code === 'INVALID_OPERATION') {
+            console.warn('⚠️ Client sudah join channel, skip error ini');
+            return;
+        }
+
+        alert('Gagal bergabung ke panggilan video. Silakan coba lagi.');
+        await handleEndCall();
     }
 });
 
 const handleEndCall = async () => {
-    if (backendCall.value) {
-        try {
-            await endCall(backendCall.value.id) // Panggil API untuk mengakhiri panggilan
-            await leaveChannel(); // Keluar dari channel Agora
+    console.log('🔚 Tombol End Call diklik');
+
+    if (!backendCall.value) {
+        console.warn('⚠️ backendCall tidak ada, melakukan cleanup secara paksa');
+        await leaveChannel(); // Keluar dari channel Agora
+        store.clearCurrentCall();
+        store.clearIncomingCall();
+        return;
+    }
+
+    try {
+        // Leave Agora dulu (feedback instan dari UI)
+        console.log('👋 Meninggalkan channel Agora...');
+        await leaveChannel();
+
+        // Hit backend API
+        console.log('📞 Memamnggil API /call/end...')
+        await endCall(backendCall.value.id);
+
+        console.log('✅ Panggilan berhasil diakhiri');
+
         } catch (error) {
             console.error('Gagal untuk mengakhiri panggilan:', error);
-        }
+
+            // Cleanup secara paksa
+            store.clearCurrentCall();
+            store.clearIncomingCall();
     }
 };
 
@@ -196,9 +275,10 @@ watch(() => remoteVideoTracks.value.size, (size) => {
                 <!-- kontrol dibawah (seperti button camera, mic, dll yang ada di dock bawah) -->
                 <div class="bottom-bar">
                     <CallControls
+                    call-type="video"
                         :is-muted="!isAudioEnabled"
-                        :is-speaker-on="!isVideoEnabled"
-                        :is-camera-on="!isVideoCallActive"
+                        :is-speaker-on="false"
+                        :is-camera-on="isVideoEnabled"
                         @toggle-mute="toggleAudio"
                         @toggle-speaker="() => {}"
                         @toggle-camera="toggleVideo"
@@ -236,20 +316,6 @@ watch(() => remoteVideoTracks.value.size, (size) => {
     background: linear-gradient(135deg, #2c2c3e, #1a1a2e);
 }
 
-/* Local video (floating dipojok kanan atas) */
-.local-video-wrapper {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    width: 180px;
-    height: 240px;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    z-index: 10;
-}
-
 /* UI overlay */
 .call-ui-overlay {
     position: absolute;
@@ -277,6 +343,21 @@ watch(() => remoteVideoTracks.value.size, (size) => {
     bottom: 40px;
     left: 50%;
     transform: translateX(-50%);
+    z-index: 30;
+}
+
+/* Local video (floating dipojok kanan atas) */
+.local-video-wrapper {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 180px;
+    height: 240px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    z-index: 10;
 }
 
 /* Animasi */

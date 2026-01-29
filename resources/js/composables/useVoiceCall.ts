@@ -66,38 +66,67 @@ export const useVoiceCall = () => {
     }
 
     // Ubah tipe parameter jadi string | number agar fleksibel
-    const acceptVoiceCall = async (callId: string | number) => {
-        if (processing.value) return;
+    const acceptVoiceCall = async () => {
+        // Cek incoming call
+        if (!store.incomingCall) return;
+
+        const callId = store.incomingCall.id;
+        
+        // 1. Tutup modal Incoming Call segera (Optimistic UI)
+        store.clearIncomingCall(); 
+        
         processing.value = true;
 
         try {
-            // FIX ERROR 1: Convert ke Number
-            const callData = await callService.answerCall(Number(callId));
+            // 2. Request ke Backend
+            const response = await callService.answerCall(callId);
             
-            console.log('📞 Response dari answerCall:', callData);
+            // --- DEBUGGING: Cek apa yang sebenarnya dikirim backend ---
+            console.log("✅ RAW RESPONSE ANSWER CALL:", response); 
+            // ----------------------------------------------------------
+
+            // 3. Normalisasi Data (Cara Aman membaca properti)
+            // Cek apakah response punya properti 'call' atau response itu sendiri adalah datanya
+            const callData = response.call || response; 
             
-            store.setCurrentCall(callData);
-            
-            if (authStore.user && authStore.user.id) {
-                // FIX ERROR 2: Hapus appId (karena expected 3 arguments)
-                await joinChannel(
-                    callData.channel_name, 
-                    callData.agora_token, 
-                    authStore.user.id
-                );
-                await toggleAudio(false); 
-            } else {
-                throw new Error("User tidak terautentikasi");
+            // Ambil token & channel dengan pengecekan bertingkat (Optional Chaining)
+            const tokenToUse = response.token || callData.token || callData.agora_token;
+            const channelToUse = response.channel_name || callData.channel_name;
+
+            // Jika masih gagal mendapatkan data vital
+            if (!tokenToUse || !channelToUse) {
+                console.error("❌ Gagal mendapatkan Token/Channel. Struktur Response:", response);
+                throw new Error("Token atau Channel Name kosong dari backend");
             }
-        } catch (error: any) {
-            console.error('❌ Error acceptVoiceCall:', error);
+
+            // 4. Update Store
+            store.setBackendCall(callData, tokenToUse, channelToUse);
             
-            const errorMessage = error.response?.data?.message 
-                || error.message 
-                || "Gagal menjawab panggilan";
+            store.setCurrentCall({
+                ...callData, // Gunakan spread operator agar semua field masuk
+                status: 'ongoing',
+                type: callData.call_type || 'voice'
+            } as any);
+
+            // 5. Join Agora Channel
+            // Gunakan fallback '|| 0' untuk ID user
+            await joinChannel(
+                channelToUse, 
+                tokenToUse, 
+                authStore.user?.id || 0 
+            );
             
-            toast.error(errorMessage);
-            store.clearIncomingCall();
+            await toggleAudio(false); // Unmute mic
+            toast.success("Panggilan terhubung");
+
+        } catch (err: any) {
+            console.error("❌ Gagal di acceptVoiceCall:", err);
+            
+            // Tampilkan pesan error yang lebih jelas
+            const errorMsg = err.response?.data?.error || err.message || "Gagal menyambungkan panggilan";
+            toast.error(errorMsg);
+            
+            store.clearCurrentCall();
         } finally {
             processing.value = false;
         }
@@ -256,23 +285,64 @@ export const useVoiceCall = () => {
 };
 
     const handleCallAccepted = async (event: any) => {
-        console.log('✅ handleCallAccepted dipanggil:', event);
+        console.log('✅ handleCallAccepted dipanggil dengan data:', event);
         
-        if (store.currentCall && store.currentCall.id === event.call.id) {
-            store.updateCallStatus('ongoing');
+        // 1. Normalisasi Data
+        const callData = event.call || event; 
 
-            if (authStore.user && authStore.user.id && event.call.agora_token) {
-                // FIX ERROR 5: Hapus appId, sesuaikan argumen
+        if (!callData || !callData.id) {
+            console.error("❌ Data call tidak valid di handleCallAccepted:", event);
+            return;
+        }
+
+        // 2. Validasi ID Panggilan
+        // Pastikan event ini untuk panggilan yang sedang kita lakukan
+        if (store.currentCall && store.currentCall.id !== 0 && store.currentCall.id !== callData.id) {
+             console.warn("⚠️ Menerima event accept untuk ID yang berbeda", { current: store.currentCall.id, incoming: callData.id });
+             return;
+        }
+
+        // 3. Update status di store agar UI berubah (Misal: menutup modal calling)
+        store.updateCallStatus('ongoing');
+        
+        // 4. JOIN AGORA CHANNEL
+        // PERBAIKAN UTAMA DI SINI:
+        // Gunakan token dari Firebase jika ada. Jika tidak ada (null/undefined), 
+        // gunakan token yang sudah disimpan di store saat kita memulai panggilan (inviteCall).
+        const tokenToUse = callData.agora_token || store.agoraToken;
+        const channelToUse = callData.channel_name || store.channelName;
+
+        console.log('🎧 Mencoba join channel dengan:', { 
+            channel: channelToUse, 
+            hasToken: !!tokenToUse 
+        });
+
+        if (channelToUse && tokenToUse) {
+            try {
                 await joinChannel(
-                    event.call.channel_name, 
-                    event.call.agora_token, 
-                    authStore.user.id
+                    channelToUse, 
+                    tokenToUse, 
+                    authStore.user?.id || 0
                 );
+                
+                // Pastikan audio nyala (unmute) saat tersambung
+                // Note: toggleAudio(false) artinya "setMuted(false)" -> Unmute
                 await toggleAudio(false); 
+                
+                toast.success("Panggilan terhubung");
+            } catch (err) {
+                console.error("❌ Gagal Join Channel Agora:", err);
+                toast.error("Gagal menyambungkan suara");
             }
+        } else {
+            console.error("❌ Token atau Channel Name hilang!", { 
+                firebaseToken: callData.agora_token, 
+                storeToken: store.agoraToken 
+            });
+            toast.error("Koneksi gagal: Token tidak ditemukan");
         }
     };
-
+    
     const handleCallRejected = () => {
         console.log('🚫 handleCallRejected dipanggil');
         toast.info("Panggilan ditolak");
