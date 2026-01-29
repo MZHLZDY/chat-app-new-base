@@ -239,7 +239,7 @@ const handleVoiceCall = () => {
 
 const handleAcceptCall = async () => {
     if (!callStore.incomingCall) return;
-    await acceptVoiceCall(String(callStore.incomingCall.id));
+    await acceptVoiceCall();
 };
 
 const handleRejectCall = async () => {

@@ -205,7 +205,7 @@ const isErrorStatus = computed(() => {
   opacity: 0;
 }
 
-@media (max-width: 580px) {
+@media (max-width: 600px) {
   .glass-card {
     width: 100%;
     height: 100%;

@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { Minimize2 } from 'lucide-vue-next'; 
+import { themeMode } from "@/layouts/default-layout/config/helper"; 
+import { useAuthStore } from "@/stores/auth"; 
 import CallAvatar from '../shared/CallAvatar.vue';
 import CallControls from '../shared/CallControls.vue';
 import CallTimer from '../shared/CallTimer.vue';
@@ -20,29 +22,26 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits([
   'toggleMute', 
   'toggleSpeaker', 
-  // 'toggleCamera', // Event baru diteruskan ke parent
   'endCall', 
   'minimize' 
 ]);
 
-// State Lokal untuk UI Tombol Kamera
-// Kita set false karena default Voice Call kamera mati
+const currentThemeMode = computed(() => themeMode.value);
+const authStore = useAuthStore(); 
+
+// Data User Caller (Kita)
+const localPhoto = computed(() => authStore.userPhotoUrl || null);
+const localName = computed(() => authStore.user?.name || 'Me');
+
 const isCameraOn = ref(false);
-
-// const handleToggleCamera = () => {
-//   isCameraOn.value = !isCameraOn.value;
-//   // Emit ke Parent (dimana useVoiceCall/useAgora berada) untuk eksekusi logika SDK
-//   emit('toggleCamera', isCameraOn.value); 
-// };
-
-// --- SIMULASI AUDIO (Visualizer) ---
 const simulatedVolume = ref(0);
 let audioInterval: number | null = null;
+
 const startSimulation = () => {
   audioInterval = window.setInterval(() => {
-    const randomVol = Math.random() > 0.3 ? Math.random() * 60 : 5; 
+    const randomVol = Math.random() > 0.5 ? Math.random() * 40 : 5; 
     simulatedVolume.value = randomVol;
-  }, 100);
+  }, 150);
 };
 
 onMounted(() => {
@@ -55,43 +54,65 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="voice-call-overlay">
-    <div class="glass-card">
+  <div class="voice-call-overlay" :class="{ 'dark-mode': currentThemeMode === 'dark' }">
+    
+    <div class="glass-card-container">
       
-      <div class="header-section">
-        <button @click="emit('minimize')" class="minimize-btn" title="Minimize Call">
-          <Minimize2 :size="24" color="white" />
-        </button>
-        <CallTimer />
-        <div class="spacer-right"></div>
-      </div>
+      <div class="card-header-left">
+        <div class="header-pill">
+          <span class="recording-dot"></span>
+          
+          <CallTimer />
+          
+          <div class="separator"></div>
 
-      <div class="main-visual">
-        <div 
-          class="audio-ring ring-1"
-          :style="{ transform: `scale(${1 + (simulatedVolume / 100) * 1.5})`, opacity: simulatedVolume > 10 ? 0.4 : 0.1 }"
-        ></div>
-        <div 
-          class="audio-ring ring-2"
-          :style="{ transform: `scale(${1 + (simulatedVolume / 100) * 1.0})`, opacity: simulatedVolume > 10 ? 0.6 : 0.1 }"
-        ></div>
-        
-        <div class="avatar-z-index">
-          <CallAvatar 
-            :photo-url="props.remotePhoto" 
-            :display-name="props.remoteName"
-            size="150px" 
-            :is-calling="false" 
-          />
+          <button @click="emit('minimize')" class="minimize-btn" title="Minimize">
+            <Minimize2 :size="16" />
+          </button>
         </div>
       </div>
 
-      <div class="info-section">
-        <h2 class="remote-name">{{ props.remoteName }}</h2>
-        <p class="call-status">Connected</p>
+      <div class="card-header-right">
+        <div class="caller-pip">
+          <CallAvatar 
+            :photo-url="localPhoto" 
+            :display-name="localName"
+            :allow-auth-fallback="true"
+            size="60px" 
+            :is-calling="false"
+          />
+          <span class="pip-label"
+          style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">You</span>
+        </div>
       </div>
 
-      <div class="controls-section">
+      <div class="card-body">
+        <div class="visualizer-wrapper">
+          <div 
+            class="audio-ring ring-1"
+            :style="{ transform: `scale(${1 + (simulatedVolume / 100) * 1.0})`, opacity: simulatedVolume > 10 ? 0.3 : 0.05 }"
+          ></div>
+          <div 
+            class="audio-ring ring-2"
+            :style="{ transform: `scale(${1 + (simulatedVolume / 100) * 0.6})`, opacity: simulatedVolume > 10 ? 0.5 : 0.1 }"
+          ></div>
+
+          <CallAvatar 
+            :photo-url="props.remotePhoto" 
+            :display-name="props.remoteName"
+            size="140px" 
+            :is-calling="false" 
+          />
+        </div>
+
+        <div class="user-info">
+          <h2 class="user-name">{{ props.remoteName }}</h2>
+          <span class="connection-status"
+          style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Connected</span>
+        </div>
+      </div>
+
+      <div class="card-footer">
         <CallControls 
           call-type="voice"
           :is-muted="props.isMuted"
@@ -102,68 +123,149 @@ onUnmounted(() => {
         />
       </div>
 
-    </div>
-  </div>
+    </div> </div>
 </template>
 
 <style scoped>
-/* Style tetap sama seperti sebelumnya */
+/* --- LAYOUT UTAMA --- */
 .voice-call-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  /* Latar belakang global (Wallpaper Desktop simulasi) */
+  background: rgba(255, 255, 255, 0.270) !important; backdrop-filter: blur(1.5px);
+  background-size: cover;
+  z-index: 9999;
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 9999;
+  /* Blur background agar fokus ke Card */
+  backdrop-filter: blur(8px); 
 }
 
-.glass-card {
+/* --- GLASS CARD DESIGN --- */
+.glass-card-container {
   position: relative;
+  width: 90%;
+  max-width: 850px;
+  height: 80vh;
+  max-height: 600px;
+  
+  /* Efek Kaca (Glassmorphism) */
+  background: rgba(255, 255, 255, 0.600); /* Transparan */
+  border: 1px solid rgba(255, 255, 255, 0.3); /* Border tipis putih */
+  border-radius: 40px; /* Sudut sangat bulat sesuai sketsa */
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); /* Shadow dalam */
+  backdrop-filter: blur(15px); /* Blur isi card */
+  -webkit-backdrop-filter: blur(20px);
+  
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  max-width: 400px;
-  height: 80vh;
-  max-height: 700px;
-  padding: 30px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-radius: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+  overflow: hidden; /* Agar anak elemen tidak keluar border radius */
+  animation: popIn 0.3s ease-out;
 }
 
-.header-section {
-  width: 100%;
+.dark-mode .glass-card-container {
+  background: rgba(105, 104, 104, 0.5);
+}
+
+@keyframes popIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* --- 1. HEADER KIRI (Timer + Minimize) --- */
+.card-header-left {
+  position: absolute;
+  top: 25px;
+  left: 30px;
+  z-index: 20;
+}
+
+.header-pill {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.recording-dot {
+  width: 8px;
+  height: 8px;
+  background-color: #ef4444; /* Merah */
+  border-radius: 50%;
+  animation: pulse-red 1.5s infinite;
+}
+
+.separator {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .minimize-btn {
-  background: rgba(255, 255, 255, 0.15);
+  background: transparent;
   border: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  color: white;
+  cursor: pointer;
   display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
+  transition: background 0.2s;
+}
+
+.minimize-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* --- 2. HEADER KANAN (Caller Avatar) --- */
+.card-header-right {
+  position: absolute;
+  top: 25px;
+  right: 30px;
+  z-index: 20;
+}
+
+.caller-pip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 6px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.pip-label {
+  font-size: 0.7rem;
+  color: #0959ee;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.dark-mode .pip-label {
+  color: white;
+}
+
+/* --- 3. BODY (Center Avatar) --- */
+.card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  margin-top: -20px; /* Offset sedikit ke atas */
 }
-.minimize-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.1); }
-.spacer-right { width: 40px; height: 40px; }
 
-.main-visual {
+.visualizer-wrapper {
   position: relative;
   display: flex;
   justify-content: center;
@@ -171,26 +273,105 @@ onUnmounted(() => {
   width: 250px;
   height: 250px;
 }
-.avatar-z-index { position: relative; z-index: 10; }
+
 .audio-ring {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.3);
-  transition: transform 0.1s ease-out, opacity 0.2s ease;
+  background-color: rgba(105, 104, 104, 0.5);
   z-index: 1;
+  pointer-events: none;
+  transition: transform 0.1s ease-out, opacity 0.1s ease;
 }
-.ring-1 { width: 150px; height: 150px; }
-.ring-2 { width: 150px; height: 150px; background-color: rgba(255, 255, 255, 0.5); }
+.ring-1 { width: 180px; height: 180px; }
+.ring-2 { width: 220px; height: 220px; background-color: rgba(105, 104, 104, 0.5); }
 
-.info-section { text-align: center; color: white; margin-top: -20px; }
-.remote-name { font-size: 1.8rem; font-weight: 700; margin-bottom: 5px; text-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-.call-status { font-size: 0.9rem; opacity: 0.7; }
-.controls-section { width: 100%; display: flex; justify-content: center; }
+.dark-mode .audio-ring {
+  background-color: rgba(255, 255, 255, 0.3);
+}
 
-@media (max-width: 480px) {
-  .glass-card { height: 100vh; border-radius: 0; max-width: 100%; border: none; background: rgba(20, 30, 60, 0.6); }
+.dark-mode .ring-2 {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.user-info {
+  text-align: center;
+  color: white;
+  margin-top: 10px;
+  z-index: 10;
+}
+
+.user-name {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #0959ee;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.dark-mode .user-name {
+  color: #10a4fa;
+}
+
+.connection-status {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  background: rgba(105, 104, 104, 0.5);
+  padding: 4px 10px;
+  border-radius: 8px;
+  margin-top: 5px;
+  display: inline-block;
+}
+
+.dark-mode .connection-status {
+  background: rgba(255,255,255,0.1)
+}
+
+/* --- 4. FOOTER (Controls) --- */
+.card-footer {
+  padding-bottom: 30px;
+  display: flex;
+  justify-content: center;
+}
+
+@keyframes pulse-red {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+/* --- RESPONSIVE MOBILE (Full Screen) --- */
+@media (max-width: 600px) {
+  .glass-card-container {
+    width: 100%;
+    height: 100%;        
+    max-width: none;     
+    max-height: none;    
+    border-radius: 0;    
+    border: none;       
+    box-shadow: none;    
+  }
+  
+  /* Penyesuaian jarak elemen agar tidak terlalu mepet tepi layar HP */
+  .card-header-left { 
+    top: 20px; 
+    left: 20px; 
+  }
+  
+  .card-header-right { 
+    top: 20px; 
+    right: 20px; 
+  }
+  
+  /* Perkecil sedikit ukuran font dan avatar agar proporsional di HP */
+  .user-name { 
+    font-size: 1.6rem; 
+  }
+  
+  .visualizer-wrapper {
+    transform: scale(0.85); /* Perkecil sedikit visualizer & avatar utama */
+  }
+
+  .card-footer {
+    padding-bottom: 40px; /* Beri jarak lebih untuk area jempol di bawah */
+  }
 }
 </style>
