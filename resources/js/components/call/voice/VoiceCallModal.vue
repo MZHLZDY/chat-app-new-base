@@ -209,7 +209,7 @@ onUnmounted(() => {
 }
 
 .minimize-btn {
-  background: transparent;
+  background: rgba(105, 104, 104, 0.5);
   border: none;
   color: white;
   cursor: pointer;
@@ -222,7 +222,15 @@ onUnmounted(() => {
 }
 
 .minimize-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(12, 207, 221, 0.301);
+}
+
+.dark-mode .minimize-btn {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.dark-mode .minimize-btn:hover {
+  background: rgba(12, 207, 221, 0.301);
 }
 
 /* --- 2. HEADER KANAN (Caller Avatar) --- */

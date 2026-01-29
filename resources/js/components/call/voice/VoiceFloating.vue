@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { themeMode } from "@/layouts/default-layout/config/helper";
 import { Maximize2, Mic, MicOff, PhoneOff, GripHorizontal } from 'lucide-vue-next';
 import CallAvatar from '../shared/CallAvatar.vue';
 import CallTimer from '../shared/CallTimer.vue';
@@ -14,6 +15,8 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   volumeLevel: 0,
 });
+
+const currentThemeMode = computed(() => themeMode.value);
 
 const emit = defineEmits(['maximize', 'toggleMute', 'endCall']);
 
@@ -102,6 +105,7 @@ onUnmounted(() => {
 </script>
 
 <template>
+  <div :class="{ 'dark-mode': currentThemeMode === 'dark' }">
   <div 
     ref="floatingRef"
     class="floating-card glass-effect"
@@ -164,8 +168,8 @@ onUnmounted(() => {
         <PhoneOff :size="16" />
       </button>
     </div>
-
   </div>
+</div>
 </template>
 
 <style scoped>
@@ -180,17 +184,21 @@ onUnmounted(() => {
   gap: 10px;
   
   /* Glassmorphism Dark Theme */
-  background: rgba(20, 30, 50, 0.75); 
+  background: rgba(27, 182, 73, 0.5); 
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(82, 245, 145, 0.15);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   
   z-index: 10000;
   cursor: grab; /* Cursor tangan terbuka */
   user-select: none; /* Mencegah blok teks saat drag */
   transition: box-shadow 0.2s, transform 0.1s;
+}
+
+.dark-mode .floating-card {
+  background: rgba(5, 85, 38, 0.75); 
 }
 
 /* State saat sedang didrag */

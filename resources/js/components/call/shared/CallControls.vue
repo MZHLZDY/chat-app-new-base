@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { 
   Mic, 
   MicOff, 
@@ -8,6 +9,7 @@ import {
   Camera,      // Import Icon Kamera
   CameraOff    // Import Icon Kamera Off
 } from 'lucide-vue-next';
+import { themeMode } from "@/layouts/default-layout/config/helper"; 
 
 interface Props {
   isMuted: boolean;
@@ -15,6 +17,8 @@ interface Props {
   isCameraOn?: boolean;
   callType: 'voice' | 'video';
 }
+
+const currentThemeMode = computed(() => themeMode.value);
 
 const props = withDefaults(defineProps<Props>(), {
   isMuted: false,
@@ -33,7 +37,7 @@ const emit = defineEmits([
 </script>
 
 <template>
-  <div class="call-controls-container">
+  <div class="call-controls-container" :class="{ 'dark-mode': currentThemeMode === 'dark' }">
     
     <button 
       @click="emit('toggleMute')" 
@@ -69,7 +73,7 @@ const emit = defineEmits([
       class="control-btn end-call-btn"
       title="End Call"
     >
-      <PhoneForwarded :size="24" class="rotate-icon" />
+      <PhoneForwarded :size="24" />
     </button>
 
   </div>
@@ -94,7 +98,7 @@ const emit = defineEmits([
   height: 50px;
   border-radius: 50%;
   border: none;
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: rgba(105, 104, 104, 0.5);
   color: white;
   display: flex;
   justify-content: center;
@@ -103,8 +107,12 @@ const emit = defineEmits([
   transition: all 0.3s ease;
 }
 
+.dark-mode .control-btn {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
 .control-btn:hover {
-  background-color: rgba(255, 255, 255, 0.3);
+  background-color: rgba(25, 103, 248, 0.404);
   transform: scale(1.05);
 }
 
@@ -114,6 +122,10 @@ const emit = defineEmits([
 }
 
 .end-call-btn {
+  background-color: #ff4d4d;
+}
+
+.dark-mode .end-call-btn {
   background-color: #ff4d4d;
 }
 
