@@ -28,13 +28,25 @@ const profileDetails = ref({
 const avatarFile = ref<File | null>(null);
 const isAvatarRemoved = ref(false);
 
+// --- HELPER LOKAL (Agar logika path foto rapi) ---
+const resolvePhotoPath = (path: string | null) => {
+    if (!path) return getAssetPath("media/avatars/blank.png");
+    // Jika dari Google Login (https) atau Base64 (data:image), pakai langsung
+    if (path.startsWith("http") || path.startsWith("data:")) {
+        return path;
+    }
+    // Jika dari upload manual, tambah prefix /storage/
+    return `/storage/${path}`;
+};
+
 onMounted(async () => {
     try {
         const response = await axios.get("/dashboard/profile");
         const data = response.data.data;
-        
+
+        // Gunakan helper tadi
         profileDetails.value = {
-            photo: data.photo || getAssetPath("media/avatars/blank.png"),
+            photo: resolvePhotoPath(data.photo),
             name: data.name,
             bio: data.bio || "",
             phone: data.phone || "",
@@ -73,9 +85,13 @@ const onFileChange = (e: Event) => {
     if (target.files && target.files[0]) {
         avatarFile.value = target.files[0];
         isAvatarRemoved.value = false;
+        
+        // Buat preview (Base64)
         const reader = new FileReader();
         reader.onload = (e) => {
-            profileDetails.value.photo = e.target?.result as string;
+            if (e.target?.result) {
+                profileDetails.value.photo = e.target.result as string;
+            }
         };
         reader.readAsDataURL(target.files[0]);
     }
@@ -90,7 +106,6 @@ const removeImage = () => {
 const saveChanges1 = async (values: any) => {
     if (!submitButton1.value) return;
 
-    // UI Loading
     submitButton1.value.setAttribute("data-kt-indicator", "on");
     submitButton1.value.disabled = true;
 
@@ -103,25 +118,29 @@ const saveChanges1 = async (values: any) => {
         if (avatarFile.value) {
             formData.append("avatar", avatarFile.value);
         }
-        
+
         if (isAvatarRemoved.value) {
             formData.append("avatar_remove", "1");
         }
 
-        // Kirim ke Backend
         const response = await axios.post("/dashboard/profile", formData, {
-            headers: { "Content-Type": "multipart/form-data" }
+            headers: { "Content-Type": "multipart/form-data" },
         });
 
-        // Update state Pinia secara manual agar CallAvatar langsung berubah
-        if (profileDetails.value.photo) {
-            authStore.setAuth({
-                ...authStore.user, // Ambil data user lama
-                name: values.name, // Update nama baru
-                photo: profileDetails.value.photo, // Update foto (Base64 string)
-                profile_photo_url: profileDetails.value.photo // Update url juga untuk safety
-            });
+        // UPDATE AUTH STORE (Supaya Navbar ikut berubah)
+        // Kita update store manual agar UI responsif tanpa reload
+        const updatedUser = { ...authStore.user };
+        updatedUser.name = values.name;
+        
+        // Jika ada foto baru (Base64) atau dihapus, update foto di store
+        if (isAvatarRemoved.value) {
+             updatedUser.photo = null; // Set null di store jika dihapus
+        } else if (avatarFile.value && profileDetails.value.photo) {
+             // Simpan Base64 sementara agar preview di Navbar instan
+             updatedUser.photo = profileDetails.value.photo; 
         }
+        
+        authStore.setAuth(updatedUser);
 
         Swal.fire({
             text: response.data.message || "Profil berhasil diperbarui!",
@@ -130,7 +149,6 @@ const saveChanges1 = async (values: any) => {
             confirmButtonText: "Ok",
             customClass: { confirmButton: "btn btn-primary" },
         });
-
     } catch (error: any) {
         Swal.fire({
             text: error.response?.data?.message || "Terjadi kesalahan sistem.",
@@ -147,21 +165,28 @@ const saveChanges1 = async (values: any) => {
 
 const updateEmail = async (values: any) => {
     if (!updateEmailButton.value) return;
-    
     updateEmailButton.value.setAttribute("data-kt-indicator", "on");
-    
+
     try {
         await axios.post("/dashboard/profile/email", {
             email: values.emailaddress,
-            password: values.confirmemailpassword
+            password: values.confirmemailpassword,
         });
 
         profileDetails.value.email = values.emailaddress;
         emailFormDisplay.value = false;
-        
-        Swal.fire({ text: "Email updated successfully!", icon: "success", confirmButtonText: "Ok" });
+
+        Swal.fire({
+            text: "Email updated successfully!",
+            icon: "success",
+            confirmButtonText: "Ok",
+        });
     } catch (error: any) {
-        Swal.fire({ text: error.response?.data?.message || "Error updating email", icon: "error", confirmButtonText: "Ok" });
+        Swal.fire({
+            text: error.response?.data?.message || "Error updating email",
+            icon: "error",
+            confirmButtonText: "Ok",
+        });
     } finally {
         updateEmailButton.value?.removeAttribute("data-kt-indicator");
     }
@@ -169,21 +194,28 @@ const updateEmail = async (values: any) => {
 
 const updatePassword = async (values: any, { resetForm }: any) => {
     if (!updatePasswordButton.value) return;
-
     updatePasswordButton.value.setAttribute("data-kt-indicator", "on");
 
     try {
         await axios.post("/dashboard/profile/password", {
             current_password: values.currentpassword,
             password: values.newpassword,
-            password_confirmation: values.confirmpassword
+            password_confirmation: values.confirmpassword,
         });
 
         passwordFormDisplay.value = false;
-        resetForm(); 
-        Swal.fire({ text: "Password changed successfully!", icon: "success", confirmButtonText: "Ok" });
+        resetForm();
+        Swal.fire({
+            text: "Password changed successfully!",
+            icon: "success",
+            confirmButtonText: "Ok",
+        });
     } catch (error: any) {
-        Swal.fire({ text: error.response?.data?.message || "Error changing password", icon: "error", confirmButtonText: "Ok" });
+        Swal.fire({
+            text: error.response?.data?.message || "Error changing password",
+            icon: "error",
+            confirmButtonText: "Ok",
+        });
     } finally {
         updatePasswordButton.value?.removeAttribute("data-kt-indicator");
     }
@@ -192,85 +224,171 @@ const updatePassword = async (values: any, { resetForm }: any) => {
 
 <template>
     <div class="card mb-5 mb-xl-10">
-        <div class="card-header border-0 cursor-pointer" role="button" data-bs-toggle="collapse" data-bs-target="#kt_account_profile_details" aria-expanded="true" aria-controls="kt_account_profile_details">
+        <div
+            class="card-header border-0 cursor-pointer"
+            role="button"
+            data-bs-toggle="collapse"
+            data-bs-target="#kt_account_profile_details"
+            aria-expanded="true"
+            aria-controls="kt_account_profile_details"
+        >
             <div class="card-title m-0">
                 <h3 class="fw-bold m-0">Profil Saya</h3>
             </div>
         </div>
-        
+
         <div id="kt_account_profile_details" class="collapse show">
-            <VForm id="kt_account_profile_details_form" class="form" novalidate @submit="saveChanges1" :validation-schema="profileDetailsValidator" :initial-values="profileDetails">
-                
+            <VForm
+                id="kt_account_profile_details_form"
+                class="form"
+                novalidate
+                @submit="saveChanges1"
+                :validation-schema="profileDetailsValidator"
+                :initial-values="profileDetails"
+            >
                 <div class="card-body border-top p-9">
                     <div class="row mb-6">
                         <label class="col-lg-4 col-form-label fw-semibold fs-6">Avatar</label>
                         <div class="col-lg-8">
-                            <div class="image-input image-input-outline" data-kt-image-input="true" :style="{ backgroundImage: `url(${getAssetPath('/media/avatars/blank.png')})` }">
-                                <div class="image-input-wrapper w-125px h-125px" :style="`background-image: url(${profileDetails.photo})`"></div>
-                                
-                                <label class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow" data-kt-image-input-action="change" data-bs-toggle="tooltip" title="Change avatar">
+                            <div
+                                class="image-input image-input-outline"
+                                data-kt-image-input="true"
+                                :style="{
+                                    backgroundImage: `url(${getAssetPath('/media/avatars/blank.png')})`,
+                                }"
+                            >
+                                <div
+                                    class="image-input-wrapper w-125px h-125px"
+                                    :style="{
+                                        backgroundImage: `url(${profileDetails.photo})`,
+                                    }"
+                                ></div>
+
+                                <label
+                                    class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow"
+                                    data-kt-image-input-action="change"
+                                    data-bs-toggle="tooltip"
+                                    title="Change avatar"
+                                >
                                     <i class="bi bi-pencil-fill fs-7"></i>
-                                    <input type="file" name="avatar" accept=".png, .jpg, .jpeg" @change="onFileChange" />
+                                    <input
+                                        type="file"
+                                        name="avatar"
+                                        accept=".png, .jpg, .jpeg"
+                                        @change="onFileChange"
+                                    />
                                     <input type="hidden" name="avatar_remove" />
                                 </label>
 
-                                <span class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow" data-kt-image-input-action="remove" data-bs-toggle="tooltip" @click="removeImage()" title="Remove avatar">
+                                <span
+                                    class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow"
+                                    data-kt-image-input-action="cancel"
+                                    data-bs-toggle="tooltip"
+                                    title="Cancel avatar"
+                                >
+                                    <i class="bi bi-x fs-2"></i>
+                                </span>
+
+                                <span
+                                    class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow"
+                                    data-kt-image-input-action="remove"
+                                    data-bs-toggle="tooltip"
+                                    title="Remove avatar"
+                                    @click="removeImage()"
+                                >
                                     <i class="bi bi-x fs-2"></i>
                                 </span>
                             </div>
-                            <div class="form-text">Tipe file: png, jpg, jpeg. Maks 2MB.</div>
+                            <div class="form-text">
+                                Tipe file: png, jpg, jpeg. Maks 2MB.
+                            </div>
                         </div>
                     </div>
 
                     <div class="row mb-6">
                         <label class="col-lg-4 col-form-label required fw-semibold fs-6">Nama Lengkap</label>
                         <div class="col-lg-8 fv-row">
-                            <Field type="text" name="name" class="form-control form-control-lg form-control-solid" placeholder="Nama Lengkap Anda" v-model="profileDetails.name"/>
-                            <div class="fv-plugins-message-container"><div class="fv-help-block"><ErrorMessage name="name" /></div></div>
+                            <Field
+                                type="text"
+                                name="name"
+                                class="form-control form-control-lg form-control-solid"
+                                placeholder="Nama Lengkap Anda"
+                                v-model="profileDetails.name"
+                            />
+                            <div class="fv-plugins-message-container">
+                                <div class="fv-help-block">
+                                    <ErrorMessage name="name" />
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <div class="row mb-6">
                         <label class="col-lg-4 col-form-label fw-semibold fs-6">Bio / Status</label>
                         <div class="col-lg-8 fv-row">
-                            <Field type="text" name="bio" class="form-control form-control-lg form-control-solid" placeholder="Contoh: Sibuk, Di Gym..." v-model="profileDetails.bio"/>
-                            <div class="form-text">Status singkat ini akan muncul di profil Anda.</div>
+                            <Field
+                                type="text"
+                                name="bio"
+                                class="form-control form-control-lg form-control-solid"
+                                placeholder="Contoh: Sibuk, Di Gym..."
+                                v-model="profileDetails.bio"
+                            />
+                            <div class="form-text">
+                                Status singkat ini akan muncul di profil Anda.
+                            </div>
                         </div>
                     </div>
 
                     <div class="row mb-6">
                         <label class="col-lg-4 col-form-label fw-semibold fs-6">Nomor Telepon</label>
                         <div class="col-lg-8 fv-row">
-                            <Field type="tel" name="phone" class="form-control form-control-lg form-control-solid" placeholder="08123xxxx" v-model="profileDetails.phone"/>
-                            <div class="fv-plugins-message-container"><div class="fv-help-block"><ErrorMessage name="phone" /></div></div>
+                            <Field
+                                type="tel"
+                                name="phone"
+                                class="form-control form-control-lg form-control-solid"
+                                placeholder="08123xxxx"
+                                v-model="profileDetails.phone"
+                            />
+                            <div class="fv-plugins-message-container">
+                                <div class="fv-help-block">
+                                    <ErrorMessage name="phone" />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
                 <div class="card-footer d-flex justify-content-end py-6 px-9">
-                    <button type="submit" id="kt_account_profile_details_submit" ref="submitButton1" class="btn btn-primary">
+                    <button
+                        type="submit"
+                        id="kt_account_profile_details_submit"
+                        ref="submitButton1"
+                        class="btn btn-primary"
+                    >
                         <span class="indicator-label">Simpan Perubahan</span>
-                        <span class="indicator-progress">Menyimpan... <span class="spinner-border spinner-border-sm align-middle ms-2"></span></span>
+                        <span class="indicator-progress">
+                            Menyimpan...
+                            <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
+                        </span>
                     </button>
                 </div>
             </VForm>
         </div>
     </div>
-
+    
     <div class="card mb-5 mb-xl-10">
         <div class="card-header border-0 cursor-pointer" role="button" data-bs-toggle="collapse" data-bs-target="#kt_account_signin_method">
-            <div class="card-title m-0"><h3 class="fw-bold m-0">Metode Login</h3></div>
+            <div class="card-title m-0">
+                <h3 class="fw-bold m-0">Metode Login</h3>
+            </div>
         </div>
-        
         <div id="kt_account_signin_method" class="collapse show">
             <div class="card-body border-top p-9">
-                
                 <div class="d-flex flex-wrap align-items-center mb-8">
                     <div id="kt_signin_email" :class="{ 'd-none': emailFormDisplay }">
                         <div class="fs-4 fw-bold mb-1">Email Address</div>
                         <div class="fs-6 fw-semibold text-gray-600">{{ profileDetails.email }}</div>
                     </div>
-                    
                     <div id="kt_signin_email_edit" :class="{ 'd-none': !emailFormDisplay }" class="flex-row-fluid">
                         <VForm id="kt_signin_change_email" class="form" novalidate @submit="updateEmail" :validation-schema="changeEmailSchema">
                             <div class="row mb-6">
@@ -295,20 +413,16 @@ const updatePassword = async (values: any, { resetForm }: any) => {
                             </div>
                         </VForm>
                     </div>
-                    
                     <div id="kt_signin_email_button" :class="{ 'd-none': emailFormDisplay }" class="ms-auto">
                         <button class="btn btn-light fw-bold px-6" @click="emailFormDisplay = !emailFormDisplay">Ganti Email</button>
                     </div>
                 </div>
-
                 <div class="separator separator-dashed my-6"></div>
-
                 <div class="d-flex flex-wrap align-items-center mb-8">
                     <div id="kt_signin_password" :class="{ 'd-none': passwordFormDisplay }">
                         <div class="fs-4 fw-bold mb-1">Password</div>
-                        <div class="fs-6 fw-semibold text-gray-600">************</div>
+                        <div class="fs-6 fw-semibold text-gray-600">***********</div>
                     </div>
-                    
                     <div id="kt_signin_password_edit" class="flex-row-fluid" :class="{ 'd-none': !passwordFormDisplay }">
                         <VForm id="kt_signin_change_password" class="form" novalidate @submit="updatePassword" :validation-schema="changePasswordSchema">
                             <div class="row mb-6">
@@ -340,7 +454,6 @@ const updatePassword = async (values: any, { resetForm }: any) => {
                             </div>
                         </VForm>
                     </div>
-
                     <div id="kt_signin_password_button" class="ms-auto" :class="{ 'd-none': passwordFormDisplay }">
                         <button @click="passwordFormDisplay = !passwordFormDisplay" class="btn btn-light fw-bold">Reset Password</button>
                     </div>

@@ -20,3 +20,4 @@ yarn-error.log
 composer.lock
 package-lock.json
 firebase_credentials.json
+vite.config.js

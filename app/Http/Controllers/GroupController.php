@@ -139,33 +139,33 @@ class GroupController extends Controller
 
     // 1. GET MESSAGES DARI FIREBASE
     public function getMessages(Request $request, $groupId)
-{
-    $userId = Auth::id();
-    $memberData = DB::table('group_user')
-        ->where('group_id', $groupId)
-        ->where('user_id', $userId)
-        ->first();
+    {
+        $userId = Auth::id();
+        $memberData = DB::table('group_user')
+            ->where('group_id', $groupId)
+            ->where('user_id', $userId)
+            ->first();
 
-    if (!$memberData) {
-        return response()->json(['message' => 'Unauthorized'], 403);
+        if (!$memberData) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $query = GroupMessage::where('group_id', $groupId)
+            ->with(['sender', 'replyTo.sender']);
+        if (!empty($memberData->last_cleared_at)) {
+            $query->where('created_at', '>', $memberData->last_cleared_at);
+        }
+
+        $query->orderBy('created_at', 'desc');
+        $messages = $query->simplePaginate(20);
+        $data = collect($messages->items())->reverse()->values();
+
+        return response()->json([
+            'data' => $data,
+            'has_more' => $messages->hasMorePages(),
+            'next_page_url' => $messages->nextPageUrl()
+        ]);
     }
-
-    $query = GroupMessage::where('group_id', $groupId)
-        ->with(['sender', 'replyTo.sender']);
-    if (!empty($memberData->last_cleared_at)) {
-        $query->where('created_at', '>', $memberData->last_cleared_at);
-    }
-
-    $query->orderBy('created_at', 'desc');
-    $messages = $query->simplePaginate(20);
-    $data = collect($messages->items())->reverse()->values();
-    
-    return response()->json([
-        'data' => $data,
-        'has_more' => $messages->hasMorePages(),
-        'next_page_url' => $messages->nextPageUrl()
-    ]);
-}
 
     // 2. SEND MESSAGE DENGAN FIREBASE PUSH (Realtime)
     public function sendMessage(Request $request)
@@ -175,6 +175,7 @@ class GroupController extends Controller
             'group_id' => 'required|exists:groups,id',
             'message' => 'nullable|string',
             'file' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf,doc,docx,mp4,mov,avi,mkv|max:51200',
+            'reply_to_id' => 'nullable|exists:group_messages,id',
         ]);
 
         if ($validator->fails()) {
@@ -281,11 +282,15 @@ class GroupController extends Controller
                 'file_size' => $fileSize,
                 'type' => $msgType,
                 'created_at' => now(),
+                'reply_to_id' => $request->reply_to_id,
             ]);
 
             $group->touch();
 
             DB::commit();
+            if ($message->reply_to_id) {
+                $message->load(['replyTo.sender']);
+            }
             // Push ke Firebase Realtime Database
             $this->database->getReference('group_messages/' . $group->id)->push([
                 'id' => $message->id,
@@ -297,6 +302,16 @@ class GroupController extends Controller
                 'file_size' => $message->file_size,
                 'type' => $message->type,
                 'created_at' => $message->created_at->toIso8601String(),
+                'reply_to_id' => $message->reply_to_id,
+                'reply_to' => $message->replyTo ? [
+                    'id' => $message->replyTo->id,
+                    'message' => $message->replyTo->message,
+                    'sender_id' => $message->replyTo->sender_id,
+                    'sender' => [
+                        'id' => $message->replyTo->sender->id ?? null,
+                        'name' => $message->replyTo->sender->name ?? 'Unknown',
+                    ]
+                ] : null,
                 'sender' => [
                     'id' => $sender->id,
                     'name' => $sender->name,

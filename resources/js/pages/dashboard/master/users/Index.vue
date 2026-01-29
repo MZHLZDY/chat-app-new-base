@@ -5,7 +5,14 @@ import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { id } from "date-fns/locale";
-import { Phone, Video, Users, Loader2, CheckCheck } from "lucide-vue-next";
+import {
+    Phone,
+    Video,
+    Users,
+    Loader2,
+    CheckCheck,
+    ArrowLeft,
+} from "lucide-vue-next";
 import { useGlobalChatStore } from "@/stores/globalChat";
 import { onBeforeRouteLeave } from "vue-router";
 import GroupForm from "./Form.vue";
@@ -61,6 +68,7 @@ const isHeaderMenuOpen = ref(false);
 const isInfoModalOpen = ref(false);
 const searchQuery = ref("");
 const chatDrafts = ref<Record<string | number, string>>({});
+const showMobileChat = ref(false);
 const openMessageMenuId = ref<number | string | null>(null);
 
 // Typing State untuk Group
@@ -142,6 +150,7 @@ const selectGroup = async (group: any) => {
         chatDrafts.value[activeGroup.value.id] = newMessage.value;
     }
 
+    showMobileChat.value = true;
     activeGroup.value = group;
     messages.value = [];
     globalChatStore.setActiveGroup(group.id);
@@ -176,6 +185,11 @@ const selectGroup = async (group: any) => {
         );
         if (inputEl) (inputEl as HTMLElement).focus();
     });
+};
+
+const closeMobileChat = () => {
+    showMobileChat.value = false;
+    activeGroup.value = null;
 };
 
 onBeforeRouteLeave((to, from, next) => {
@@ -758,6 +772,7 @@ onUnmounted(() => {
     <div class="d-flex flex-column flex-lg-row h-100">
         <div
             class="flex-column flex-lg-row-auto w-100 w-lg-350px w-xl-400px mb-10 mb-lg-0"
+            :class="showMobileChat ? 'd-none d-lg-block' : 'd-block'"
         >
             <div class="card card-flush h-100">
                 <div class="card-header pt-7">
@@ -878,7 +893,11 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10" style="min-width: 0">
+        <div
+            class="flex-lg-row-fluid ms-lg-7 ms-xl-10"
+            style="min-width: 0"
+            :class="showMobileChat ? 'd-block' : 'd-none d-lg-block'"
+        >
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
                 <div
                     v-if="!activeGroup"
@@ -899,9 +918,11 @@ onUnmounted(() => {
                         <div class="d-flex align-items-center flex-grow-1">
                             <button
                                 class="btn btn-icon btn-sm btn-active-light-primary d-lg-none me-3"
-                                @click="activeGroup = null"
+                                @click="closeMobileChat"
                             >
-                                <i class="fas fa-arrow-left fs-2"></i>
+                                <ArrowLeft
+                                    class="w-20px h-20px text-gray-700"
+                                />
                             </button>
 
                             <div class="symbol symbol-40px symbol-circle me-3">

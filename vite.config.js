@@ -1,17 +1,22 @@
 import { fileURLToPath, URL } from "node:url";
-
 import process from "node:process";
 import { defineConfig, loadEnv } from "vite";
 import vue from "@vitejs/plugin-vue";
 import laravel from "laravel-vite-plugin";
+import { visualizer } from "rollup-plugin-visualizer";
 
-// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-    process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
+    process.env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
+    const myIp = '192.168.112.197'; 
 
     return {
         server: {
-            host: process.env.VITE_HOST,
+            host: true,
+            port: 5173,
+            strictPort: true,
+            cors: true,
+            origin: `http://${myIp}:5173`,
+            hmr: { host: myIp },
         },
         plugins: [
             laravel({
@@ -26,6 +31,13 @@ export default defineConfig(({ mode }) => {
                     },
                 },
             }),
+            visualizer({
+                template: "treemap",
+                open: false,
+                gzipSize: true,
+                brotliSize: true,
+                filename: "analyse.html",
+            }),
         ],
         resolve: {
             alias: {
@@ -34,19 +46,19 @@ export default defineConfig(({ mode }) => {
             },
         },
         optimizeDeps: {
-            esbuildOptions: {
-                target: ["es2020", "safari14"],
-            },
+            esbuildOptions: { target: ["es2020", "safari14"] },
             include: ['vue3-toastify']
         },
         build: {
-            chunkSizeWarningLimit: 3000,
+            chunkSizeWarningLimit: 1600, 
             target: ["es2020", "safari14"],
             rollupOptions: {
                 output: {
-                    // expose jQuery as a global variable
-                    globals: {
-                        jquery: "jQuery",
+                    globals: { jquery: "jQuery" },
+                    manualChunks(id) {
+                        if (id.includes('node_modules')) {
+                            return id.toString().split('node_modules/')[1].split('/')[0].toString();
+                        }
                     },
                 },
             },

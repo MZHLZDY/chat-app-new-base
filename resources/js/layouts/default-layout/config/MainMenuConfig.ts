@@ -44,7 +44,7 @@ const MainMenuConfig: Array<MenuItem> = [
                 keenthemesIcon: "technology-4",
             },
             {
-                heading: "Profile Setting",
+                heading: "Profile Settings",
                 route: "/dashboard/profile",
                 name: "profile-setting",
                 keenthemesIcon: "setting-2",

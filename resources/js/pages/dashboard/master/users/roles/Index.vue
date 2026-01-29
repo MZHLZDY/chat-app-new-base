@@ -12,7 +12,14 @@ import {
     isSameDay,
 } from "date-fns";
 import { id } from "date-fns/locale";
-import { Phone, Video, Download, Loader2, CheckCheck } from "lucide-vue-next";
+import {
+    Phone,
+    Video,
+    Download,
+    Loader2,
+    CheckCheck,
+    ArrowLeft,
+} from "lucide-vue-next";
 import { useGlobalChatStore } from "@/stores/globalChat";
 import { usePersonalCall } from "@/composables/usePersonalCall";
 import type { PersonalCall, User } from "@/types/call";
@@ -67,7 +74,6 @@ const {
 const authStore = useAuthStore();
 const page = usePage();
 const currentUser = computed(() => authStore.user);
-
 const contacts = ref<any[]>([]);
 const messages = ref<any[]>([]);
 const activeContact = ref<any>(null);
@@ -87,6 +93,7 @@ const contactIdToEdit = ref<string | number | undefined>(undefined);
 const editModalTitle = ref("Edit Kontak");
 const isDeleteModalOpen = ref(false);
 const messageToDelete = ref<any>(null);
+const showMobileChat = ref(false);
 const messageDrafts = ref<Record<string | number, string>>({});
 const isLightboxOpen = ref(false);
 const activeLightboxUrl = ref("");
@@ -570,6 +577,7 @@ const selectContact = async (contact: any) => {
         messageDrafts.value[activeContact.value.id] = newMessage.value;
     }
 
+    showMobileChat.value = true;
     activeContact.value = contact;
     globalChatStore.setActiveChat(contact.id);
     messages.value = [];
@@ -587,6 +595,12 @@ const selectContact = async (contact: any) => {
         if (input) (input as HTMLElement).focus();
     });
 };
+
+const closeMobileChat = () => {
+    showMobileChat.value = false;
+    activeContact.value = null;
+};
+
 const getMessages = async (friendId: any) => {
     isLoadingMessages.value = true;
     try {
@@ -1094,12 +1108,13 @@ const setupFirebaseListeners = () => {
 
         processedNotifKeys.add(notifKey);
 
-        if (notif.type === "cancel_call" || notif.type === "canceled") { // Sesuaikan tipe dari backend
-          console.log("Notifikasi cancel diterima!");
-          // Panggil fungsi handleCallCancelled dari useVoiceCall
-          handleCallCancelled(); 
-          // (Opsional) Hapus notif agar tidak diproses ulang
-          // remove(firebaseRef(db, `notifications/${myId}/${notifKey}`));
+        if (notif.type === "cancel_call" || notif.type === "canceled") {
+            // Sesuaikan tipe dari backend
+            console.log("Notifikasi cancel diterima!");
+            // Panggil fungsi handleCallCancelled dari useVoiceCall
+            handleCallCancelled();
+            // (Opsional) Hapus notif agar tidak diproses ulang
+            // remove(firebaseRef(db, `notifications/${myId}/${notifKey}`));
         }
 
         if (notif.type === "read_receipt") {
@@ -1346,8 +1361,10 @@ onMounted(async () => {
                             }, 2000);
                         } else {
                             // TAMBAHKAN INI UNTUK VOICE CALL
-                            console.log('Eksekusi handleCallCancelled untuk Voice');
-                            handleCallCancelled(); 
+                            console.log(
+                                "Eksekusi handleCallCancelled untuk Voice"
+                            );
+                            handleCallCancelled();
                         }
 
                         // Hapus status dari firebase
@@ -1401,6 +1418,7 @@ onUnmounted(() => {
     <div class="d-flex flex-column flex-lg-row h-100">
         <div
             class="flex-column flex-lg-row-auto w-100 w-lg-350px w-xl-400px mb-10 mb-lg-0"
+            :class="showMobileChat ? 'd-none d-lg-block' : 'd-block'"
         >
             <div class="card card-flush h-100">
                 <div class="card-header pt-7" id="kt_chat_contacts_header">
@@ -1557,13 +1575,13 @@ onUnmounted(() => {
                 @reject="handleRejectCall"
             />
 
-    <VoiceCallingModal
-        v-if="showCallingModal"
-        :callee-name="callingModalProps.calleeName"
-        :callee-photo="callingModalProps.calleePhoto"
-        :call-status="callingModalProps.callStatus"
-        @cancel="cancelVoiceCall"
-    />
+            <VoiceCallingModal
+                v-if="showCallingModal"
+                :callee-name="callingModalProps.calleeName"
+                :callee-photo="callingModalProps.calleePhoto"
+                :call-status="callingModalProps.callStatus"
+                @cancel="cancelVoiceCall"
+            />
 
             <VoiceCallModal
                 v-if="showOngoingModal"
@@ -1590,7 +1608,11 @@ onUnmounted(() => {
             <VideoCallModal v-if="showVideoCallModal" />
         </Teleport>
 
-        <div class="flex-lg-row-fluid ms-lg-7 ms-xl-10" style="min-width: 0">
+        <div
+            class="flex-lg-row-fluid ms-lg-6 ms-xl-10"
+            style="min-width: 0"
+            :class="showMobileChat ? 'd-block' : 'd-none d-lg-block'"
+        >
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
                 <div
                     v-if="!activeContact"
@@ -1616,10 +1638,13 @@ onUnmounted(() => {
                     >
                         <div class="d-flex align-items-center flex-grow-1">
                             <button
-                                class="btn btn-icon btn-sm btn-active-light-primary d-lg-none me-3"
-                                @click="activeContact = null"
+                                v-if="showMobileChat"
+                                class="btn btn-sm btn-icon btn-clear d-lg-none me-3"
+                                @click="closeMobileChat"
                             >
-                                <i class="fas fa-arrow-left fs-2"></i>
+                                <ArrowLeft
+                                    class="w-20px h-20px text-gray-700"
+                                />
                             </button>
 
                             <div class="symbol symbol-40px symbol-circle me-3">
