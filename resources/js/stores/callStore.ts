@@ -13,6 +13,7 @@ export const useCallStore = defineStore('call', () => {
     const backendCall = ref<PersonalCall | null>(null); // Data dari backend
     const agoraToken = ref<string | null>(null); // token agora dari backend
     const channelName = ref<string | null>(null); // channel name dari backend
+    const hasJoinedAgora = ref<boolean>(false); // apakah sudah join agora
 
     // Actions
     const setCurrentCall = (call: Call) => {
@@ -37,6 +38,7 @@ export const useCallStore = defineStore('call', () => {
         agoraToken.value = null;
         channelName.value = null;
         remoteUsers.value = [];
+        hasJoinedAgora.value = false;
     };
 
     const setIncomingCall = (call: Call) => {
@@ -45,12 +47,20 @@ export const useCallStore = defineStore('call', () => {
 
     const clearIncomingCall = () => {
         incomingCall.value = null;
+        hasJoinedAgora.value = false;
     };
 
     const updateCallStatus = (status: CallStatus) => {
         callStatus.value = status;
         if (currentCall.value) {
             currentCall.value.status = status;
+        }
+
+        if (status === 'ongoing') {
+            isInCall.value = true;
+        } else if (status === 'ended') {
+            isInCall.value = false;
+            hasJoinedAgora.value = false;
         }
     };
 
@@ -88,6 +98,11 @@ export const useCallStore = defineStore('call', () => {
         }
     };
 
+    const setHasJoinedAgora = (value: boolean) => {
+        hasJoinedAgora.value = value;
+        console.log('✅ callStore.hasJoinedAgora set di:', value);
+    }
+
     // fitur voice
     const toggleMinimize = () => {
         isMinimized.value = !isMinimized.value;
@@ -104,6 +119,7 @@ export const useCallStore = defineStore('call', () => {
         backendCall,
         agoraToken,
         channelName,
+        hasJoinedAgora,
         // Actions
         setCurrentCall,
         clearCurrentCall,
@@ -116,6 +132,7 @@ export const useCallStore = defineStore('call', () => {
         clearRemoteUsers,
         toggleMinimize,
         setBackendCall,
-        updateBackendCall
+        updateBackendCall,
+        setHasJoinedAgora,
     }
 });

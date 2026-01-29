@@ -4,7 +4,7 @@ import { onMounted, onUnmounted, nextTick, watch } from 'vue';
 // Definisikan props (apa yang diterima di komponen ini)
 const props = defineProps<{
     videoTrack?: any; // Track kamera (bisa undefined klo off cam)
-    auidoTrack?: any; // Track suara
+    audioTrack?: any; // Track suara
     uid: string | number; // ID user
     userName: string // Nama user buat tabel
     isLocal?: boolean // mirror effect klo video itu kita sendiri
@@ -26,8 +26,8 @@ const playVideo = () => {
 
 // Fungsi play audio (khusus untuk remote user, local audio ga perlu di play nanti bakal ke feedback)
 const playAudio = () => {
-    if (props.auidoTrack && !props.isLocal) {
-        props.auidoTrack.play();
+    if (props.audioTrack && !props.isLocal) {
+        props.audioTrack.play();
     }
 };
 
@@ -49,8 +49,8 @@ onUnmounted(() => {
     if (props.videoTrack) {
         props.videoTrack.stop(); // Stop playback di elemen ini aja, track tetep idup
     }
-    if (props.auidoTrack && !props.isLocal) {
-        props.auidoTrack.stop();
+    if (props.audioTrack && !props.isLocal) {
+        props.audioTrack.stop();
     }
 });
 </script>

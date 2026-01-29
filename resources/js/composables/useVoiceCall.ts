@@ -83,7 +83,7 @@ export const useVoiceCall = () => {
                 await joinChannel(
                     callData.channel_name, 
                     callData.agora_token, 
-                    authStore.user.id
+                    Number(authStore.user.id)
                 );
                 await toggleAudio(false); 
             } else {
@@ -266,7 +266,7 @@ export const useVoiceCall = () => {
                 await joinChannel(
                     event.call.channel_name, 
                     event.call.agora_token, 
-                    authStore.user.id
+                    Number(authStore.user.id)
                 );
                 await toggleAudio(false); 
             }

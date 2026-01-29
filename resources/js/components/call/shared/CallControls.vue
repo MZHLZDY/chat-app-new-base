@@ -12,20 +12,22 @@ import {
 interface Props {
   isMuted: boolean;
   isSpeakerOn: boolean;
-  isCameraOn: boolean; // Ganti isVoiceCall menjadi isCameraOn
+  isCameraOn?: boolean;
+  callType: 'voice' | 'video';
 }
 
 const props = withDefaults(defineProps<Props>(), {
   isMuted: false,
   isSpeakerOn: false,
   isCameraOn: false, // Default mati untuk Voice Call
+  callType: 'voice',
 });
 
 // Update emits
 const emit = defineEmits([
   'toggleMute', 
   'toggleSpeaker', 
-  // 'toggleCamera', // Ganti switchCallType menjadi toggleCamera
+  'toggleCamera',
   'endCall', 
 ]);
 </script>
@@ -51,14 +53,15 @@ const emit = defineEmits([
       <component :is="props.isSpeakerOn ? Volume2 : VolumeOff" :size="24" />
     </button>
 
-    <!-- <button 
+    <button 
+      v-if="props.callType === 'video'"
       @click="emit('toggleCamera')" 
       class="control-btn"
-      :class="{ 'active': props.isCameraOn }"
+      :class="{ 'active': !props.isCameraOn }"
       title="Toggle Camera"
     >
       <component :is="props.isCameraOn ? Camera : CameraOff" :size="24" />
-    </button> -->
+    </button>
 
     <button 
       @click="emit('endCall')" 

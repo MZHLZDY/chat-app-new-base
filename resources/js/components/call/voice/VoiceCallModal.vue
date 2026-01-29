@@ -93,9 +93,9 @@ onUnmounted(() => {
 
       <div class="controls-section">
         <CallControls 
+          call-type="voice"
           :is-muted="props.isMuted"
-          :is-speaker-on="props.isSpeakerOn"
-          :is-camera-on="isCameraOn" 
+          :is-speaker-on="props.isSpeakerOn" 
           @toggle-mute="emit('toggleMute')"
           @toggle-speaker="emit('toggleSpeaker')"
           @end-call="emit('endCall')"

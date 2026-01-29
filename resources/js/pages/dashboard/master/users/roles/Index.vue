@@ -2,6 +2,7 @@
 import { ref, onMounted, nextTick, computed, onUnmounted, watch } from "vue";
 import { useAuthStore } from "@/stores/authStore";
 import { usePage } from "@inertiajs/vue3";
+import { useAgora } from "@/composables/useAgora";
 import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
 import {
@@ -127,6 +128,7 @@ const showCallingModal = computed(
 const showOngoingModal = computed(
     () =>
         isCallActive.value &&
+        callStore.currentCall?.type === 'voice' &&
         (callStore.callStatus as string) === "ongoing" &&
         !callStore.isMinimized
 );
@@ -458,8 +460,7 @@ const showVideoIncomingModal = computed(
 const showVideoCallModal = computed(
     () =>
         callStore.currentCall?.type === "video" &&
-        callStore.callStatus === "ongoing" &&
-        callStore.isInCall
+        callStore.callStatus === "ongoing"
 );
 
 // --- PRIVATE CHAT LOGIC ---
@@ -1358,10 +1359,30 @@ onMounted(async () => {
                         console.log("📴 Firebase: Panggilan diakhiri");
 
                         if (data.call_type === "video") {
-                            callStore.updateCallStatus("ended");
-                            setTimeout(() => {
-                                callStore.clearCurrentCall();
-                            }, 2000);
+                            (async () => {
+                                try {
+                                    // Cleanup agora dulu sebelum clear store
+                                    const { leaveChannel } = useAgora();
+
+                                    console.log('👋 Meninggalkan channel Agora (Remote diberhentikan)');
+                                    await leaveChannel();
+
+                                    console.log('🧹 Membersihkan call store...');
+                                    callStore.updateCallStatus("ended");
+
+                                    // Clear setelah 2 detik supaya user bisa lihat status ended
+                                    setTimeout(() => {
+                                        callStore.clearCurrentCall();
+                                    }, 2000);
+
+                                } catch (error) {
+                                    console.error('❌ Error pada saat membersihkan panggilan yang berakhir:', error);
+
+                                    // Cleanup secara paksa jika ada error
+                                    callStore.clearCurrentCall();
+                                    callStore.clearIncomingCall();
+                                }
+                            })();
                         } else {
                             handleCallEnded();
                         }
