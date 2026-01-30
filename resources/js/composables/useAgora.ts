@@ -183,13 +183,37 @@ export const useAgora = () => {
         // Audio track
         try {
             console.log('🎤 Membuat audio track...');
-            localAudioTrack.value = markRaw(await AgoraRTC.createMicrophoneAudioTrack());
+
+            // List semua audio input devices
+            const devices = await AgoraRTC.getDevices();
+            const audioDevices = devices.filter(d => d.kind === 'audioinput');
+
+            console.log('🎤 Device audio tersedia:', audioDevices.length);
+            audioDevices.forEach((devices, index) => {
+                console.log(`   ${index + 1}. ${devices.label || 'Unknown Device'} (${devices.deviceId})`);
+            })
+
+            localAudioTrack.value = markRaw(await AgoraRTC.createMicrophoneAudioTrack({
+                AEC: true,  // Acoustic Echo Cancellation
+                ANS: true,  // Audio Noise Suppression
+                AGC: true,  // Automatic Gain Control
+            }));
+            
             console.log('✅ Audio track lokal dibuat:', localAudioTrack.value);
+            console.log('📦 Device info:', localAudioTrack.value.getMediaStreamTrack().label);
+            console.log('📦 Device ID:', localAudioTrack.value.getMediaStreamTrack().getSettings().deviceId);
+
             tracksToPublish.push(localAudioTrack.value);
         } catch (error: any) {
             console.error('❌ Gagal membuat audio track lokal:', error.name, error.message);
             if (error.name === 'NotAllowedError') {
                 alert('❌ Akses mikrofon ditolak! Pastikan akses mikrofon diizinkan di browser Anda.');
+            } else if (error.name === 'NotFoundError') {
+                alert('❌ Mikrofon tidak ditemukan! Pastikan mikrofon terhubung.');
+            } else if (error.name === 'NotReadableError') {
+                alert('❌ Mikrofon sedang digunakan aplikasi lain atau ada error hardware.');
+            } else {
+                alert(`❌ Gagal mengakses mikrofon: ${error.message}`);
             }
         }
 

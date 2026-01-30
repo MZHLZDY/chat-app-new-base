@@ -1322,10 +1322,27 @@ onMounted(async () => {
                             callStore.updateCallStatus("ongoing");
                             callStore.setInCall(true);
 
-                            // Update backend call jika ada
-                            if (data.call) {
-                                callStore.updateBackendCall(data.call);
-                            }
+                            (async() => {
+                                // Caller join channel setelah diterima
+                                if (callStore.agoraToken && callStore.channelName && authStore.user?.id) {
+                                    console.log('👋 Caller bergabung ke channel');
+
+                                    const { joinChannel } = useAgora();
+                                    await joinChannel(
+                                        callStore.channelName,
+                                        callStore.agoraToken,
+                                        Number(authStore.user.id)
+                                    );
+
+                                    console.log('✅ Caller berhasil bergabung ke channel');
+                                }
+
+                                // Update backend call jika ada
+                                if (data.call) {
+                                    callStore.updateBackendCall(data.call);
+                                }
+                            })();
+                            
                         } else {
                             handleCallAccepted(data);
                         }

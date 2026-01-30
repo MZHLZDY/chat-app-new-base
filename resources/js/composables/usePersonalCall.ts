@@ -92,11 +92,6 @@ export const usePersonalCall = () => {
                 channel: channelName,
             });
 
-            await joinChannel(
-                channelName,
-                token,
-                Number(authStore.user.id)
-            );
 
             console.log('✅ Memulai panggilan berhasil');
 
