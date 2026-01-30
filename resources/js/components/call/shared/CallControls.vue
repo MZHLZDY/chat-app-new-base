@@ -45,6 +45,7 @@ const emit = defineEmits([
     </button>
 
     <button 
+      v-if="props.callType === 'voice'"
       @click="emit('toggleSpeaker')" 
       class="control-btn" 
       :class="{ 'active': props.isSpeakerOn }"

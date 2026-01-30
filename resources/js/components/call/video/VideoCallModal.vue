@@ -187,6 +187,14 @@ const handleEndCall = async () => {
     }
 };
 
+const handleToggleMute = () => {
+    toggleAudio();
+};
+
+const handleToggleCamera = () => {
+    toggleVideo();
+};
+
 // watch status 'ended' dari backend
 watch(() => store.callStatus, (newStatus) => {
     if (newStatus === 'ended') {
@@ -279,9 +287,9 @@ watch(() => remoteVideoTracks.value.size, (size) => {
                         :is-muted="!isAudioEnabled"
                         :is-speaker-on="false"
                         :is-camera-on="isVideoEnabled"
-                        @toggle-mute="toggleAudio"
+                        @toggle-mute="handleToggleMute"
                         @toggle-speaker="() => {}"
-                        @toggle-camera="toggleVideo"
+                        @toggle-camera="handleToggleCamera"
                         @end-call="handleEndCall"
                     />
                 </div>

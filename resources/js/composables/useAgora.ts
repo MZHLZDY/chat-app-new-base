@@ -397,18 +397,20 @@ export const useAgora = () => {
     };
 
     // Toggle audio (Mute / Unmute)
-    const toggleAudio = async (muted: boolean) => {
+    const toggleAudio = async () => {
         if (localAudioTrack.value) {
-            await localAudioTrack.value.setEnabled(!muted);
-            isAudioEnabled.value = !muted;
+            const newState = !isAudioEnabled.value;
+            await localAudioTrack.value.setEnabled(newState);
+            isAudioEnabled.value = newState;
         }
     };
 
     // Toggle video (Turn on / Turn off)
-    const toggleVideo = async (muted: boolean) => {
+    const toggleVideo = async () => {
         if (localVideoTrack.value) {
-            await localVideoTrack.value.setEnabled(!muted);
-            isVideoEnabled.value = !muted;
+            const newState = !isVideoEnabled.value;
+            await localVideoTrack.value.setEnabled(newState);
+            isVideoEnabled.value = newState;
         }
     };
 
