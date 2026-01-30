@@ -78,7 +78,7 @@ const routes: Array<RouteRecordRaw> = [
                 path: "/dashboard/ai-chat",
                 name: "dashboard.ai-chat",
                 component: () =>
-                    import("@/pages/dashboard/master/users/Ai Chat/index.vue"),
+                    import("@/pages/dashboard/master/users/Ai Chat/Index.vue"),
                 meta: {
                     pageTitle: "AI Chat",
                     breadcrumbs: ["AI Chat"],
