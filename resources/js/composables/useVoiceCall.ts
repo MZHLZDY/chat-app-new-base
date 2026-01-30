@@ -305,6 +305,8 @@ const handleCallAccepted = async (event: any) => {
 
     // 3. Update UI ke 'ongoing'
     store.updateCallStatus('ongoing');
+    store.setInCall(true);
+    
     if (store.currentCall) store.currentCall.status = 'ongoing';
 
     // 4. Tentukan Channel Name
