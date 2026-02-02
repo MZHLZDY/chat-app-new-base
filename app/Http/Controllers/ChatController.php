@@ -11,10 +11,10 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;             
-use Illuminate\Support\Facades\Hash;   
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver; 
+use Intervention\Image\Drivers\Gd\Driver;
 use ProtoneMedia\LaravelFFMpeg\Support\FFMpeg;
 use FFMpeg\Format\Video\X264;
 use Kreait\Firebase\Contract\Database;
@@ -29,7 +29,7 @@ class ChatController extends Controller
     {
         $this->database = $database;
     }
-    
+
     /**
      *  SEND NOTIFICATION TO FIREBASE
      */
@@ -41,41 +41,41 @@ class ChatController extends Controller
             'sender_name' => $senderName,
             'message' => $message,
             'message_type' => $messageType,
-            'chat_id' => ($senderId < $receiverId) ? $senderId.'_'.$receiverId : $receiverId.'_'.$senderId, // Helper untuk redirect nanti
+            'chat_id' => ($senderId < $receiverId) ? $senderId . '_' . $receiverId : $receiverId . '_' . $senderId, // Helper untuk redirect nanti
             'created_at' => now()->toIso8601String()
         ]);
     }
-    
+
     /**
      * 1. GET CONTACTS LIST
      */
     public function getContacts()
     {
         $authId = Auth::id();
-        
+
         // Update last_seen saya
         User::where('id', $authId)->update(['last_seen' => now()]);
 
-        $contacts = User::leftJoin('contacts', function($join) use ($authId) {
+        $contacts = User::leftJoin('contacts', function ($join) use ($authId) {
             $join->on('users.id', '=', 'contacts.friend_id')
-                 ->where('contacts.user_id', '=', $authId); 
+                ->where('contacts.user_id', '=', $authId);
         })
-        ->where(function($query) use ($authId) {
-            $query->whereNotNull('contacts.id') 
-            ->orWhereIn('users.id', function($sub) use ($authId) {
-                $sub->select('sender_id')->from('chat_messages')->where('receiver_id', $authId);
+            ->where(function ($query) use ($authId) {
+                $query->whereNotNull('contacts.id')
+                    ->orWhereIn('users.id', function ($sub) use ($authId) {
+                        $sub->select('sender_id')->from('chat_messages')->where('receiver_id', $authId);
+                    })
+                    ->orWhereIn('users.id', function ($sub) use ($authId) {
+                        $sub->select('receiver_id')->from('chat_messages')->where('sender_id', $authId);
+                    });
             })
-            ->orWhereIn('users.id', function($sub) use ($authId) {
-                $sub->select('receiver_id')->from('chat_messages')->where('sender_id', $authId);
-            });
-        })
-        ->where('users.id', '!=', $authId) 
-        ->select(
-            'users.*', 
-            'contacts.alias', 
-            'contacts.created_at as contact_added_at'
-        )
-        ->get();
+            ->where('users.id', '!=', $authId)
+            ->select(
+                'users.*',
+                'contacts.alias',
+                'contacts.created_at as contact_added_at'
+            )
+            ->get();
 
         foreach ($contacts as $contact) {
             if ($contact->alias) {
@@ -95,7 +95,7 @@ class ChatController extends Controller
             if ($lastMsg) {
                 $contact->last_message = $lastMsg->message;
                 $contact->last_message_time = $lastMsg->created_at;
-                
+
                 if ($lastMsg->sender_id !== $authId && !$lastMsg->read_at) {
                     $contact->unread_count = ChatMessage::where('sender_id', $contact->id)
                         ->where('receiver_id', $authId)
@@ -133,7 +133,7 @@ class ChatController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'phone' => 'required|string',
-            'name'  => 'required|string',
+            'name' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -157,9 +157,9 @@ class ChatController extends Controller
         }
 
         Contact::create([
-            'user_id'   => $myId,
+            'user_id' => $myId,
             'friend_id' => $targetUser->id,
-            'alias'     => $request->name
+            'alias' => $request->name
         ]);
 
         return response()->json(['message' => 'Kontak berhasil disimpan.']);
@@ -180,11 +180,11 @@ class ChatController extends Controller
             ->update(['read_at' => now()]);
         $this->database->getReference('notifications/' . $friendId)->push([
             'type' => 'read_receipt',
-            'reader_id' => $myId, 
+            'reader_id' => $myId,
             'read_at' => now()->toIso8601String(),
         ]);
 
-        $messages = ChatMessage::with(['replyTo.sender']) 
+        $messages = ChatMessage::with(['replyTo.sender'])
             ->where(function ($q) use ($myId, $friendId) {
                 $q->where('sender_id', $myId)->where('receiver_id', $friendId);
             })->orWhere(function ($q) use ($myId, $friendId) {
@@ -209,8 +209,8 @@ class ChatController extends Controller
         // 1. Validasi
         $validator = Validator::make($request->all(), [
             'receiver_id' => 'required|exists:users,id',
-            'message'     => 'nullable|string',
-            'file'        => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx,mp4,mov,avi,mkv|max:51200',
+            'message' => 'nullable|string',
+            'file' => 'nullable|file|mimes:jpg,jpeg,png,pdf,doc,docx,mp4,mov,avi,mkv|max:51200',
             'reply_to_id' => 'nullable|exists:chat_messages,id'
         ]);
 
@@ -226,67 +226,40 @@ class ChatController extends Controller
 
             $senderId = Auth::id();
             $sender = Auth::user();
-            
+
             $filePath = null;
             $fileName = null;
             $fileMime = null;
             $fileSize = null;
-            $msgType  = 'text'; 
+            $msgType = 'text';
 
             if ($request->hasFile('file')) {
                 $file = $request->file('file');
-                
+
                 if (!$file->isValid()) {
                     return response()->json(['message' => 'File korup atau gagal upload'], 400);
                 }
 
                 $originalName = $file->getClientOriginalName();
-                $fileName = $originalName; 
+                $fileName = $originalName;
                 $fileMime = $file->getMimeType();
                 $fileSize = $file->getSize();
                 if (str_starts_with($fileMime, 'video/')) {
-                    set_time_limit(0); 
-                    
-                    $physicalName = 'vid_' . time() . '_' . Str::random(10) . '.mp4';
-                    $tempPath = 'chat_files/temp/' . $physicalName;
-                    $finalPath = 'chat_files/' . $physicalName;
-                    
-                    $file->storeAs('chat_files/temp', $physicalName, 'public');
+                    set_time_limit(0);
+                    $ext = $file->getClientOriginalExtension();
+                    $physicalName = 'vid_' . time() . '_' . Str::random(10) . '.' . $ext;
+                    $filePath = $file->storeAs('chat_files', $physicalName, 'public');
 
-                    try {
-                        $format = new X264('aac', 'libx264');
-                        $format->setKiloBitrate(1000); 
-
-                        FFMpeg::fromDisk('public')
-                            ->open($tempPath)
-                            ->export()
-                            ->toDisk('public')
-                            ->inFormat($format)
-                            ->resize(1280, 720) 
-                            ->save($finalPath);
-
-                        Storage::disk('public')->delete($tempPath);
-                        
-                        $filePath = $finalPath;
-                        $fileMime = 'video/mp4'; 
-                        if (Storage::disk('public')->exists($finalPath)) {
-                            $fileSize = Storage::disk('public')->size($finalPath);
-                        }
-
-                    } catch (\Exception $e) {
-                        // DEBUG: Cek errornya di Laravel.log jika gagal lagi
-                        \Log::error("Gagal kompres video: " . $e->getMessage());
-                        if (Storage::disk('public')->exists($tempPath)) {
-                            Storage::disk('public')->move($tempPath, $finalPath);
-                        }
-                        $filePath = $finalPath;
+                    if (Storage::disk('public')->exists($filePath)) {
+                        $fileSize = Storage::disk('public')->size($filePath);
                     }
+
                     $msgType = 'video';
                 }
                 else {
                     $physicalName = time() . '_' . str_replace(' ', '_', $originalName);
                     $filePath = $file->storeAs('chat_files', $physicalName, 'public');
-                    
+
                     if (str_starts_with($fileMime, 'image/')) {
                         $msgType = 'image';
                     } else {
@@ -295,42 +268,45 @@ class ChatController extends Controller
                 }
             }
 
+            // SIMPAN KE DB
             $message = ChatMessage::create([
-                'sender_id'      => $senderId,
-                'receiver_id'    => $request->receiver_id,
-                'message'        => $request->message, 
-                'file_path'      => $filePath,
-                'file_name'      => $fileName,
+                'sender_id' => $senderId,
+                'receiver_id' => $request->receiver_id,
+                'message' => $request->message,
+                'file_path' => $filePath,
+                'file_name' => $fileName,
                 'file_mime_type' => $fileMime,
-                'file_size'      => $fileSize,
-                'type'           => $msgType,
-                'reply_to_id'    => $request->reply_to_id,
-                'created_at'     => now(),
+                'file_size' => $fileSize,
+                'type' => $msgType,
+                'reply_to_id' => $request->reply_to_id,
+                'created_at' => now(),
             ]);
 
             DB::commit();
 
             $message->load(['sender', 'replyTo.sender']);
 
+            // KIRIM KE FIREBASE
             $firebaseData = [
-                'id'             => $message->id,
-                'sender_id'      => $message->sender_id,
-                'receiver_id'    => $message->receiver_id,
-                'message'        => $message->message,
-                'file_path'      => $message->file_path,
-                'file_name'      => $message->file_name,
-                'file_size'      => $message->file_size,
-                'type'           => $message->type,
-                'created_at'     => $message->created_at->toIso8601String(),
-                'reply_to'       => $message->replyTo ? [
-                    'id'        => $message->replyTo->id,
-                    'message'   => $message->replyTo->message,
+                'id' => $message->id,
+                'sender_id' => $message->sender_id,
+                'receiver_id' => $message->receiver_id,
+                'message' => $message->message,
+                'file_path' => $message->file_path,
+                'file_name' => $message->file_name,
+                'file_size' => $message->file_size,
+                'type' => $message->type,
+                'created_at' => $message->created_at->toIso8601String(),
+                'reply_to' => $message->replyTo ? [
+                    'id' => $message->replyTo->id,
+                    'message' => $message->replyTo->message,
                     'sender_id' => $message->replyTo->sender_id,
-                    'type'      => $message->replyTo->type
+                    'type' => $message->replyTo->type
                 ] : null,
             ];
             $this->database->getReference('chats/' . $request->receiver_id)->push($firebaseData);
 
+            // NOTIFIKASI (TETAP SAMA)
             $notifMessage = $request->message;
             if (empty($notifMessage)) {
                 if ($msgType === 'video') {
@@ -345,16 +321,16 @@ class ChatController extends Controller
                 $request->receiver_id,
                 $sender->id,
                 $sender->name,
-                $notifMessage, 
+                $notifMessage,
                 $msgType
             );
 
             return response()->json([
                 'status' => 'success',
-                'data'   => $message
+                'data' => $message
             ]);
 
-        } catch (\Exception $e) { 
+        } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Server Error: ' . $e->getMessage()], 500);
         }
@@ -372,8 +348,8 @@ class ChatController extends Controller
         }
 
         $relativePath = $message->file_path;
-        $relativePath = ltrim($relativePath, '/'); 
-        
+        $relativePath = ltrim($relativePath, '/');
+
         $fullPath = storage_path("app/public/{$relativePath}");
 
         if (!file_exists($fullPath)) {
@@ -412,12 +388,12 @@ class ChatController extends Controller
             if ($message->sender_id !== $userId) {
                 return response()->json(['message' => 'Anda bukan pengirim pesan ini'], 403);
             }
-            $message->delete(); 
+            $message->delete();
             $this->database->getReference('notifications/' . $message->receiver_id)->push([
-                'type'       => 'message_deleted',
-                'message_id' => (int)$id,
+                'type' => 'message_deleted',
+                'message_id' => (int) $id,
                 'deleted_by' => $userId,
-                'timestamp'  => now()->timestamp
+                'timestamp' => now()->timestamp
             ]);
 
         } else {
@@ -432,7 +408,7 @@ class ChatController extends Controller
 
         return response()->json(['status' => 'success']);
     }
-    
+
     /**
      * 6. SHOW CONTACT
      */
@@ -444,7 +420,7 @@ class ChatController extends Controller
 
         return response()->json([
             'id' => $friend->id,
-            'name' => $friend->name,       
+            'name' => $friend->name,
             'alias' => $contact ? $contact->alias : null,
             'email' => $friend->email,
             'phone' => $friend->phone,
@@ -476,10 +452,10 @@ class ChatController extends Controller
     /**
      * 8. MARK MESSAGE AS READ
      */
-    public function markAsRead($id) 
+    public function markAsRead($id)
     {
         $msg = ChatMessage::find($id);
-        if($msg && !$msg->read_at) {
+        if ($msg && !$msg->read_at) {
             $msg->update(['read_at' => now()]);
 
             $this->database->getReference('notifications/' . $msg->sender_id)->push([
@@ -489,7 +465,7 @@ class ChatController extends Controller
                 'read_at' => now()->toIso8601String(),
             ]);
         }
-        
+
         return response()->json(['success' => true]);
     }
 

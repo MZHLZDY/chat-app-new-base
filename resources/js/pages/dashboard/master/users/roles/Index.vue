@@ -5,13 +5,7 @@ import { usePage } from "@inertiajs/vue3";
 import { useAgora } from "@/composables/useAgora";
 import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
-import {
-    formatDistanceToNowStrict,
-    format,
-    isToday,
-    isYesterday,
-    isSameDay,
-} from "date-fns";
+import { format, isToday, isYesterday, isSameDay } from "date-fns";
 import { id } from "date-fns/locale";
 import {
     Phone,
@@ -95,6 +89,7 @@ const editModalTitle = ref("Edit Kontak");
 const isDeleteModalOpen = ref(false);
 const messageToDelete = ref<any>(null);
 const showMobileChat = ref(false);
+const onlineUsers = ref<Set<number>>(new Set());
 const messageDrafts = ref<Record<string | number, string>>({});
 const isLightboxOpen = ref(false);
 const activeLightboxUrl = ref("");
@@ -135,7 +130,7 @@ const showCallingModal = computed(
 const showOngoingModal = computed(
     () =>
         isCallActive.value &&
-        callStore.currentCall?.type === 'voice' &&
+        callStore.currentCall?.type === "voice" &&
         (callStore.callStatus as string) === "ongoing" &&
         !callStore.isMinimized
 );
@@ -159,8 +154,6 @@ const remoteUser = computed(() => {
         return call.caller || { name: "User", avatar: "" };
     }
 });
-
-
 
 const outgoingCalleeInfo = computed(() => {
     const c = callStore.currentCall as any;
@@ -522,10 +515,18 @@ const formatTime = (dateString: string | null | undefined): string => {
     }
 };
 
-const formatLastSeen = (
-    dateInput: string | number | null | undefined
-): string => {
+const formatLastSeen = (user: any): string => {
+    if (!user) return "offline";
+    if (onlineUsers.value.has(user.id)) {
+        return "Online";
+    }
+    if (user.is_online) {
+        return "Online";
+    }
+
+    const dateInput = user.last_seen;
     if (!dateInput) return "offline";
+
     try {
         const date = new Date(dateInput);
         if (isToday(date)) {
@@ -544,6 +545,24 @@ const formatLastSeen = (
     } catch (error) {
         return "offline";
     }
+};
+
+const listenToOnlineStatus = () => {
+    const usersStatusRef = firebaseRef(db, "status");
+
+    onValue(usersStatusRef, (snapshot) => {
+        const data = snapshot.val();
+        const onlineSet = new Set<number>();
+
+        if (data) {
+            Object.keys(data).forEach((key) => {
+                if (data[key].state === "online" || data[key] === "online") {
+                    onlineSet.add(parseInt(key));
+                }
+            });
+        }
+        onlineUsers.value = onlineSet;
+    });
 };
 
 const formatDateSeparator = (dateString: string): string => {
@@ -710,7 +729,7 @@ const triggerFileUpload = () => {
     fileInput.value?.click();
 };
 
-const STORAGE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const STORAGE_URL = import.meta.env.VITE_API_URL || window.location.origin;
 
 const getFileUrl = (path: string) => {
     if (!path) return "";
@@ -1191,6 +1210,7 @@ watch(activeContact, (newVal, oldVal) => {
 });
 
 onMounted(async () => {
+    listenToOnlineStatus();
     console.log("🚀 Komponen terpasang");
 
     setupFirebaseListeners();
@@ -1324,10 +1344,16 @@ onMounted(async () => {
                             callStore.updateCallStatus("ongoing");
                             callStore.setInCall(true);
 
-                            (async() => {
+                            (async () => {
                                 // Caller join channel setelah diterima
-                                if (callStore.agoraToken && callStore.channelName && authStore.user?.id) {
-                                    console.log('👋 Caller bergabung ke channel');
+                                if (
+                                    callStore.agoraToken &&
+                                    callStore.channelName &&
+                                    authStore.user?.id
+                                ) {
+                                    console.log(
+                                        "👋 Caller bergabung ke channel"
+                                    );
 
                                     const { joinChannel } = useAgora();
                                     await joinChannel(
@@ -1336,7 +1362,9 @@ onMounted(async () => {
                                         Number(authStore.user.id)
                                     );
 
-                                    console.log('✅ Caller berhasil bergabung ke channel');
+                                    console.log(
+                                        "✅ Caller berhasil bergabung ke channel"
+                                    );
                                 }
 
                                 // Update backend call jika ada
@@ -1344,7 +1372,6 @@ onMounted(async () => {
                                     callStore.updateBackendCall(data.call);
                                 }
                             })();
-                            
                         } else {
                             handleCallAccepted(data);
                         }
@@ -1400,19 +1427,25 @@ onMounted(async () => {
                                     // Cleanup agora dulu sebelum clear store
                                     const { leaveChannel } = useAgora();
 
-                                    console.log('👋 Meninggalkan channel Agora (Remote diberhentikan)');
+                                    console.log(
+                                        "👋 Meninggalkan channel Agora (Remote diberhentikan)"
+                                    );
                                     await leaveChannel();
 
-                                    console.log('🧹 Membersihkan call store...');
+                                    console.log(
+                                        "🧹 Membersihkan call store..."
+                                    );
                                     callStore.updateCallStatus("ended");
 
                                     // Clear setelah 2 detik supaya user bisa lihat status ended
                                     setTimeout(() => {
                                         callStore.clearCurrentCall();
                                     }, 2000);
-
                                 } catch (error) {
-                                    console.error('❌ Error pada saat membersihkan panggilan yang berakhir:', error);
+                                    console.error(
+                                        "❌ Error pada saat membersihkan panggilan yang berakhir:",
+                                        error
+                                    );
 
                                     // Cleanup secara paksa jika ada error
                                     callStore.clearCurrentCall();
@@ -1702,14 +1735,16 @@ onUnmounted(() => {
                                 <span class="fw-bold text-gray-800 fs-6">
                                     {{ activeContact.display_name }}
                                 </span>
-                                <span class="text-muted fs-8">
-                                    {{
-                                        activeContact.is_online
-                                            ? "Online"
-                                            : formatLastSeen(
-                                                  activeContact.last_seen
-                                              )
-                                    }}
+                                <span
+                                    class="fs-8"
+                                    :class="
+                                        formatLastSeen(activeContact) ===
+                                        'Online'
+                                            ? 'text-success fw-bold'
+                                            : 'text-muted'
+                                    "
+                                >
+                                    {{ formatLastSeen(activeContact) }}
                                 </span>
                             </div>
                         </div>
@@ -1731,7 +1766,7 @@ onUnmounted(() => {
                             >
                                 <Phone class="w-20px h-20px" />
                             </button>
-                            <button 
+                            <button
                                 @click="handleVideoCall"
                                 :disabled="callProcessing"
                                 class="btn btn-icon btn-sm text-gray-500"
