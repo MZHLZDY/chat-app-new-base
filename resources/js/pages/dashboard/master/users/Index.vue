@@ -351,7 +351,7 @@ const triggerFileUpload = () => {
     fileInput.value?.click();
 };
 
-const STORAGE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const STORAGE_URL = import.meta.env.VITE_API_URL || window.location.origin;
 
 const getFileUrl = (path: string) => {
     if (!path) return "";

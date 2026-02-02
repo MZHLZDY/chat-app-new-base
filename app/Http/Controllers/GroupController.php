@@ -174,7 +174,8 @@ class GroupController extends Controller
         $validator = Validator::make($request->all(), [
             'group_id' => 'required|exists:groups,id',
             'message' => 'nullable|string',
-            'file' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf,doc,docx,mp4,mov,avi,mkv|max:51200',
+            // Max 100MB (102400KB) agar video agak panjang bisa masuk
+            'file' => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf,doc,docx,mp4,mov,avi,mkv|max:102400',
             'reply_to_id' => 'nullable|exists:group_messages,id',
         ]);
 
@@ -190,6 +191,8 @@ class GroupController extends Controller
 
             $sender = Auth::user();
             $group = Group::find($request->group_id);
+
+            // Cek Keanggotaan
             if (!$group->members()->where('users.id', $sender->id)->exists()) {
                 return response()->json(['message' => 'Anda bukan anggota grup ini'], 403);
             }
@@ -200,78 +203,72 @@ class GroupController extends Controller
             $fileSize = null;
             $msgType = 'text';
 
+            // 2. PROSES FILE
             if ($request->hasFile('file')) {
                 $file = $request->file('file');
+
                 if (!$file->isValid()) {
-                    return response()->json(['message' => 'File korup atau gagal upload'], 400);
+                    throw new \Exception('File korup atau gagal upload');
                 }
 
                 $originalName = $file->getClientOriginalName();
                 $fileName = $originalName;
                 $fileMime = $file->getMimeType();
                 $fileSize = $file->getSize();
+                $extension = strtolower($file->getClientOriginalExtension());
+
+                // --- PERBAIKAN UTAMA DI SINI (VIDEO) ---
                 if (str_starts_with($fileMime, 'video/')) {
+                    // HAPUS FFMPEG COMPRESSION.
+                    // Langsung simpan file asli agar orientasi HP (Portrait) aman & upload cepat.
                     set_time_limit(0);
 
-                    $physicalName = 'grp_vid_' . time() . '_' . Str::random(10) . '.mp4';
-                    $tempPath = 'group_files/temp/' . $physicalName;
-                    $finalPath = 'group_files/' . $physicalName;
+                    $physicalName = 'grp_vid_' . time() . '_' . Str::random(10) . '.' . $extension;
 
-                    $file->storeAs('group_files/temp', $physicalName, 'public');
+                    // Simpan path relatif ke storage public
+                    $filePath = $file->storeAs('group_files', $physicalName, 'public');
 
-                    try {
-                        $format = new X264('aac', 'libx264');
-                        $format->setKiloBitrate(1000);
-
-                        FFMpeg::fromDisk('public')
-                            ->open($tempPath)
-                            ->export()
-                            ->toDisk('public')
-                            ->inFormat($format)
-                            ->resize(1280, 720)
-                            ->save($finalPath);
-
-                        Storage::disk('public')->delete($tempPath);
-                        $filePath = $finalPath;
-                        $fileMime = 'video/mp4';
-
-                        if (Storage::disk('public')->exists($finalPath)) {
-                            $fileSize = Storage::disk('public')->size($finalPath);
-                        }
-                    } catch (\Exception $e) {
-                        \Log::error("Gagal kompres video: " . $e->getMessage());
-                        if (Storage::disk('public')->exists($tempPath)) {
-                            Storage::disk('public')->move($tempPath, $finalPath);
-                        }
-                        $filePath = $finalPath;
-                    }
                     $msgType = 'video';
-                } elseif (str_starts_with($fileMime, 'image/')) {
+                }
+                // --- LOGIC IMAGE (Mempertahankan logic WebP Anda) ---
+                elseif (str_starts_with($fileMime, 'image/')) {
                     $physicalName = 'grp_img_' . time() . '_' . Str::random(10) . '.webp';
                     $path = 'group_files/' . $physicalName;
 
                     try {
+                        // Gunakan Intervention Image (sesuai kode Anda)
                         $manager = new \Intervention\Image\ImageManager(new \Intervention\Image\Drivers\Gd\Driver());
                         $image = $manager->read($file);
+
+                        // Scale down aman, tidak mengubah rasio aspek gepeng
                         $image->scaleDown(width: 1280);
+
                         Storage::disk('public')->put($path, (string) $image->toWebp(quality: 80));
 
                         $filePath = $path;
                         $fileMime = 'image/webp';
                         $fileSize = Storage::disk('public')->size($path);
                     } catch (\Exception $e) {
-                        $physicalName = time() . '_' . str_replace(' ', '_', $originalName);
+                        // Fallback jika gagal convert, simpan asli
+                        $physicalName = time() . '_' . Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) . '.' . $extension;
                         $filePath = $file->storeAs('group_files', $physicalName, 'public');
                     }
                     $msgType = 'image';
-                } else {
-                    $physicalName = time() . '_' . str_replace(' ', '_', $originalName);
+                }
+                // --- LOGIC FILE LAINNYA ---
+                else {
+                    $physicalName = time() . '_' . Str::slug(pathinfo($originalName, PATHINFO_FILENAME)) . '.' . $extension;
                     $filePath = $file->storeAs('group_files', $physicalName, 'public');
                     $msgType = 'file';
                 }
+
+                // Update filesize final jika file tersimpan
+                if ($filePath && Storage::disk('public')->exists($filePath)) {
+                    $fileSize = Storage::disk('public')->size($filePath);
+                }
             }
 
-            // Simpan ke DB MySQL
+            // 3. SIMPAN KE DATABASE
             $message = GroupMessage::create([
                 'group_id' => $group->id,
                 'sender_id' => $sender->id,
@@ -285,13 +282,15 @@ class GroupController extends Controller
                 'reply_to_id' => $request->reply_to_id,
             ]);
 
-            $group->touch();
+            $group->touch(); // Update updated_at grup
 
             DB::commit();
-            if ($message->reply_to_id) {
-                $message->load(['replyTo.sender']);
-            }
-            // Push ke Firebase Realtime Database
+
+            // 4. PREPARE DATA RELASI
+            // Load data sender & reply sender agar lengkap untuk Firebase
+            $message->load(['sender', 'replyTo.sender']);
+
+            // 5. PUSH KE FIREBASE
             $this->database->getReference('group_messages/' . $group->id)->push([
                 'id' => $message->id,
                 'group_id' => $message->group_id,
@@ -315,10 +314,11 @@ class GroupController extends Controller
                 'sender' => [
                     'id' => $sender->id,
                     'name' => $sender->name,
-                    'photo' => $sender->avatar ?? $sender->photo ?? null,
+                    'photo' => $sender->avatar ?? $sender->photo ?? null, // Sesuaikan kolom DB Anda
                 ]
             ]);
 
+            // 6. NOTIFIKASI
             $notifMessage = $request->message;
             if (empty($notifMessage)) {
                 if ($msgType === 'video')
@@ -329,7 +329,9 @@ class GroupController extends Controller
                     $notifMessage = '📁 Mengirim berkas';
             }
 
+            // Ambil member selain pengirim
             $members = $group->members()->where('users.id', '!=', $sender->id)->get();
+
             foreach ($members as $member) {
                 $this->sendGroupNotification(
                     $member->id,
