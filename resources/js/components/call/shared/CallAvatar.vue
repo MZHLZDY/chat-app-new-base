@@ -50,8 +50,12 @@ const resolvedPhotoUrl = computed(() => {
 
   // 3. Jika photo adalah Path Relative (Masalah sering di sini!)
   const storageUrl = import.meta.env.VITE_STORAGE_URL || 'http://localhost:8000/storage';
-  const cleanBase = storageUrl.endsWith('/') ? storageUrl : `${storageUrl}/`;
-  const cleanPath = photo.startsWith('/') ? photo.substring(1) : photo;
+  let cleanBase = storageUrl.replace(/\/$/, '');
+  let cleanPath = photo.startsWith('/') ? photo : `/${photo}`;
+
+  if (cleanBase.endsWith('/storage') && cleanPath.startsWith('/storage')) {
+      cleanPath = cleanPath.replace('/storage', '');
+  }
   
   const result = `${cleanBase}${cleanPath}`;
   console.log('🚀 GENERATED URL:', result); // Cek apakah URL ini bisa dibuka di tab baru?

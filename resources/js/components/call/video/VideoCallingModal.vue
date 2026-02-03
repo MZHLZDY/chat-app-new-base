@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch, onMounted } from 'vue';
+import { computed, watch, onMounted, ref, onUnmounted } from 'vue';
 import { useCallStore } from '@/stores/callStore';
 import { useVideoCall } from '@/composables/useVideoCall';
 import { usePersonalCall } from '@/composables/usePersonalCall';
@@ -18,6 +18,15 @@ const currentCall = computed(() => store.currentCall);
 const backendCall = computed(() => store.backendCall);
 const recipient = computed(() => currentCall.value?.receiver);
 
+// State untuk countdown
+const remainingSeconds = ref(30);
+let countdownInterval: number | null = null;
+const formattedTime = computed(() => {
+    const mins = Math.floor(remainingSeconds.value / 60);
+    const secs = remainingSeconds.value % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+});
+
 // Status berdering / 'ringing' di pov caller ketika kita menelpon seseorang
 const isCallingVideo = computed(() => 
     currentCall.value?.status === 'ringing' && currentCall.value?.type === 'video'
@@ -35,6 +44,13 @@ const handleCancel = async () => {
 
 // watch status changes dari backend (rejected, cancelled, missed)
 watch(() => store.callStatus, (newStatus) => {
+    // Bersihkan countdown jika panggilan sudah diterima
+    if (newStatus === 'ongoing') {
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+        }
+    }
+
     if (newStatus === 'rejected') {
         // Penerima menolak panggilan
         setTimeout(() => {
@@ -80,6 +96,24 @@ onMounted(() => {
             }
         });
     }
+
+    // Start timer countdown 30 detik
+    countdownInterval = window.setInterval(() => {
+        if (remainingSeconds.value > 0) {
+            remainingSeconds.value--;
+        } else {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+        }
+    }, 1000);
+});
+
+// Bersihkan interval saat komponen di-unmount
+onUnmounted(() => {
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
+    }
 });
 </script>
 
@@ -91,7 +125,7 @@ onMounted(() => {
                 <!-- Avatar penerima telepon / callee -->
                 <div class="mb-5 d-flex justify-content-center">
                     <CallAvatar
-                        :photo-url="recipient?.avatar || '/media/avatars/blank.png'"
+                        :photo-url="recipient?.avatar || recipient?.profile_photo_url || recipient?.photo"
                         :display-name="recipient?.name || 'User'"
                         size="120px"
                         :is-calling="true"

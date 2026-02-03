@@ -14,6 +14,8 @@ export const useCallStore = defineStore('call', () => {
     const agoraToken = ref<string | null>(null); // token agora dari backend
     const channelName = ref<string | null>(null); // channel name dari backend
     const hasJoinedAgora = ref<boolean>(false); // apakah sudah join agora
+    const callTimeout = ref<number | null>(null); // untuk menyimpan ID timeout
+    const callTimeoutDuration = ref<number>(30); // durasi timeout dalam detik
 
     // Actions
     const setCurrentCall = (call: Call) => {
@@ -31,6 +33,7 @@ export const useCallStore = defineStore('call', () => {
     };
 
     const clearCurrentCall = () => {
+        clearCallTimeout();
         currentCall.value = null;
         callStatus.value = null;
         isInCall.value = false;
@@ -108,6 +111,17 @@ export const useCallStore = defineStore('call', () => {
         isMinimized.value = !isMinimized.value;
     };
 
+    const setCallTimeout = (timeoutId: number | null) => {
+        callTimeout.value = timeoutId;
+    };
+
+    const clearCallTimeout = () => {
+        if (callTimeout.value) {
+            clearTimeout(callTimeout.value);
+            callTimeout.value = null;
+        }
+    };
+
     return {
         // State
         currentCall,
@@ -120,6 +134,8 @@ export const useCallStore = defineStore('call', () => {
         agoraToken,
         channelName,
         hasJoinedAgora,
+        callTimeout,
+        callTimeoutDuration,
         // Actions
         setCurrentCall,
         clearCurrentCall,
@@ -134,5 +150,7 @@ export const useCallStore = defineStore('call', () => {
         setBackendCall,
         updateBackendCall,
         setHasJoinedAgora,
+        setCallTimeout,
+        clearCallTimeout,
     }
 });

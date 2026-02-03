@@ -102,6 +102,9 @@ export const usePersonalCall = () => {
             console.log('callStore.agoraToken:', callStore.agoraToken);
             console.log('callStore.channelName:', callStore.channelName);
 
+            // Start timeout selama 30 detik
+            startCallTimeout(callId, 30);
+
             return response;
         } catch (err: any) {
             console.error('❌ Gagal untuk memulai panggilan:', err);
@@ -114,6 +117,43 @@ export const usePersonalCall = () => {
         } finally {
             isLoading.value = false;
         }
+    };
+
+    const startCallTimeout = (callId: number, timeoutSeconds: number = 30) => {
+        console.log(`⏱️ Memulai timeout panggilan selama ${timeoutSeconds} detik`);
+
+        const timeoutId = window.setTimeout(async () => {
+            console.log('⏰ Timeout panggilan tercapai, tidak ada panggilan yang dijawab');
+
+            callStore.updateCallStatus('missed');
+
+            try {
+                // Batalkan panggilan lewat API
+                await cancelCall(callId);
+
+                // Notify penerima / callee via firebase
+                if (callStore.currentCall?.receiver?.id) {
+                    const calleeId = callStore.currentCall.receiver.id;
+                    const statusRef = dbRef(database, `calls/${calleeId}/status`);
+                    await set(statusRef, {
+                        status: 'missed',
+                        call_id: callId,
+                        timestamp: Date.now(),
+                    });
+                    console.log('✅ Notifikasi "missed" berhasil dikirim ke firebase');
+                }
+            } catch (error) {
+                console.error('❌ Error saat menangani timeout panggilan:', error);
+            }
+
+            // Clear timeout
+            callStore.setCallTimeout(null);
+        }, timeoutSeconds * 1000);
+
+        // Store timeout ID untuk dibersihkan nanti
+        callStore.setCallTimeout(timeoutId);
+
+        return timeoutId;
     };
 
     // Answer call (callee)
@@ -316,5 +356,6 @@ export const usePersonalCall = () => {
         rejectCall,
         cancelCall,
         endCall,
+        startCallTimeout,
     };
 };
