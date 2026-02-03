@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue';
 import { useCallStore } from '@/stores/callStore';
 import { useVideoCall } from '@/composables/useVideoCall';
 import { usePersonalCall } from '@/composables/usePersonalCall';
@@ -17,6 +17,21 @@ const { joinChannel } = useAgora();
 const incomingCall = computed(() => store.incomingCall);
 const backendCall = computed(() => store.backendCall);
 const caller = computed(() => incomingCall.value?.caller);
+
+// State untuk countdown timer
+const remainingSeconds = ref(30);
+let countdownInterval: number | null = null;
+
+// State untuk warna pulse berdassarkan countdown
+const pulseColor = computed(() => {
+    if (remainingSeconds.value >= 16) {
+        return 'rgba(177, 173, 173, 0.4)'; // Warna abu" / putih standar (30 - 16dtk)
+    } else if (remainingSeconds.value >= 6) {
+        return 'rgba(255, 165, 0, 0.5)'; // Warna oranye (15 - 6dtk)
+    } else {
+        return 'rgba(255, 77, 77, 0.6)'; // Warna merah (5 - 0dtk)
+    }
+})
 
 // Filter penting: cuman muncul kalau tipe call nya 'video'
 const isVideoCallIncoming = computed(() => 
@@ -144,12 +159,39 @@ const handleReject = async () => {
 };
 
 watch(() => store.callStatus, (newStatus) => {
+    // Bersihkan countdown jika panggilan sudah diterima
+    if (newStatus === 'ongoing' || newStatus === 'rejected' || newStatus === 'missed') {
+        if (countdownInterval) {
+            clearInterval(countdownInterval);
+        }
+    }
+    
     if (newStatus === 'cancelled') {
         // Penelpon membatalkan panggilan sebelum kita (callee / penerima) jawab
         setTimeout(() => {
             store.clearIncomingCall();
             store.clearCurrentCall();
         }, 2000);
+    }
+});
+
+// Start countdown timer saat komponen mounted
+onMounted(() => {
+    countdownInterval = window.setInterval(() => {
+        if (remainingSeconds.value > 0) {
+            remainingSeconds.value--;
+        } else {
+            if (countdownInterval) {
+                clearInterval(countdownInterval);
+            }
+        }
+    }, 1000);
+});
+
+// Cleanup countdown saat unmount
+onUnmounted(() => {
+    if (countdownInterval) {
+        clearInterval(countdownInterval);
     }
 });
 </script>
@@ -167,6 +209,7 @@ watch(() => store.callStatus, (newStatus) => {
                         :display-name="caller?.name || 'Unknown'"
                         size="100px"
                         :is-calling="true"
+                        :pulse-color="pulseColor"
                     />
                 </div>
 

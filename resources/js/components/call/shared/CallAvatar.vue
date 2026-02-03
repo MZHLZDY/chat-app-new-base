@@ -8,6 +8,7 @@ interface Props {
   size?: string;
   isCalling?: boolean;
   allowAuthFallback?: boolean;
+  pulseColor?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -16,6 +17,7 @@ const props = withDefaults(defineProps<Props>(), {
   photoUrl: '',
   displayName: '',
   allowAuthFallback: false, // Default true, tapi dimatikan oleh VoiceIncomingModal
+  pulseColor: 'rgba(177, 173, 173, 0.4)',
 });
 
 const authStore = useAuthStore();
@@ -65,8 +67,8 @@ const resolvedPhotoUrl = computed(() => {
 
 <template>
   <div class="avatar-wrapper" :style="{ width: size, height: size }">
-    <div v-if="isCalling" class="pulse-ring"></div>
-    <div v-if="isCalling" class="pulse-ring delay"></div>
+    <div v-if="isCalling" class="pulse-ring" :style="{ backgroundColor: pulseColor }"></div>
+    <div v-if="isCalling" class="pulse-ring delay" :style="{ backgroundColor: pulseColor }"></div>
 
     <div class="avatar-image-container">
       <img 
@@ -114,7 +116,6 @@ const resolvedPhotoUrl = computed(() => {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background-color: rgba(177, 173, 173, 0.4);
   opacity: 0;
   z-index: 1;
   animation: pulse-animation 2s infinite cubic-bezier(0.25, 0.8, 0.25, 1);
