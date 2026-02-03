@@ -89,6 +89,7 @@ const editModalTitle = ref("Edit Kontak");
 const isDeleteModalOpen = ref(false);
 const messageToDelete = ref<any>(null);
 const showMobileChat = ref(false);
+const searchQuery = ref("");
 const onlineUsers = ref<Set<number>>(new Set());
 const messageDrafts = ref<Record<string | number, string>>({});
 const isLightboxOpen = ref(false);
@@ -564,6 +565,18 @@ const listenToOnlineStatus = () => {
         onlineUsers.value = onlineSet;
     });
 };
+
+const filteredContacts = computed(() => {
+    if (!searchQuery.value) return contacts.value;
+    
+    const lower = searchQuery.value.toLowerCase();
+    
+    return contacts.value.filter((c: any) => {
+        const name = c.friend?.alias || c.alias?.name || c.alias || "";
+        const email = c.friend?.email || c.user?.email || c.email || "";
+        return name.toLowerCase().includes(lower) || email.toLowerCase().includes(lower);
+    });
+});
 
 const formatDateSeparator = (dateString: string): string => {
     if (!dateString) return "";
@@ -1508,6 +1521,7 @@ onUnmounted(() => {
                                 type="text"
                                 class="form-control form-control-solid px-15"
                                 placeholder="Cari kontak..."
+                                v-model="searchQuery"
                             />
                         </form>
                         <button
@@ -1530,7 +1544,7 @@ onUnmounted(() => {
                             ></span>
                         </div>
                         <div
-                            v-for="contact in contacts"
+                            v-for="contact in filteredContacts"
                             :key="contact.id"
                             @click="selectContact(contact)"
                             class="d-flex align-items-center p-3 mb-2 rounded cursor-pointer contact-item position-relative overflow-hidden"
