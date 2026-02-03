@@ -32,7 +32,7 @@ export const useVoiceCall = () => {
         if (processing.value) return;
         processing.value = true;
 
-        // 1. OPTIMISTIC UI (Tampilkan Calling Dulu)
+        // 1. Optimistic UI
         const tempCall = {
             id: 0,
             type: type,
@@ -49,74 +49,59 @@ export const useVoiceCall = () => {
         try {
             // 2. Request ke Backend
             const response = await callService.inviteCall(receiver.id, type);
-            console.log("📦 RAW Response Invite:", response); // Cek console untuk debugging
-
-            // 3. Normalisasi Data
-            // Kadang data ada di response.call, kadang di response langsung
             const callData = response.call || response; 
             const callId = callData.id || response.call_id;
 
-            // Update ID asli ke Store (PENTING)
-            if (store.currentCall) {
-                store.currentCall.id = callId; 
-            }
-
-            // 4. STRATEGI MENCARI TOKEN & CHANNEL
+            // 3. Update ID & Token
             let tokenToUse = response.token || callData.token || callData.agora_token;
             let channelToUse = response.channel_name || callData.channel_name;
 
-            // 🔥 EMERGENCY FIX: Jika Token/Channel kosong, kita GENERATE MANUAL
-            if (!tokenToUse || !channelToUse) {
-                console.warn("⚠️ Token tidak ada di response invite. Mencoba generate manual...");
-                
-                // Fallback nama channel: "call_{id}"
-                if (!channelToUse && callId) {
-                    channelToUse = `call_${callId}`;
-                }
+            // Update Store dengan data asli
+            if (store.currentCall) {
+                store.currentCall.id = callId;
+            }
 
-                // Request Token Baru
-                if (channelToUse && authStore.user?.id) {
+            // Emergency Token Generator (Jika backend tidak kirim token)
+            if (!tokenToUse) {
+                console.warn("⚠️ Token missing, generating manual...");
+                if (!channelToUse && callId) channelToUse = `call_${callId}`;
+                
+                if (channelToUse) {
                     try {
-                        const tokenResponse = await callService.generateToken(channelToUse, authStore.user.id);
-                        tokenToUse = tokenResponse.token;
-                        console.log("✅ Emergency Token Generated:", tokenToUse);
-                    } catch (tokenErr) {
-                        console.error("❌ Gagal generate emergency token:", tokenErr);
+                        const tokenRes = await callService.generateToken(channelToUse, authStore.user?.id || 0);
+                        tokenToUse = tokenRes.token;
+                    } catch (e) {
+                        console.error("Gagal generate token:", e);
                     }
                 }
             }
-
-            // Update Store dengan data final
-            if (store.currentCall) {
+            
+            // Simpan data final ke store
+            if (store.currentCall && tokenToUse && channelToUse) {
                 store.currentCall.token = tokenToUse;
                 store.currentCall.channel = channelToUse;
-                // Simpan juga data backend lengkap
                 store.setBackendCall(callData, tokenToUse, channelToUse);
             }
 
-            // 5. HARDWARE LOGIC (Join & Force Mic)
-            // Hanya lakukan ini jika kita BERHASIL dapat token/channel
+            // 4. Join Agora & Force Mic
             if (tokenToUse && channelToUse) {
                 await joinChannel(channelToUse, tokenToUse, authStore.user?.id || 0);
 
-                // Force Mic Nyala & Kamera Mati
+                // Matikan Kamera
                 if (localVideoTrack.value) await localVideoTrack.value.setEnabled(false);
                 
+                // Nyalakan Mic (Tanpa toggleAudio, langsung ke track)
                 if (localAudioTrack.value) {
                     await localAudioTrack.value.setEnabled(true);
-                    isAudioEnabled.value = true; // Paksa icon hijau
-                    console.log("🎤 Mic Caller: FORCE ON");
+                    isAudioEnabled.value = true; // Paksa update UI
+                    console.log("🎤 Mic Caller: ON");
                 }
-            } else {
-                // Jika masih gagal juga, ya sudah kita tunggu 'Accepted' saja.
-                // Jangan throw error agar UI tidak crash / tertutup.
-                console.warn("⚠️ Tidak bisa pre-join channel (Missing Credentials), menunggu call diangkat...");
             }
 
         } catch (err: any) {
-            console.error("❌ Gagal startVoiceCall:", err);
-            toast.error(err.response?.data?.message || "Gagal memulai panggilan");
+            console.error("❌ Error startVoiceCall:", err);
             store.clearCurrentCall();
+            toast.error("Gagal memulai panggilan");
         } finally {
             processing.value = false;
         }
@@ -186,7 +171,7 @@ export const useVoiceCall = () => {
         // Bersihkan UI dulu agar responsif (Optimistic UI)
         store.clearIncomingCall();
         store.clearCurrentCall();
-        await toggleAudio(false); // Matikan ringtone
+        await toggleAudio(); // Matikan ringtone
 
         try {
            // Kirim request ke backend
