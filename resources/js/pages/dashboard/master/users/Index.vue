@@ -57,6 +57,7 @@ const pageLoadTime = Date.now();
 const groupIdToEdit = ref<string | number | undefined>(undefined);
 const editModalTitle = ref("Edit Info Grup");
 const isDeleteModalOpen = ref(false);
+const messageInputRef = ref<HTMLTextAreaElement | null>(null);
 const isLeaveGroupModalOpen = ref(false);
 const isClearChatModalOpen = ref(false);
 const messageToDelete = ref<any>(null);
@@ -145,11 +146,15 @@ const fetchGroups = async () => {
 };
 
 const selectGroup = async (group: any) => {
+    // 1. Cek jika grup yang diklik sama dengan yang aktif (hindari reload)
     if (activeGroup.value?.id === group.id) return;
+
+    // 2. Simpan Draft Pesan Grup sebelumnya (jika ada)
     if (activeGroup.value) {
         chatDrafts.value[activeGroup.value.id] = newMessage.value;
     }
 
+    // 3. Reset State UI
     showMobileChat.value = true;
     activeGroup.value = group;
     messages.value = [];
@@ -175,16 +180,14 @@ const selectGroup = async (group: any) => {
     } catch (error) {
         console.error("Gagal update status read:", error);
     }
-
     setupGroupListener(group.id);
     await getMessages(group.id);
 
-    nextTick(() => {
-        const inputEl = document.querySelector(
-            'input[type="text"].form-control'
-        );
-        if (inputEl) (inputEl as HTMLElement).focus();
-    });
+    await nextTick();
+    if (messageInputRef.value) {
+        messageInputRef.value.focus();
+    }
+    scrollToBottom();
 };
 
 const closeMobileChat = () => {
@@ -197,7 +200,7 @@ onBeforeRouteLeave((to, from, next) => {
     next();
 });
 
-const filteredGroups = computed(() => {
+const filteredGroups = computed(() => {1
     if (!searchQuery.value) {
         return groups.value;
     }
@@ -1612,6 +1615,7 @@ onUnmounted(() => {
                                 "
                                 class="form-control form-control-solid me-3"
                                 placeholder="Ketik pesan..."
+                                ref="messageInputRef"
                             />
                             <button
                                 class="btn btn-primary btn-icon"

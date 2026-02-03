@@ -101,6 +101,7 @@ const isHeaderMenuOpen = ref(false);
 const isInfoModalOpen = ref(false);
 const isFriendTyping = ref(false);
 const isMuted = ref(false);
+const messageInputRef = ref<HTMLTextAreaElement | null>(null);
 const isClearChatModalOpen = ref(false);
 const openMessageMenuId = ref<number | string | null>(null);
 let typingTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -611,24 +612,22 @@ const selectContact = async (contact: any) => {
     if (activeContact.value) {
         messageDrafts.value[activeContact.value.id] = newMessage.value;
     }
-
     showMobileChat.value = true;
     activeContact.value = contact;
     globalChatStore.setActiveChat(contact.id);
     messages.value = [];
     newMessage.value = messageDrafts.value[String(contact.id)] || "";
-
     const contactIndex = contacts.value.findIndex((c) => c.id === contact.id);
     if (contactIndex !== -1) {
         contacts.value[contactIndex].unread_count = 0;
     }
+    await nextTick(); 
+    if (messageInputRef.value) {
+        messageInputRef.value.focus();
+    }
 
     await getMessages(contact.id);
-
-    nextTick(() => {
-        const input = document.querySelector("input[type='text'].form-control");
-        if (input) (input as HTMLElement).focus();
-    });
+    scrollToBottom();
 };
 
 const closeMobileChat = () => {
@@ -2481,6 +2480,7 @@ onUnmounted(() => {
                                 "
                                 class="form-control form-control-solid me-3"
                                 placeholder="Ketik pesan..."
+                                ref="messageInputRef"
                             />
                             <button
                                 class="btn btn-primary btn-icon"
