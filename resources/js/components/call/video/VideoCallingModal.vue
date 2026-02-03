@@ -49,6 +49,8 @@ watch(() => store.callStatus, (newStatus) => {
         if (countdownInterval) {
             clearInterval(countdownInterval);
         }
+        // Clear timeout
+        store.clearCallTimeout();
     }
 
     if (newStatus === 'rejected') {
@@ -85,6 +87,9 @@ onMounted(() => {
 
                 if (data.status === 'accepted') {
                     console.log('✅ Panggilan diterima! Redirecting ke VideoCallModal...');
+
+                    // Clear timeout
+                    store.clearCallTimeout();
 
                     // Update store status
                     store.updateCallStatus('ongoing');
