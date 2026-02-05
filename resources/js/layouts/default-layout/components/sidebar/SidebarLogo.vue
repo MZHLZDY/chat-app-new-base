@@ -51,10 +51,10 @@ onMounted(() => {
         <router-link to="/">
             <img v-if="layout === 'dark-sidebar' ||
                 (themeMode === 'dark' && layout === 'light-sidebar')
-                " alt="Logo" :src="setting?.logo" class="h-50px app-sidebar-logo-default" />
+                " alt="Logo" :src="setting?.logo" class="h-80px app-sidebar-logo-default" />
             <img v-if="themeMode === 'light' && layout === 'light-sidebar'" alt="Logo" :src="setting?.logo"
                 class="h-50px app-sidebar-logo-default" />
-            <img alt="Logo" :src="setting?.logo" class="h-50px app-sidebar-logo-minimize" />
+            <img alt="Logo" :src="setting?.logo" class="h-65px app-sidebar-logo-minimize" />
         </router-link>
         <!--end::Logo image-->
         <!--begin::Sidebar toggle-->

@@ -10,14 +10,14 @@ import { getAuth, signInAnonymously } from "firebase/auth";
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyC3LX1BgAv80_dxgm7rMkXYMJKde7ataSo",
-  authDomain: "chat-mti-88.firebaseapp.com",
-  databaseURL: "https://chat-mti-88-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "chat-mti-88",
-  storageBucket: "chat-mti-88.firebasestorage.app",
-  messagingSenderId: "259515011828",
-  appId: "1:259515011828:web:2f7ef40add69064d0ac4a1",
-  measurementId: "G-0PXW8RZWLG"
+  apiKey: "AIzaSyDhLDKFcdYIweRa1CYxa0ZVVXiNUesBA4c",
+  authDomain: "chat-app-6b2d7.firebaseapp.com",
+  databaseURL: "https://chat-app-6b2d7-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "chat-app-6b2d7",
+  storageBucket: "chat-app-6b2d7.firebasestorage.app",
+  messagingSenderId: "556369874866",
+  appId: "1:556369874866:web:d16dca86503ff4c5859eab",
+  measurementId: "G-LWSJR9QY7Y"
 };
 
 // Initialize Firebase
