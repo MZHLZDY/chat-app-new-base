@@ -65,6 +65,8 @@ const {
     isLoading: callProcessing,
 } = usePersonalCall();
 
+const { isAudioEnabled } = useAgora();
+
 // --- STATE UTAMA ---
 const authStore = useAuthStore();
 const page = usePage();
@@ -215,12 +217,15 @@ const {
     acceptVoiceCall,
     rejectVoiceCall,
     endVoiceCall,
+    endCallAsCaller,
+    endCallAsCallee,
     cancelVoiceCall,
     toggleAudio,
     // toggleVideo,
     handleIncomingCall,
     handleCallAccepted,
     handleCallRejected,
+    synchronizedEndCall,
     handleCallEnded,
     handleCallCancelled,
     processing: voiceProcessing,
@@ -274,24 +279,27 @@ const handleMaximize = () => {
     isMinimized.value = false;
 };
 
-// 4. Update handleEndVoiceCall agar mereset minimize juga
-// --- HANDLER END CALL (FIXED) ---
+// --- HANDLER END CALL (SIMPLE & ROBUST) ---
 const handleEndVoiceCall = () => {
-    // 1. Ambil ID ke variabel sementara
-    const callId = callStore.currentCall?.id;
-
-    // 2. Cek Validitas: Jika ID ada (tidak null/undefined/0)
+    console.log("🎤 Manual end voice call triggered");
+    
+    // Dapatkan call ID
+    const callId = 
+        callStore.currentCall?.id || 
+        callStore.backendCall?.id || 
+        callStore.incomingCall?.id;
+    
     if (callId) {
-        // Kita kirim apa adanya, karena useVoiceCall sekarang sudah bisa terima number/string
-        endVoiceCall(callId);
+        // Gunakan synchronized end call
+        synchronizedEndCall(callId);
     } else {
-        // Fallback: Jika ID entah kenapa hilang, force cleanup di lokal saja
-        console.warn("Call ID missing, forcing local cleanup.");
+        // Fallback ke cara lama
+        const { leaveChannel } = useAgora();
+        leaveChannel();
         callStore.clearCurrentCall();
+        callStore.clearIncomingCall();
+        toast.info("Panggilan berakhir");
     }
-
-    // 3. Reset tampilan
-    isMinimized.value = false;
 };
 
 // Handler video call
@@ -1465,12 +1473,31 @@ onMounted(async () => {
                                 }
                             })();
                         } else {
-                            handleCallEnded();
-                        }
-
-                        remove(statusRef);
-                        break;
-                }
+                         // VOICE CALL - Immediate response
+                         console.log("🎤 Voice call ended via Firebase");
+        
+                         // Langsung update UI tanpa delay
+                         callStore.updateCallStatus('ended');
+        
+                         // Tampilkan toast segera
+                         toast.info("Panggilan berakhir");
+        
+                         // Async cleanup (biarkan berjalan di background)
+                         setTimeout(async () => {
+                         try {
+                             const { leaveChannel } = useAgora();
+                             await leaveChannel();
+                             callStore.clearCurrentCall();
+                             callStore.clearIncomingCall();
+                           } catch (error) {
+                             console.error("Cleanup error:", error);
+                           }
+                     }, 100);
+                  }
+    
+                   remove(statusRef);
+                   break;
+                  }
             }
         });
     }
@@ -1673,7 +1700,7 @@ onUnmounted(() => {
                 v-if="showOngoingModal"
                 :remote-name="ongoingCallProps.remoteName"
                 :remote-photo="ongoingCallProps.remotePhoto"
-                :is-muted="false"
+                :is-muted="!isAudioEnabled"
                 :is-speaker-on="false"
                 @end-call="handleEndVoiceCall"
                 @minimize="callStore.toggleMinimize"

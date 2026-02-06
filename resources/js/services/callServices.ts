@@ -44,7 +44,7 @@ export const cancelCall = async (callId: number) => {
 };
 
 // Mengakhiri panggilan
-export const endCall = async (callId: number) => {
+export const endCall = async (callId: number, notifyOther: boolean) => {
     const response = await axios.post('/call/end', {
         call_id: callId
     });

@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { Minimize2 } from 'lucide-vue-next'; 
 import { themeMode } from "@/layouts/default-layout/config/helper"; 
 import { useAuthStore } from "@/stores/auth"; 
+// --- IMPORT USEAGORA & STORE ---
+import { useAgora } from "@/composables/useAgora";
+import { useCallStore } from "@/stores/callStore";
+import { usePersonalCall } from "@/composables/usePersonalCall";
 import CallAvatar from '../shared/CallAvatar.vue';
 import CallControls from '../shared/CallControls.vue';
 import CallTimer from '../shared/CallTimer.vue';
@@ -27,7 +31,23 @@ const emit = defineEmits([
 ]);
 
 const currentThemeMode = computed(() => themeMode.value);
-const authStore = useAuthStore(); 
+const authStore = useAuthStore();
+const callStore = useCallStore();
+const { endCall } = usePersonalCall();
+
+// --- INISIALISASI USEAGORA ---
+const { 
+  joinChannel,
+  leaveChannel,
+  toggleAudio,
+  toggleVideo,
+  remoteUsers,
+  remoteAudioTracks,
+  localAudioTrack,
+  localVideoTrack,
+  isAudioEnabled,
+  isJoined
+} = useAgora();
 
 // Data User Caller (Kita)
 const localPhoto = computed(() => authStore.userPhotoUrl || null);
@@ -37,19 +57,187 @@ const isCameraOn = ref(false);
 const simulatedVolume = ref(0);
 let audioInterval: number | null = null;
 
+// Cek apakah voice call aktif
+const isVoiceCallActive = computed(() => 
+    callStore.currentCall?.type === 'voice' && 
+    callStore.callStatus === 'ongoing'
+);
+
+// Data call dari store
+const currentCall = computed(() => callStore.currentCall);
+const backendCall = computed(() => callStore.backendCall);
+
+// Join channel saat modal muncul
+onMounted(async () => {
+    console.log('🎤 VoiceCallModal mounted');
+    console.log('📦 isVoiceCallActive:', isVoiceCallActive.value);
+    console.log('📦 currentUser ID:', authStore.user?.id);
+    console.log('📦 agoraToken:', callStore.agoraToken ? 'AVAILABLE' : 'NULL');
+    console.log('📦 channelName:', callStore.channelName);
+
+    if (!isVoiceCallActive.value) {
+        console.warn('⚠️ Voice call tidak aktif, skip join channel');
+        return;
+    }
+
+    if (!callStore.agoraToken || !callStore.channelName) {
+        console.error('❌ Token atau channel name tidak ada!');
+        console.error('📦 agoraToken:', callStore.agoraToken);
+        console.error('📦 channelName:', callStore.channelName);
+        return;
+    }
+
+    if (!authStore.user?.id) {
+        console.error('❌ User ID tidak ditemukan!');
+        return;
+    }
+
+    // Cek apakah sudah join
+    if (isJoined.value || callStore.hasJoinedAgora) {
+        console.log('✅ Sudah bergabung ke channel Agora, skip joinChannel');
+        // Pastikan microphone tetap ON
+        if (localAudioTrack.value) {
+            await localAudioTrack.value.setEnabled(true);
+            console.log('🎤 Microphone enabled');
+        }
+        return;
+    }
+
+    try {
+        console.log('🚀 Bergabung ke Agora Channel untuk voice call...');
+        console.log('📦 Channel:', callStore.channelName);
+        console.log('📦 UID:', authStore.user.id);
+
+        await joinChannel(
+            callStore.channelName,
+            callStore.agoraToken,
+            Number(authStore.user.id)
+        );
+
+        console.log('✅ Berhasil bergabung ke channel Agora untuk voice call');
+        
+        // Voice call: matikan kamera, nyalakan microphone
+        if (localVideoTrack.value) {
+            await localVideoTrack.value.setEnabled(false);
+            console.log('📹 Camera disabled untuk voice call');
+        }
+        
+        if (localAudioTrack.value) {
+            await localAudioTrack.value.setEnabled(true);
+            console.log('🎤 Microphone enabled untuk voice call');
+        }
+        
+    } catch (error: any) {
+        console.error('❌ Gagal bergabung ke channel Agora:', error);
+        
+        if (error.code === 'UID_CONFLICT') {
+            alert('⚠️ Gagal bergabung ke panggilan: UID sudah digunakan di channel ini.');
+        }
+    }
+
+    startSimulation();
+    subscribeRemoteAudio();
+});
+
 const startSimulation = () => {
-  audioInterval = window.setInterval(() => {
-    const randomVol = Math.random() > 0.5 ? Math.random() * 40 : 5; 
-    simulatedVolume.value = randomVol;
-  }, 150);
+    audioInterval = window.setInterval(() => {
+        const randomVol = Math.random() > 0.3 ? Math.random() * 60 : 10; 
+        simulatedVolume.value = randomVol;
+    }, 200);
 };
 
-onMounted(() => {
-  startSimulation();
+const subscribeRemoteAudio = () => {
+    if (remoteUsers.value.length > 0) {
+        const user = remoteUsers.value[0];
+        if (user && user.audioTrack) {
+            console.log("🔊 VoiceCallModal: Subscribing to remote audio track");
+            if (user.audioTrack.setVolume) {
+                user.audioTrack.setVolume(100);
+            }
+            
+            const uidStr = user.uid.toString();
+            const audioTrack = remoteAudioTracks.value.get(uidStr);
+            if (audioTrack) {
+                console.log('🎤 VoiceCallModal: Found remote audio track, setting volume...');
+                audioTrack.play();
+                if (audioTrack.setVolume) {
+                    audioTrack.setVolume(100);
+                }
+            }
+        }
+    }
+};
+
+// Handle end call seperti di video call
+const handleEndCall = async () => {
+    console.log('🔚 Tombol End Call diklik di VoiceCallModal');
+
+    if (!backendCall.value) {
+        console.warn('⚠️ backendCall tidak ada, melakukan cleanup secara paksa');
+        await leaveChannel();
+        callStore.clearCurrentCall();
+        return;
+    }
+
+    try {
+        // Leave Agora dulu
+        console.log('👋 Meninggalkan channel Agora...');
+        await leaveChannel();
+
+        // Hit backend API
+        console.log('📞 Memanggil API /call/end...')
+        await endCall(backendCall.value.id);
+
+        console.log('✅ Panggilan berhasil diakhiri');
+
+    } catch (error) {
+        console.error('Gagal untuk mengakhiri panggilan:', error);
+        
+        // Cleanup secara paksa
+        callStore.clearCurrentCall();
+    }
+};
+
+// Handle toggle mute
+const handleToggleMute = () => {
+    toggleAudio();
+};
+
+// Watch remote user (auto end jika remote disconnect)
+watch(() => remoteUsers.value.length, (count, oldCount) => {
+    console.log(`👥 Hitungan remote users berubah: ${oldCount} -> ${count}`);
+    
+    if (oldCount > 0 && count === 0 && isVoiceCallActive.value) {
+        console.log('Remote user disconnect, panggilan otomatis ditutup dalam 5 detik...');
+        setTimeout(() => {
+            if (remoteUsers.value.length === 0) {
+                console.log('Otomatis menutup panggilan (Remote disconnect)');
+                handleEndCall();
+            }
+        }, 5000);
+    }
+});
+
+// Watch untuk remote users
+watch(() => remoteUsers.value.length, (count, oldCount) => {
+    console.log(`👥 VoiceCallModal - Remote users count: ${oldCount} -> ${count}`);
+    
+    if (count > 0) {
+        subscribeRemoteAudio();
+    }
+});
+
+// Watch untuk remote audio tracks
+watch(() => remoteAudioTracks.value.size, (size) => {
+    console.log('🎤 VoiceCallModal - Remote audio tracks count:', size);
+    if (size > 0) {
+        subscribeRemoteAudio();
+    }
 });
 
 onUnmounted(() => {
-  if (audioInterval) clearInterval(audioInterval);
+    if (audioInterval) clearInterval(audioInterval);
+    console.log('🎤 VoiceCallModal unmounted');
 });
 </script>
 
