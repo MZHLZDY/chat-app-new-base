@@ -1,19 +1,20 @@
 <script setup lang="ts">
-import { computed, watch, onMounted } from 'vue'; 
+import { computed, watch, onMounted, onUnmounted, ref } from 'vue'; 
 import { useCallStore } from '@/stores/callStore';
 import { useVideoCall } from '@/composables/useVideoCall';
 import { usePersonalCall } from '@/composables/usePersonalCall';
 import { useAgora } from '@/composables/useAgora';
 import { useAuthStore } from '@/stores/authStore';
 import VideoPlayer from './VideoPlayer.vue';
-import CallTimer from '../shared/CallTimer.vue';
 import CallControls from '../shared/CallControls.vue';
+import { MicOff } from 'lucide-vue-next';
 import { usePage } from '@inertiajs/vue3';
 
 const store = useCallStore();
 const page = usePage();
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
+const localVideoOrientation = ref<'landscape' | 'portrait'>('landscape');
 
 const { toggleAudio, toggleVideo } = useVideoCall();
 const { endCall } = usePersonalCall();
@@ -156,6 +157,52 @@ onMounted(async () => {
     }
 });
 
+// Durasi panggilan
+const durationSeconds = ref(0);
+let timerInterval: any = null;
+
+const formattedDuration = computed(() => {
+    const m = Math.floor(durationSeconds.value / 60).toString().padStart(2, '0');
+    const s = (durationSeconds.value % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+});
+
+// Fungsi update timer
+const updateTimer = () => {
+    if (currentCall.value?.startedAt) {
+        // Hitung sesisih waktu sekarang sampai waktu mulai
+        const startTime = new Date(currentCall.value.startedAt).getTime();
+        const now = Date.now();
+        const diff = Math.floor((now - startTime) / 1000);
+
+        // Pastikan tidak berkurang / minus
+        durationSeconds.value = diff > 0 ? diff : 0;
+    } else {
+        durationSeconds.value++
+    }
+}
+
+// Memulai durasi ketika panggilan berlangsung
+watch(() => isVideoCallActive.value, (active) => {
+    if (active) {
+        durationSeconds.value = 0;
+        timerInterval = setInterval(updateTimer, 1000);
+    } else {
+        if (timerInterval) clearInterval(timerInterval);
+    }
+}, { immediate: true });
+
+onUnmounted(() => {
+    if (timerInterval) clearInterval(timerInterval);
+});
+
+// Deteksi remote mute untuk trigger animasi dynamic island
+const isRemoteMuted = computed(() => {
+    if (!remoteUser.value) return false;
+    // Kalau track audionya null / undefined, kita anggap dia mute
+    return !remoteUser.value.audioTrack;
+});
+
 const handleEndCall = async () => {
     console.log('🔚 Tombol End Call diklik');
 
@@ -253,6 +300,7 @@ watch(() => remoteVideoTracks.value.size, (size) => {
                     :uid="Number(remoteUser.uid)"
                     :user-name="remoteUser.name || 'User'"
                     :is-local="false"
+                    :hide-name-label="true"
                 />
                 <div v-else class="waiting-state">
                     <p class="text-white">Menunggu koneksi...</p>
@@ -260,7 +308,7 @@ watch(() => remoteVideoTracks.value.size, (size) => {
             </div>
 
             <!-- Local video (floating kecil) -->
-            <div class="local-video-wrapper">
+            <div class="local-video-wrapper" :class="localVideoOrientation">
                 <VideoPlayer
                     v-if="currentUser"
                     :video-track="localVideoTrack"
@@ -268,6 +316,7 @@ watch(() => remoteVideoTracks.value.size, (size) => {
                     :uid="currentUser.id"
                     :user-name="currentUser.name"
                     :is-local="true"
+                    @orientation-detected="(o) => localVideoOrientation = o"
                 />
             </div>
 
@@ -278,6 +327,28 @@ watch(() => remoteVideoTracks.value.size, (size) => {
                     <CallTimer
                         :start-time="currentCall?.startedAt"
                     />
+                </div>
+
+                <!-- Dynamic island -->
+                <div class="dynamic-header">
+                    <div class="island name-island" :class="{ 'is-muted': isRemoteMuted }">
+
+                        <span class="remote-name text-truncate">
+                            {{ remoteUser?.name || 'Menghubungkan...' }}
+                        </span>
+
+                        <Transition name="slide-icon">
+                            <div v-if="isRemoteMuted" class="icon-wrapper">
+                                <MicOff :size="14" class="text-red-400"/>
+                            </div>
+                        </Transition>
+
+                    </div>
+
+                    <div class="island timer-island">
+                        <div class="rec-dot"></div>
+                        <span class="timer-text">{{ formattedDuration }}</span>
+                    </div>
                 </div>
 
                 <!-- kontrol dibawah (seperti button camera, mic, dll yang ada di dock bawah) -->
@@ -309,10 +380,54 @@ watch(() => remoteVideoTracks.value.size, (size) => {
     z-index: 9998;
 }
 
-/* remote video (full screen) */
+/* remote video */
+.remote-video-wrapper :deep(video) {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important; /* KUNCI: Jangan di-crop! */
+    position: static !important;
+}
+
 .remote-video-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100dvh;
+
+    /* Background transparan gelap + blur */
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Komponen player */
+.main-remote-video {
     width: 100%;
     height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+:deep(.video-player-container),
+:deep(.video-feed),
+:deep(.video-feed > div) {
+    /* Reset ukuran biar ikut wrapper */
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: static !important;
+    background: transparent !important;
 }
 
 .waiting-state {
@@ -355,17 +470,66 @@ watch(() => remoteVideoTracks.value.size, (size) => {
 }
 
 /* Local video (floating dipojok kanan atas) */
+.local-video-wrapper :deep(video) {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important; /* KUNCI: Penuhin kotak! */
+    position: static !important;
+    border-radius: 12px !important; /* Ikut wrapper */
+}
+
 .local-video-wrapper {
     position: absolute;
     top: 20px;
     right: 20px;
-    width: 180px;
-    height: 240px;
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     border: 2px solid rgba(255, 255, 255, 0.1);
     z-index: 10;
+    transition: all 0.3s ease;
+}
+
+/* Orientasi landscape untuk kamera laptop / pc */
+.local-video-wrapper.landscape {
+    width: clamp(360px, 25vw, 240px);
+    aspect-ratio: 16/9;
+}
+
+/* Orientasi portrait untuk kamera hp */
+.local-video-wrapper.portrait {
+    width: clamp(140px, 15vw, 180px);
+    aspect-ratio: 9/16;
+}
+
+/* Responsive - Tablet */
+@media (max-width: 768px) {
+    .local-video-wrapper.landscape {
+        width: clamp(140px, 20vw, 180px);
+        top: 15px;
+        right: 15px;
+    }
+    
+    .local-video-wrapper.portrait {
+        width: clamp(100px, 15vw, 130px);
+        top: 15px;
+        right: 15px;
+    }
+}
+
+/* Responsive - Mobile */
+@media (max-width: 480px) {
+    .local-video-wrapper.landscape {
+        width: clamp(100px, 25vw, 140px);
+        top: 10px;
+        right: 10px;
+    }
+    
+    .local-video-wrapper.portrait {
+        width: clamp(80px, 20vw, 110px);
+        top: 10px;
+        right: 10px;
+    }
 }
 
 /* Animasi */
@@ -377,5 +541,66 @@ watch(() => remoteVideoTracks.value.size, (size) => {
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
+}
+
+/* Wrapper Overlay biar bisa klik tombol tapi tembus pandang */
+.call-ui-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; /* Biar bisa klik video di belakangnya */
+}
+.call-ui-overlay > * { pointer-events: auto; } /* Tombol & Island tetep bisa diklik */
+
+/* Posisi Island di Kiri Atas */
+.dynamic-header {
+    position: absolute;
+    top: 20px; left: 20px;
+    display: flex; align-items: center; gap: 8px;
+    z-index: 50;
+    padding-top: env(safe-area-inset-top); /* Aman dari poni HP */
+}
+
+/* Style Dasar Kotak (Pill) */
+.island {
+    height: 36px;
+    display: flex; align-items: center; padding: 0 14px;
+    background: rgba(20, 20, 20, 0.65); /* Gelap Transparan */
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    color: white; font-weight: 600; font-size: 0.9rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); /* Animasi smooth */
+}
+
+/* Spesifik: Island Nama */
+.name-island { gap: 0; max-width: 200px; }
+.name-island.is-muted { 
+    background: rgba(40, 20, 20, 0.8); /* Agak merah kalau mute */
+    border-color: rgba(255, 100, 100, 0.2);
+}
+.remote-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Spesifik: Island Timer */
+.timer-island { gap: 8px; min-width: 70px; justify-content: center; font-variant-numeric: tabular-nums; }
+.rec-dot { width: 6px; height: 6px; background: #ef4444; border-radius: 50%; animation: blink 2s infinite; }
+
+/* Animasi Kedip Rec Dot */
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+/* Style icon permanen */
+.icon-wrapper {
+    display: flex;
+    align-items: center;
+    margin-left: 10px;
+}
+
+/* Animasi Icon Mic Geser (Sliding) */
+.slide-icon-enter-active, .slide-icon-leave-active {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    overflow: hidden; max-width: 20px; opacity: 1; margin-left: 10px;
+}
+.slide-icon-enter-from, .slide-icon-leave-to {
+    max-width: 0; opacity: 0; margin-left: 0;
 }
 </style>

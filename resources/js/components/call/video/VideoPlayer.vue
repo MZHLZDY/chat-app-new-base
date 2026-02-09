@@ -8,18 +8,50 @@ const props = defineProps<{
     uid: string | number; // ID user
     userName: string // Nama user buat tabel
     isLocal?: boolean // mirror effect klo video itu kita sendiri
+    hideNameLabel?: boolean // Sembunyiin label nama user
 }>();
 
-// Bikin ID elemen yang unik biar ga bentrok (contoh 'player-101', 'player-202')
+// Definisikan emit
+const emit = defineEmits<{
+    orientationDetected: [orientation: 'landscape' | 'portrait']
+}>();
+
 const playerId = `player-${props.uid}`;
 
 // Fungsi untuk play video
 const playVideo = () => {
     if (props.videoTrack) {
-        // Tunggu dom siap dulu
         nextTick(() => {
-            // play video di dalam div dengan ID ini
             props.videoTrack.play(playerId);
+
+            // Detect orientation dari video element (khusus local video)
+            if (props.isLocal) {
+                setTimeout(() => {
+                    const container = document.getElementById(playerId);
+                    const videoElement = container?.querySelector('video') as HTMLVideoElement;
+
+                    if (videoElement) {
+                        const checkDimensions = () => {
+                            const width = videoElement.videoWidth;
+                            const height = videoElement.videoHeight;
+
+                            if (width > 0 && height > 0) {
+                                const orientation = width > height ? 'landscape' : 'portrait';
+                                emit('orientationDetected', orientation);
+                                console.log(`📐 Video dimensions: ${width}x${height} (${orientation})`);
+                            }
+                        };
+
+                        // Check immediately jika sudah loaded
+                        if (videoElement.videoWidth > 0) {
+                            checkDimensions();
+                        } else {
+                            // Atau tunggu metadata loaded
+                            videoElement.addEventListener('loadedmetadata', checkDimensions);
+                        }
+                    }
+                }, 500); // Delay untuk ensure DOM ready
+            }
         });
     }
 };
@@ -67,7 +99,7 @@ onUnmounted(() => {
         ></div>
 
         <!-- Label nama user -->
-        <div class="user-label">
+        <div v-if="!isLocal && !hideNameLabel" class="user-label">
             <span class="fw-bold text-white">{{ userName }}</span>
         </div>
 
