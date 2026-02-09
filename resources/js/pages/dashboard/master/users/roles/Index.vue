@@ -225,7 +225,7 @@ const {
     handleIncomingCall,
     handleCallAccepted,
     handleCallRejected,
-    synchronizedEndCall,
+    // synchronizedEndCall,
     handleCallEnded,
     handleCallCancelled,
     processing: voiceProcessing,

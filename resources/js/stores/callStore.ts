@@ -16,6 +16,7 @@ export const useCallStore = defineStore('call', () => {
     const hasJoinedAgora = ref<boolean>(false); // apakah sudah join agora
     const callTimeout = ref<number | null>(null); // untuk menyimpan ID timeout
     const callTimeoutDuration = ref<number>(30); // durasi timeout dalam detik
+    const isLocalEnd = ref<boolean>(false);
 
     // Actions
     const setCurrentCall = (call: Call) => {
@@ -51,6 +52,10 @@ export const useCallStore = defineStore('call', () => {
     const clearIncomingCall = () => {
         incomingCall.value = null;
         hasJoinedAgora.value = false;
+    };
+
+    const resetLocalEnd = () => {
+        isLocalEnd.value = false;
     };
 
     const updateCallStatus = (status: CallStatus) => {
@@ -136,11 +141,13 @@ export const useCallStore = defineStore('call', () => {
         hasJoinedAgora,
         callTimeout,
         callTimeoutDuration,
+        isLocalEnd,
         // Actions
         setCurrentCall,
         clearCurrentCall,
         setIncomingCall,
         clearIncomingCall,
+        resetLocalEnd,
         updateCallStatus,
         setInCall,
         addRemoteUser,
