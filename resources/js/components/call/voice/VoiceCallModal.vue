@@ -67,6 +67,9 @@ const isVoiceCallActive = computed(() =>
 const currentCall = computed(() => callStore.currentCall);
 const backendCall = computed(() => callStore.backendCall);
 
+// Fungsi dari call timer
+const callStartTime = ref<Date | undefined>(undefined);
+
 // Join channel saat modal muncul
 onMounted(async () => {
     console.log('🎤 VoiceCallModal mounted');
@@ -95,6 +98,10 @@ onMounted(async () => {
     // Cek apakah sudah join
     if (isJoined.value || callStore.hasJoinedAgora) {
         console.log('✅ Sudah bergabung ke channel Agora, skip joinChannel');
+        // Untuk mulai timer
+        if (!callStartTime.value) {
+            callStartTime.value = new Date(); 
+        }
         // Pastikan microphone tetap ON
         if (localAudioTrack.value) {
             await localAudioTrack.value.setEnabled(true);
@@ -113,6 +120,8 @@ onMounted(async () => {
             callStore.agoraToken,
             Number(authStore.user.id)
         );
+
+        callStartTime.value = new Date(); // nyalakan timer
 
         console.log('✅ Berhasil bergabung ke channel Agora untuk voice call');
         
@@ -250,7 +259,7 @@ onUnmounted(() => {
         <div class="header-pill">
           <span class="recording-dot"></span>
           
-          <CallTimer />
+          <CallTimer :start-time="callStartTime" />
           
           <div class="separator"></div>
 

@@ -1,4 +1,5 @@
 import { ref, watch } from "vue";
+import axios from "axios";
 import { useCallStore } from "@/stores/callStore";
 import { useAuthStore } from "@/stores/auth";
 import { useAgora } from "./useAgora";
@@ -7,6 +8,7 @@ import type { CallType } from "@/types/call";
 import { toast } from "vue3-toastify";
 
 export const useVoiceCall = () => {
+    const callStore = useCallStore();
     const store = useCallStore();
     const authStore = useAuthStore();
     
@@ -304,69 +306,58 @@ export const useVoiceCall = () => {
         } catch (error) {
           console.error("Gagal reject di backend:", error);
         }
+        toast.info("Panggilan ditolak");
     };
 
-    const endVoiceCall = async (callId: string | number | undefined, notifyOther: boolean = true) => {
-    try {
-        if (!callId) {
-            console.warn('⚠️ No call ID provided, performing local cleanup');
-            await localCleanupOnly();
-            return;
+    const endVoiceCall = async (callId?: number | null) => {
+        console.log('🛑 FORCE STOP: Memulai prosedur pengakhiran panggilan...');
+
+        // 1. AMBIL ID DARI PARAM ATAU STORE SEBELUM DIHAPUS
+        const targetCallId = callId || callStore.currentCall?.id;
+        const wasInCall = !!store.currentCall;
+
+        // 2. [INSTANT UI UPDATE] Bersihkan State Lokal DULUAN
+        // Ini yang bikin modal langsung hilang tanpa nunggu loading
+        callStore.clearCurrentCall(); 
+        
+        try {
+            // 3. [BACKGROUND] Matikan Koneksi Agora
+            // Kita tidak pakai 'await' agar tidak memblokir kode (Fire & Forget), 
+            // atau pakai await tapi UI sudah bersih jadi user tidak sadar.
+            await leaveChannel(); 
+            console.log('🔌 Agora connection terminated.');
+
+            // 4. [BACKGROUND] Hit API Backend
+            // Validasi dihapus: Pokoknya kalau ada ID, tembak API end.
+            if (targetCallId) {
+                console.log(`📡 Sending API End Call for ID: ${targetCallId}`);
+                // Tidak perlu await jika kita tidak peduli responnya, 
+                // tapi sebaiknya await di dalam try-catch background
+                await axios.post(`/api/calls/${targetCallId}/end`);
+                console.log('✅ API End Call success.');
+            } else {
+                console.warn('⚠️ No Call ID found to hit API, but local cleanup is done.');
+            }
+            if (wasInCall) {
+                toast.info("Anda mengakhiri panggilan");
+            }
+
+        } catch (err: any) {
+            // Error di sini tidak akan mengganggu user karena UI sudah tertutup
+            console.error('⚠️ Error during background cleanup:', err);
         }
-        
-        const numericCallId = Number(callId);
-        console.log('❌ Mengakhiri voice call ID:', numericCallId);
-        
-        // 1. Tentukan peran
-        const isCaller = store.currentCall?.caller?.id === authStore.user?.id;
-        console.log('🎭 Role:', isCaller ? 'Caller' : 'Callee');
-        
-        // 2. Langsung update UI state (Optimistic UI)
-        store.updateCallStatus('ended');
-        
-        // 3. Leave Agora Channel
-        console.log('👋 Leaving Agora channel...');
-        await leaveChannel();
-        console.log('✅ Left Agora channel');
-        
-        // 4. Kirim ke backend HANYA jika perlu notifikasi
-        if (notifyOther) {
-            console.log('📤 Notifying other party...');
-            await callService.endCall(numericCallId, notifyOther);
-            console.log('✅ Notification sent');
-        }
-        
-        // 5. Tunda toast untuk sinkronisasi
-        // Tunggu sebentar agar server punya waktu mengirim notifikasi ke pihak lain
-        setTimeout(() => {
-            toast.info("Panggilan berakhir");
-            
-            // 6. Clear store setelah toast muncul
-            setTimeout(() => {
-                store.clearCurrentCall();
-                store.clearIncomingCall();
-            }, 500);
-        }, 800); // Delay 800ms untuk sinkronisasi
-        
-    } catch (error: any) {
-        console.error('❌ Error endVoiceCall:', error);
-        
-        // Fallback cleanup
-        await localCleanupOnly();
-        toast.error("Gagal mengakhiri panggilan");
-    }
-};
+    };
 
     // Fungsi baru: End call sebagai caller
     const endCallAsCaller = async (callId: string | number) => {
         console.log('👑 Ending call as CALLER');
-        return await endVoiceCall(callId, true); // Notify callee
+        return await endVoiceCall(Number(callId)); // Notify callee
     };
 
     // Fungsi baru: End call sebagai callee
     const endCallAsCallee = async (callId: string | number) => {
         console.log('📞 Ending call as CALLEE');
-        return await endVoiceCall(callId, true); // Notify caller
+        return await endVoiceCall(Number(callId)); // Notify caller
     };
 
     // Fungsi baru: Local cleanup tanpa notify
@@ -487,6 +478,7 @@ export const useVoiceCall = () => {
             
             store.updateCallStatus('ongoing');
             store.setInCall(true);
+            toast.success("Terhubung");
 
             // Pastikan microphone menyala setelah call diterima
             setTimeout(async () => {
@@ -505,8 +497,8 @@ export const useVoiceCall = () => {
     
     const handleCallRejected = () => {
         console.log('🚫 handleCallRejected dipanggil');
-        toast.info("Panggilan ditolak");
         store.clearCurrentCall();
+        toast.info("Panggilan ditolak");
     };
 
     // Fungsi baru: Synchronized end call untuk kedua pihak
@@ -545,10 +537,7 @@ export const useVoiceCall = () => {
         // 5. Kirim ke backend
         await callService.endCall(numericCallId, true);
         
-        // 6. Tampilkan toast BERSAMAAN (tanpa delay)
-        toast.info("Panggilan berakhir");
-        
-        // 7. Clear store
+        // 6. Clear store
         setTimeout(() => {
             store.clearCurrentCall();
             store.clearIncomingCall();
@@ -562,10 +551,12 @@ export const useVoiceCall = () => {
 };
 
     const handleCallEnded = async (event?: any) => {
-    console.log('❌ Voice call handleCallEnded dipanggil', event);
+        console.log('❌ Voice call handleCallEnded dipanggil', event);
+
+        
     
-    // 1. Langsung update UI state
-    store.updateCallStatus('ended');
+        // 1. Langsung update UI state
+        store.updateCallStatus('ended'); 
     
     // 2. Cleanup Agora
     try {
@@ -575,9 +566,13 @@ export const useVoiceCall = () => {
     } catch (error) {
         console.error('❌ Error leaving Agora channel:', error);
     }
-    
-    // 3. Tampilkan toast segera
-    toast.info("Panggilan berakhir");
+
+        // 3. Toastnya
+        if (!store.currentCall && !store.incomingCall) {
+            console.log("Call store empty, assuming local end. Skipping toast.");
+            return; 
+        }
+        toast.info("Panggilan diakhiri oleh lawan bicara");
     
     // 4. Clear store dengan delay
     setTimeout(() => {

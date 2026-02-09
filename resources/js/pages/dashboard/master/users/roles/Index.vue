@@ -280,26 +280,16 @@ const handleMaximize = () => {
 };
 
 // --- HANDLER END CALL (SIMPLE & ROBUST) ---
-const handleEndVoiceCall = () => {
-    console.log("🎤 Manual end voice call triggered");
+const handleEndVoiceCall = async () => {
+    // Ambil ID dari incomingCall (saat ringing) atau currentCall (saat ongoing)
+    // Prioritas: Current Call (Ongoing) -> Incoming Call (Ringing)
+    const callId = callStore.currentCall?.id || callStore.incomingCall?.id;
     
-    // Dapatkan call ID
-    const callId = 
-        callStore.currentCall?.id || 
-        callStore.backendCall?.id || 
-        callStore.incomingCall?.id;
-    
-    if (callId) {
-        // Gunakan synchronized end call
-        synchronizedEndCall(callId);
-    } else {
-        // Fallback ke cara lama
-        const { leaveChannel } = useAgora();
-        leaveChannel();
-        callStore.clearCurrentCall();
-        callStore.clearIncomingCall();
-        toast.info("Panggilan berakhir");
-    }
+    console.log('📞 User pressed End Call. Target ID:', callId);
+
+    // Langsung panggil fungsi force stop tadi
+    // Tidak perlu cek "if callStore.currentCall", langsung eksekusi saja.
+    await endVoiceCall(callId);
 };
 
 // Handler video call
