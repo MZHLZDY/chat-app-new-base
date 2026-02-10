@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { themeMode } from "@/layouts/default-layout/config/helper"; 
 import { PhoneOff } from 'lucide-vue-next'; // Icon telepon tutup
 import CallAvatar from '../shared/CallAvatar.vue';
+import { useCallStore } from '@/stores/callStore';
 
 interface Props {
   calleeName: string;
@@ -10,6 +11,9 @@ interface Props {
   // Status bisa: 'calling', 'ringing', 'rejected', 'busy', 'no-answer'
   callStatus: string; 
 }
+
+const callStore = useCallStore();
+const store = useCallStore();
 
 const props = withDefaults(defineProps<Props>(), {
   callStatus: 'calling',
@@ -59,7 +63,7 @@ const isErrorStatus = computed(() => {
       </div>
 
       <div class="info-section">
-        <h2 class="callee-name">{{ props.calleeName }}</h2>
+        <h1 class="callee-name">{{ props.calleeName }}</h1>
         
         <transition name="fade" mode="out-in">
           <p 
@@ -68,8 +72,11 @@ const isErrorStatus = computed(() => {
             :class="{ 'status-error': isErrorStatus }"
           >
             {{ statusText }}
-          </p>
+          </p>  
         </transition>
+        <h4 v-if="props.callStatus === 'calling' || props.callStatus === 'ringing'" class="call-timeout">
+           Ditutup dalam {{ store.timerCount }} detik 
+        </h4>
       </div>
 
       <div class="action-section">
@@ -155,6 +162,19 @@ const isErrorStatus = computed(() => {
 
 .dark-mode .status-text {
   color: white;
+}
+
+.call-timeout {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  color: rgb(247, 133, 3);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.dark-mode .call-timeout {
+  color: rgb(247, 190, 3);
 }
 
 /* Modifikasi warna teks jika ditolak */

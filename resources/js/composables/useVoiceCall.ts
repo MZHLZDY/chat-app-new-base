@@ -147,6 +147,11 @@ export const useVoiceCall = () => {
         
         store.setCurrentCall(tempCall as any);
         store.updateCallStatus('calling' as any);
+        // Jika 30 detik tidak diangkat, otomatis cancel
+        store.startCallTimeout(() => {
+            console.log("⏰ Timeout outgoing call (Caller side)");
+            cancelVoiceCall(); 
+        });
 
         try {
             // 2. Request ke Backend
@@ -161,6 +166,8 @@ export const useVoiceCall = () => {
             if (store.currentCall) {
                 store.currentCall.id = callId; 
             }
+
+            
 
             // 4. STRATEGI MENCARI TOKEN & CHANNEL
             let tokenToUse = response.token || callData.token || callData.agora_token;
@@ -236,6 +243,8 @@ export const useVoiceCall = () => {
 
     // Ubah tipe parameter jadi string | number agar fleksibel
     const acceptVoiceCall = async () => {
+        store.clearCallTimeout(); // Stop Timeout
+
         if (!store.incomingCall) return;
         const callId = store.incomingCall.id;
         
@@ -288,6 +297,8 @@ export const useVoiceCall = () => {
     };
 
     const rejectVoiceCall = async () => {
+        store.clearCallTimeout(); // Stop Timeout
+
        // Pastikan ada data incomingCall
        if (!store.incomingCall) {
           console.error("Tidak ada panggilan masuk untuk ditolak");
@@ -308,7 +319,7 @@ export const useVoiceCall = () => {
         } catch (error) {
           console.error("Gagal reject di backend:", error);
         }
-        toast.info("Panggilan ditolak");
+        toast.info("Anda menolak panggilan ini");
     };
 
    // resources/js/composables/useVoiceCall.ts
@@ -329,7 +340,7 @@ export const useVoiceCall = () => {
         
         // 3. Toast Lokal
         if (wasInCall) {
-            toast.info("Anda mengakhiri panggilan");
+            toast.info("Anda mengakhiri panggilan ini");
         }
 
         // 4. Cleanup Background & API
@@ -384,6 +395,7 @@ export const useVoiceCall = () => {
     };
 
     const cancelVoiceCall = async () => {
+        store.clearCallTimeout(); // Stop Timeout
         if (!store.currentCall) return;
 
         try {
@@ -393,6 +405,9 @@ export const useVoiceCall = () => {
         } finally {
             store.clearCurrentCall();
             store.updateCallStatus('ended');
+            toast.info("Anda membatalkan panggilan ini", {
+                autoClose: 3000,
+            });
         }
     };
 
@@ -470,9 +485,19 @@ export const useVoiceCall = () => {
         } else {
             console.log("⚠️ Sedang dalam panggilan, mengabaikan panggilan baru.");
         }
+        store.startCallTimeout(() => {
+            console.log("⏰ Incoming call timeout (No Answer)");
+            // Bersihkan UI incoming
+            store.clearIncomingCall();
+            toast.info("Panggilan tidak terjawab");
+            
+            // Opsional: Anda bisa memanggil API reject di sini jika mau
+            // tapi biasanya sisi penelpon sudah cancel duluan.
+        });
     };
 
     const handleCallAccepted = async (event: any) => {
+        store.clearCallTimeout(); // Stop timeout
         console.log('✅ Voice call handleCallAccepted triggered', event);
 
         const rawData = event.call || event; 
@@ -511,53 +536,53 @@ export const useVoiceCall = () => {
     };
 
     // Fungsi baru: Synchronized end call untuk kedua pihak
-//     const synchronizedEndCall = async (callId: string | number) => {
-//         console.log('🔄 Starting synchronized end call');
+    //     const synchronizedEndCall = async (callId: string | number) => {
+    //         console.log('🔄 Starting synchronized end call');
     
-//         const numericCallId = Number(callId);
-//         const isCaller = store.currentCall?.caller?.id === authStore.user?.id;
+    //         const numericCallId = Number(callId);
+    //         const isCaller = store.currentCall?.caller?.id === authStore.user?.id;
     
-//         // 1. Countdown bersama (3, 2, 1)
-//         const countdown = async () => {
-//             return new Promise<void>((resolve) => {
-//             let count = 3;
-//             const countdownInterval = setInterval(() => {
-//                 if (count > 0) {
-//                     console.log(`⏱️ Ending call in ${count}...`);
-//                     count--;
-//                 } else {
-//                     clearInterval(countdownInterval);
-//                     resolve();
-//                 }
-//             }, 1000);
-//         });
-//     };
+    //         // 1. Countdown bersama (3, 2, 1)
+    //         const countdown = async () => {
+    //             return new Promise<void>((resolve) => {
+    //             let count = 3;
+    //             const countdownInterval = setInterval(() => {
+    //                 if (count > 0) {
+    //                     console.log(`⏱️ Ending call in ${count}...`);
+    //                     count--;
+    //                 } else {
+    //                     clearInterval(countdownInterval);
+    //                     resolve();
+    //                 }
+    //             }, 1000);
+    //         });
+    //     };
     
-//     try {
-//         // 2. Mulai countdown
-//         await countdown();
+    //     try {
+    //         // 2. Mulai countdown
+    //         await countdown();
         
-//         // 3. Update status UI
-//         store.updateCallStatus('ended');
+    //         // 3. Update status UI
+    //         store.updateCallStatus('ended');
         
-//         // 4. Leave channel
-//         await leaveChannel();
+    //         // 4. Leave channel
+    //         await leaveChannel();
         
-//         // 5. Kirim ke backend
-//         await callService.endCall(numericCallId, true);
+    //         // 5. Kirim ke backend
+    //         await callService.endCall(numericCallId, true);
         
-//         // 6. Clear store
-//         setTimeout(() => {
-//             store.clearCurrentCall();
-//             store.clearIncomingCall();
-//         }, 1000);
+    //         // 6. Clear store
+    //         setTimeout(() => {
+    //             store.clearCurrentCall();
+    //             store.clearIncomingCall();
+    //         }, 1000);
         
-//     } catch (error) {
-//         console.error('❌ Synchronized end call failed:', error);
-//         await localCleanupOnly();
-//         toast.error("Gagal mengakhiri panggilan");
-//     }
-// };
+    //     } catch (error) {
+    //         console.error('❌ Synchronized end call failed:', error);
+    //         await localCleanupOnly();
+    //         toast.error("Gagal mengakhiri panggilan");
+    //     }
+    // };
 
     const handleCallEnded = async (event?: any) => {
         console.log('❌ handleCallEnded Triggered via Event', event);
@@ -573,8 +598,6 @@ export const useVoiceCall = () => {
         }
 
         // Jika sampai sini, berarti Store.isLocalEnd == false.
-        // Artinya lawan bicara yang menekan tombol.
-        // MUNCULKAN TOAST SEKARANG.
         toast.info("Panggilan diakhiri oleh lawan bicara");
         
         // ------------------------

@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { Phone, PhoneOff } from 'lucide-vue-next';
 import { themeMode } from "@/layouts/default-layout/config/helper"; 
+import { useCallStore } from '@/stores/callStore';
 import CallAvatar from '../shared/CallAvatar.vue';
 
 interface Props {
@@ -9,6 +10,9 @@ interface Props {
   callerPhoto: string;
   callStatus?: string; // Opsional: misal "Connecting..." atau "Incoming Voice Call"
 }
+
+const callStore = useCallStore();
+const store = useCallStore();
 
 const props = withDefaults(defineProps<Props>(), {
   callStatus: 'Panggilan Suara Masuk...',
@@ -35,8 +39,9 @@ const currentThemeMode = computed(() => themeMode.value);
       </div>
 
       <div class="info-section">  
-        <h2 class="caller-name">{{ props.callerName }}</h2>
+        <h1 class="caller-name">{{ props.callerName }}</h1>
         <p class="status-text">{{ props.callStatus }}</p>
+        <h4 class="call-timeout">Ditutup dalam {{ store.timerCount }} detik</h4>
       </div>
 
       <div class="action-buttons">
@@ -115,6 +120,19 @@ const currentThemeMode = computed(() => themeMode.value);
 
 .dark-mode .status-text {
   color: white;
+}
+
+.call-timeout {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  color: rgb(247, 133, 3);
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.dark-mode .call-timeout {
+  color: rgb(247, 190, 3);
 }
 
 .caller-name {

@@ -14,8 +14,9 @@ export const useCallStore = defineStore('call', () => {
     const agoraToken = ref<string | null>(null); // token agora dari backend
     const channelName = ref<string | null>(null); // channel name dari backend
     const hasJoinedAgora = ref<boolean>(false); // apakah sudah join agora
-    const callTimeout = ref<number | null>(null); // untuk menyimpan ID timeout
+    const callTimeout = ref<any>(null); // untuk menyimpan ID timeout (tak ubah jadi any)
     const callTimeoutDuration = ref<number>(30); // durasi timeout dalam detik
+    const timerCount = ref<number>(30); // untuk output interval timeout
     const isLocalEnd = ref<boolean>(false);
 
     // Actions
@@ -120,11 +121,37 @@ export const useCallStore = defineStore('call', () => {
         callTimeout.value = timeoutId;
     };
 
+    // Fungsi Baru untuk memulai timeout
+    const startCallTimeout = (onTimeout: () => void) => {
+        // 1. Bersihkan timer lama
+        clearCallTimeout();
+
+        console.log('⏳ Starting Call Countdown...');
+        
+        // 2. Reset angka ke 30
+        timerCount.value = callTimeoutDuration.value;
+
+        // 3. Mulai Interval (Gunakan window.setInterval agar eksplisit browser)
+        callTimeout.value = window.setInterval(() => {
+            timerCount.value--; // Kurangi angka
+            
+            console.log("Tick:", timerCount.value); // Cek console browser untuk debug
+
+            // 4. Cek jika waktu habis
+            if (timerCount.value <= 0) {
+                console.log('⏰ Call Timeout Reached!');
+                clearCallTimeout(); // Stop timer
+                onTimeout(); // Jalankan callback (cancel/reject)
+            }
+        }, 1000);
+    };
+
     const clearCallTimeout = () => {
         if (callTimeout.value) {
             clearTimeout(callTimeout.value);
             callTimeout.value = null;
         }
+        // timerCount.value = 30;
     };
 
     return {
@@ -141,6 +168,7 @@ export const useCallStore = defineStore('call', () => {
         hasJoinedAgora,
         callTimeout,
         callTimeoutDuration,
+        timerCount,
         isLocalEnd,
         // Actions
         setCurrentCall,
@@ -158,6 +186,7 @@ export const useCallStore = defineStore('call', () => {
         updateBackendCall,
         setHasJoinedAgora,
         setCallTimeout,
+        startCallTimeout,
         clearCallTimeout,
     }
 });
