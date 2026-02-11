@@ -7,17 +7,17 @@ import { visualizer } from "rollup-plugin-visualizer";
 
 export default defineConfig(({ mode }) => {
     process.env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
-    const myIp = '192.168.112.233'; 
+    const myIp = '192.168.137.1'; 
 
     return {
-        // server: {
-        //     host: true,
-        //     port: 5173,
-        //     strictPort: true,
-        //     cors: true,
-        //     origin: `http://${myIp}:5173`,
-        //     hmr: { host: myIp },
-        // },
+        server: {
+            host: true,
+            port: 5173,
+            strictPort: true,
+            cors: true,
+            origin: `http://${myIp}:5173`,
+            hmr: { host: myIp },
+        },
         plugins: [
             laravel({
                 input: ["resources/css/app.css", "resources/js/main.ts"],
