@@ -9,6 +9,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\GroupController;
+use App\Http\Controllers\TodoController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -105,6 +106,12 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::post('groups/{id}/members', [GroupController::class, 'addMembers']);
         Route::delete('groups/{id}/members/{userId}', [GroupController::class, 'removeMember']);
         Route::delete('group/{id}/clear', [GroupController::class, 'clearChat']);
+
+        // Todo List Routes
+        Route::get('/todos', [TodoController::class, 'index'])->name('todos.index');
+        Route::post('/todos', [TodoController::class, 'store'])->name('todos.store');
+        Route::put('/todos/{todo}', [TodoController::class, 'update'])->name('todos.update');
+        Route::delete('/todos/{todo}', [TodoController::class, 'destroy'])->name('todos.destroy');
     });
 
     Route::prefix('call')->group(function () {

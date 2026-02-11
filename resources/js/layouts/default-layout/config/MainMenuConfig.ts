@@ -44,6 +44,12 @@ const MainMenuConfig: Array<MenuItem> = [
                 keenthemesIcon: "technology-4",
             },
             {
+                heading: "Todo List",
+                route: "/dashboard/todo-list",
+                name: "todo-list",
+                keenthemesIcon: "check-square",
+            },
+            {
                 heading: "Profile Settings",
                 route: "/dashboard/profile",
                 name: "profile-setting",

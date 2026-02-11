@@ -74,6 +74,7 @@
         "vue3-select2-component": "^0.1.7",
         "vue3-toastify": "^0.2.8",
         "yup": "^1.7.1",
+        "ziggy-js": "^2.6.0",
         "zustand": "^4.4.7"
     },
     "devDependencies": {

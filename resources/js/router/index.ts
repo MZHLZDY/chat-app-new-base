@@ -84,6 +84,16 @@ const routes: Array<RouteRecordRaw> = [
                     breadcrumbs: ["AI Chat"],
                 },
             },
+            {
+                path: "/dashboard/todo-list",
+                name: "dashboard.todo-list",
+                component: () =>
+                    import("@/pages/dashboard/master/users/Task/Index.vue"),
+                meta: {
+                    pageTitle: "Todo List",
+                    breadcrumbs: ["Todo List"],
+                },
+            },
         ],
     },
     {
