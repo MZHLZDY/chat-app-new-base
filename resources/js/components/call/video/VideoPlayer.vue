@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { onMounted, onUnmounted, nextTick, watch, ref } from 'vue';
 
 // Definisikan props (apa yang diterima di komponen ini)
 const props = defineProps<{
@@ -7,6 +7,7 @@ const props = defineProps<{
     audioTrack?: any; // Track suara
     uid: string | number; // ID user
     userName: string // Nama user buat tabel
+    avatarUrl?: string // URL avatar user
     isLocal?: boolean // mirror effect klo video itu kita sendiri
     hideNameLabel?: boolean // Sembunyiin label nama user
 }>();
@@ -16,41 +17,33 @@ const emit = defineEmits<{
     orientationDetected: [orientation: 'landscape' | 'portrait']
 }>();
 
-const playerId = `player-${props.uid}`;
+const videoContainer = ref<HTMLElement | null>(null);
 
 // Fungsi untuk play video
 const playVideo = () => {
-    if (props.videoTrack) {
+    if (props.videoTrack && videoContainer.value) {
         nextTick(() => {
-            props.videoTrack.play(playerId);
+            props.videoTrack.play(videoContainer.value);
 
-            // Detect orientation dari video element (khusus local video)
             if (props.isLocal) {
                 setTimeout(() => {
-                    const container = document.getElementById(playerId);
-                    const videoElement = container?.querySelector('video') as HTMLVideoElement;
+                    const videoElement = videoContainer.value?.querySelector('video') as HTMLVideoElement;
 
                     if (videoElement) {
-                        const checkDimensions = () => {
+                        const checkDimension = () => {
                             const width = videoElement.videoWidth;
                             const height = videoElement.videoHeight;
 
                             if (width > 0 && height > 0) {
                                 const orientation = width > height ? 'landscape' : 'portrait';
                                 emit('orientationDetected', orientation);
-                                console.log(`📐 Video dimensions: ${width}x${height} (${orientation})`);
+                            } else {
+                                requestAnimationFrame(checkDimension);
                             }
                         };
-
-                        // Check immediately jika sudah loaded
-                        if (videoElement.videoWidth > 0) {
-                            checkDimensions();
-                        } else {
-                            // Atau tunggu metadata loaded
-                            videoElement.addEventListener('loadedmetadata', checkDimensions);
-                        }
+                        checkDimension();
                     }
-                }, 500); // Delay untuk ensure DOM ready
+                }, 200);
             }
         });
     }
@@ -74,7 +67,7 @@ watch(() => props.videoTrack, (newTrack) => {
     if (newTrack) {
         playVideo();
     }
-});
+}, { immediate: true });
 
 // Stop video waktu komponen ditutup
 onUnmounted(() => {
@@ -89,38 +82,58 @@ onUnmounted(() => {
 
 <template>
     <div class="video-player-container">
-
-        <!-- Kotak video -->
-        <!-- ID dinamis sesuai UID user -->
-        <div
-            :id="playerId"
+         <div
+            ref="videoContainer"
             class="video-feed"
             :class="{ 'mirror-mode': isLocal }"
-        ></div>
+            key="video-state"
+            ></div>
+
+        <Transition name="fade-scale">
+            <div v-if="!videoTrack" class="avatar-state" key="avatar-state">
+                <div class="avatar-circle">
+                    <img
+                        :src="avatarUrl || 'https://ui-avatars.com/api/?name=' + userName + '&background=random'"
+                        alt="User">
+                </div>
+            </div>
+        </Transition>
 
         <!-- Label nama user -->
         <div v-if="!isLocal && !hideNameLabel" class="user-label">
             <span class="fw-bold text-white">{{ userName }}</span>
         </div>
-
     </div>
 </template>
 
 <style scoped>
 .video-player-container {
-    position: relative;
     width: 100%;
     height: 100%;
-    border-radius: 12px;
+    position: relative;
+    background: #000;
     overflow: hidden;
-    background-color: #2c2c2c; /* Warna abu gelap kalau video loading / off */
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .video-feed {
+    position: absolute;
     width: 100%;
     height: 100%;
-    object-fit: cover; /* Biar video full kotak */
+    z-index: 1;
+    object-fit: contain; /* Biar video full kotak */
+
+    /* Transisi fade in waktu on cam */
+    opacity: 1;
+    transition: opacity 0.3s ease-in 0.3s;
+}
+
+.video-feed.video-hidden {
+    opacity: 0;
+    /* Transisi fade out waktu off cam */
+    transition: opacity 0.3s ease-out 0s;
 }
 
 /* Efek mirror untuk video sendiri */
@@ -128,14 +141,68 @@ onUnmounted(() => {
     transform: scaleX(-1);
 }
 
-.user-label {
+/* State untuk avatar */
+.avatar-state {
     position: absolute;
-    bottom: 10px;
-    left: 10px;
-    background: rgba(0, 0, 0, 0.5); /* Hitam transparan */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.avatar-circle img {
+    width: 90px;
+    height: 90px; /* Ukuran dasar */
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.2);
+    box-shadow: 0 0 30px rgba(255,255,255,0.1);
+}
+.status-text {
+    margin-top: 10px;
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.8);
+    background: rgba(0,0,0,0.4);
     padding: 4px 12px;
     border-radius: 20px;
-    z-index: 10;
     backdrop-filter: blur(4px);
 }
+
+.user-label {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.5); /* Hitam transparan */
+    padding: 4px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-label span {
+    font-size: 0.85rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+
+/* Animasi transisi */
+.fade-scale-enter-active {
+    transition: opacity 0.3s ease-out;
+    /* Delay 0.3dtk biar ga ketimpa */
+    transition-delay: 0.3s;
+}
+.fade-scale-leave-active {
+    transition: opacity 0.3s ease-in;
+    transition-delay: 0s;
+}
+.fade-scale-enter-from,
+.fade-scale-leave-to {
+    opacity: 0;
+    }
 </style>

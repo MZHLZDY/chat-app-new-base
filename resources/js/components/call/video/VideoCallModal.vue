@@ -7,7 +7,7 @@ import { useAgora } from '@/composables/useAgora';
 import { useAuthStore } from '@/stores/authStore';
 import VideoPlayer from './VideoPlayer.vue';
 import CallControls from '../shared/CallControls.vue';
-import { MicOff } from 'lucide-vue-next';
+import { MicOff, VideoOff, VideoOffIcon } from 'lucide-vue-next';
 import { usePage } from '@inertiajs/vue3';
 
 const store = useCallStore();
@@ -34,6 +34,14 @@ const {
 
 const currentCall = computed(() => store.currentCall);
 const backendCall = computed(() => store.backendCall);
+
+// Logic cari profil lawan bicara
+const remoteProfile = computed(() => {
+    if (!currentCall.value || !currentUser.value) return null;
+    return currentCall.value.caller.id === currentUser.value.id
+        ? currentCall.value.receiver
+        : currentCall.value.caller;
+});
 
 // Video call aktif ketika panggilan dalam status 'ongoing' dan tipe nya video
 const isVideoCallActive = computed(() => 
@@ -299,6 +307,7 @@ watch(() => remoteVideoTracks.value.size, (size) => {
                     :audio-track="remoteUser.audioTrack"
                     :uid="Number(remoteUser.uid)"
                     :user-name="remoteUser.name || 'User'"
+                    :avatar-url="remoteProfile?.avatar"
                     :is-local="false"
                     :hide-name-label="true"
                 />
@@ -311,10 +320,11 @@ watch(() => remoteVideoTracks.value.size, (size) => {
             <div class="local-video-wrapper" :class="localVideoOrientation">
                 <VideoPlayer
                     v-if="currentUser"
-                    :video-track="localVideoTrack"
+                    :video-track="isVideoEnabled ? localVideoTrack : undefined"
                     :audio-track="localAudioTrack"
                     :uid="currentUser.id"
                     :user-name="currentUser.name"
+                    :avatar-url="currentUser.avatar"
                     :is-local="true"
                     @orientation-detected="(o) => localVideoOrientation = o"
                 />
@@ -337,16 +347,23 @@ watch(() => remoteVideoTracks.value.size, (size) => {
                             {{ remoteUser?.name || 'Menghubungkan...' }}
                         </span>
 
-                        <Transition name="slide-icon">
-                            <div v-if="isRemoteMuted" class="icon-wrapper">
-                                <MicOff :size="14" class="text-red-400"/>
-                            </div>
-                        </Transition>
+                        <div class="icons-row">
+                            <Transition name="slide-icon">
+                                <div v-if="isRemoteMuted" class="icon-wrapper">
+                                    <MicOff :size="14" class="text-red-400"/>
+                                </div>
+                            </Transition>
 
+                            <Transition name="slide-icon">
+                                <div v-if="remoteUser && !remoteUser.videoTrack" class="icon-wrapper">
+                                    <VideoOff :size="14" class="text-red-400"/>
+                                </div>
+                            </Transition>
+                        </div>   
                     </div>
 
                     <div class="island timer-island">
-                        <div class="rec-dot"></div>
+                        <div class="rec-dot" :class="{ 'animate-pulse': !remoteUser?.videoTrack }"></div>
                         <span class="timer-text">{{ formattedDuration }}</span>
                     </div>
                 </div>
@@ -354,7 +371,7 @@ watch(() => remoteVideoTracks.value.size, (size) => {
                 <!-- kontrol dibawah (seperti button camera, mic, dll yang ada di dock bawah) -->
                 <div class="bottom-bar">
                     <CallControls
-                    call-type="video"
+                        call-type="video"
                         :is-muted="!isAudioEnabled"
                         :is-speaker-on="false"
                         :is-camera-on="isVideoEnabled"
@@ -370,13 +387,40 @@ watch(() => remoteVideoTracks.value.size, (size) => {
 </template>
 
 <style scoped>
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+
+    /* BG transparan + blur */
+    background-color: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+/* Pastikan content nya full */
+.modal-content {
+    width: 100%;
+    height: 100%;
+    background: transparent !important;
+    position: relative;
+    overflow: hidden;
+}
+
 .video-call-container {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: #1a1a1a;
+    background-color: transparent !important;
     z-index: 9998;
 }
 
@@ -385,8 +429,16 @@ watch(() => remoteVideoTracks.value.size, (size) => {
     width: 100% !important;
     height: 100% !important;
     object-fit: contain !important; /* KUNCI: Jangan di-crop! */
-    position: static !important;
+    filter: drop-shadow(0 10px 40px rgba(0,0,0,0.5));
 }
+
+/* Avatar waktu offcam */
+.remote-video-wrapper :deep(.avatar-circle img) {
+    width: 160px !important;
+    height: 160px !important;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+}
+.remote-video-wrapper :deep(.status-text) { display: none; }
 
 .remote-video-wrapper {
     position: relative;
@@ -394,14 +446,14 @@ watch(() => remoteVideoTracks.value.size, (size) => {
     height: 100dvh;
 
     /* Background transparan gelap + blur */
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     
-    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
 }
 
 /* Komponen player */
@@ -423,11 +475,14 @@ watch(() => remoteVideoTracks.value.size, (size) => {
     /* Reset ukuran biar ikut wrapper */
     width: 100% !important;
     height: 100% !important;
+    position: relative !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    position: static !important;
-    background: transparent !important;
 }
 
 .waiting-state {
@@ -436,7 +491,8 @@ watch(() => remoteVideoTracks.value.size, (size) => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #2c2c3e, #1a1a2e);
+    background: transparent;
+    z-index: 10;
 }
 
 /* UI overlay */
@@ -478,16 +534,28 @@ watch(() => remoteVideoTracks.value.size, (size) => {
     border-radius: 12px !important; /* Ikut wrapper */
 }
 
+/* Avatar local video */
+.local-video-wrapper :deep(.avatar-circle img) {
+    width: 60px !important;  /* Ukuran lebih kecil */
+    height: 60px !important;
+    border-width: 1px !important;
+    box-shadow: none !important;
+}
+
 .local-video-wrapper {
     position: absolute;
     top: 20px;
     right: 20px;
+    width: 200px;
+    aspect-ratio: 16/9;
+    height: auto;
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     border: 2px solid rgba(255, 255, 255, 0.1);
-    z-index: 10;
+    z-index: 60;
     transition: all 0.3s ease;
+    background: #000;
 }
 
 /* Orientasi landscape untuk kamera laptop / pc */
@@ -573,20 +641,96 @@ watch(() => remoteVideoTracks.value.size, (size) => {
     transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); /* Animasi smooth */
 }
 
-/* Spesifik: Island Nama */
-.name-island { gap: 0; max-width: 200px; }
-.name-island.is-muted { 
-    background: rgba(40, 20, 20, 0.8); /* Agak merah kalau mute */
-    border-color: rgba(255, 100, 100, 0.2);
+/* --- 1. CONTAINER PEMBUNGKUS (POSISI) --- */
+.status-island {
+    position: absolute; 
+    top: 55px; /* Sedikit turun biar gak nabrak poni HP */
+    left: 50%; 
+    transform: translateX(-50%);
+    z-index: 50; 
+    
+    display: flex; 
+    gap: 12px; /* Jarak antara Kapsul Nama & Kapsul Timer */
+    align-items: center;
+    justify-content: center;
+    width: auto; /* Biarkan lebarnya ngikutin isi content */
 }
-.remote-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-/* Spesifik: Island Timer */
-.timer-island { gap: 8px; min-width: 70px; justify-content: center; font-variant-numeric: tabular-nums; }
-.rec-dot { width: 6px; height: 6px; background: #ef4444; border-radius: 50%; animation: blink 2s infinite; }
+/* --- 2. GAYA KAPSUL KACA (SHARED STYLE) --- */
+.name-island, .timer-island {
+    /* Logic Glass: Hitam Transparan + Blur */
+    background: rgba(15, 15, 15, 0.6); 
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    
+    /* Border halus & Radius Pill */
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 50px; 
+    
+    /* Text & Spacing */
+    padding: 10px 20px; 
+    color: white; 
+    font-weight: 600; 
+    font-size: 0.9rem;
+    
+    /* Shadow biar kerasa melayang */
+    box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+    
+    /* Layout dalemnya */
+    display: flex; 
+    align-items: center; 
+    transition: all 0.3s ease;
+}
+
+/* --- 3. KHUSUS ISLAND NAMA --- */
+.name-island {
+    max-width: 180px; /* Batasin biar ga kepanjangan */
+}
+.remote-name {
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
+/* Efek kalau di-mute (opsional, visual merah dikit) */
+.name-island.is-muted {
+    background: rgba(50, 20, 20, 0.7);
+    border-color: rgba(255, 80, 80, 0.3);
+}
+
+/* --- 4. KHUSUS ISLAND TIMER --- */
+.timer-island {
+    gap: 8px;
+    min-width: 80px; /* Lebar minimum biar angka ga goyang */
+    justify-content: center;
+    font-variant-numeric: tabular-nums; /* Biar angka jam gak loncat2 */
+}
+
+/* Titik Merah (Recording/Live indicator) */
+.rec-dot { 
+    width: 8px; 
+    height: 8px; 
+    background: #ff4444; 
+    border-radius: 50%; 
+    box-shadow: 0 0 10px #ff4444;
+    animation: pulse 2s infinite; 
+}
+
+@keyframes pulse { 
+    0% { opacity: 1; transform: scale(1); } 
+    50% { opacity: 0.5; transform: scale(0.9); } 
+    100% { opacity: 1; transform: scale(1); } 
+}
 
 /* Animasi Kedip Rec Dot */
 @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+/* Row icon di island biar rapi */
+.icons-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+}
 
 /* Style icon permanen */
 .icon-wrapper {
@@ -598,7 +742,10 @@ watch(() => remoteVideoTracks.value.size, (size) => {
 /* Animasi Icon Mic Geser (Sliding) */
 .slide-icon-enter-active, .slide-icon-leave-active {
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-    overflow: hidden; max-width: 20px; opacity: 1; margin-left: 10px;
+    overflow: hidden; 
+    max-width: 20px; 
+    opacity: 1; 
+
 }
 .slide-icon-enter-from, .slide-icon-leave-to {
     max-width: 0; opacity: 0; margin-left: 0;
