@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, computed } from "vue";
+import { themeMode } from "@/layouts/default-layout/config/helper"; 
 import { X, Sparkles, PenLine } from "lucide-vue-next";
 import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
@@ -12,6 +13,7 @@ const props = defineProps<{
 const emit = defineEmits(["close", "refresh"]);
 
 // --- STATE ---
+const currentThemeMode = computed(() => themeMode.value);
 const title = ref("");
 const description = ref("");
 const isLoading = ref(false);
@@ -84,7 +86,7 @@ const handleClose = () => {
 
 <template>
     <Teleport to="body">
-        <div class="modal-wrapper">
+        <div class="modal-wrapper" :class="{ 'dark-mode': currentThemeMode === 'dark' }">
             <Transition name="backdrop">
                 <div
                     v-if="show"
@@ -107,7 +109,7 @@ const handleClose = () => {
                                     <h5 class="fw-bold mb-0 text-adaptive fs-4">
                                         Tugas Baru
                                     </h5>
-                                    <span class="text-gray-400 fs-7 fw-semibold"
+                                    <span class="text-gray-700 fs-7 fw-semibold"
                                         >Mau kerjain apa hari ini?</span
                                     >
                                 </div>
@@ -128,7 +130,7 @@ const handleClose = () => {
                                 >
                                     <label class="input-label">
                                         <PenLine
-                                            class="w-4 h-4 me-2 text-gray-400"
+                                            class="w-4 h-4 me-2 text-gray-700"
                                         />
                                         Judul Tugas
                                     </label>
@@ -146,7 +148,7 @@ const handleClose = () => {
                                 </div>
                                 <div class="input-group-custom">
                                     <label class="input-label">
-                                        <AlignLeft class="w-4 h-4 me-2 text-gray-400" /> Deskripsi (Opsional)
+                                        <AlignLeft class="w-4 h-4 me-2 text-gray-700" /> Deskripsi (Opsional)
                                     </label>
                                     <textarea 
                                         v-model="description" 
@@ -242,6 +244,10 @@ const handleClose = () => {
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.dark-mode .custom-modal {
+    background: #3a3a55;
+}
+
 .modal-header-custom {
     padding: 24px 24px 10px 24px;
     display: flex;
@@ -298,6 +304,10 @@ const handleClose = () => {
     border-color: #009ef7;
     box-shadow: 0 10px 30px rgba(0, 158, 247, 0.1);
     transform: translateY(-2px);
+}
+
+.dark-mode .input-group-custom {
+    background-color: #686877;
 }
 
 .input-label {
@@ -416,6 +426,10 @@ textarea.form-control-custom {
 /* --- DARK MODE --- */
 .text-adaptive {
     color: #181c32;
+}
+
+.dark-mode .text-adaptive {
+    color: #8ea6b9;
 }
 @media (prefers-color-scheme: dark) {
     .custom-modal {

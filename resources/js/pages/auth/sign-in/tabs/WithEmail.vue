@@ -99,6 +99,7 @@ import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
 import * as Yup from "yup";
 import { toast } from "vue3-toastify";
+import { blockBtn, unblockBtn } from "@/libs/utils"
 
 export default defineComponent({
     name: "WithEmail",
@@ -145,9 +146,15 @@ export default defineComponent({
             }, 100);
 
         } catch (error: any) {
-            // ... error handling
+            console.log(error)
+            toast.error("Nama / Email / Telepon atau Password tidak ditemukan!");
         } finally {
-            // ... cleanup
+            if (submitButton.value) {
+                // 1. Matikan indikator loading
+                submitButton.value.removeAttribute("data-kt-indicator");
+                // 2. Aktifkan kembali tombol agar bisa diklik ulang
+                submitButton.value.disabled = false;
+            }
         }
     };
 

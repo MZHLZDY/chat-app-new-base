@@ -2,168 +2,201 @@
 import { ref, computed, onMounted, onUnmounted, onActivated } from 'vue';
 import { useAuthStore } from "@/stores/auth"; 
 import { themeMode } from "@/layouts/default-layout/config/helper"; 
-import { Phone, MessagesSquare } from 'lucide-vue-next';
+import { Phone, MessagesSquare, ListTodo, ArrowRight, Circle, CheckCircle2 } from 'lucide-vue-next';
 import ApiService from "@/core/services/ApiService";
 
-// Status tema akan otomatis mengikuti perubahan dari header/navbar
+// --- STATE & CONFIG ---
 const currentThemeMode = computed(() => themeMode.value);
-
-// Inisialisasi Store untuk mengambil data user yang login
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 
-// Logika untuk Waktu Dinamis
+// Waktu Realtime
 const currentTime = ref(new Date());
 let timer: number | undefined;
 
+// Data Dashboard
+const unreadMessages = ref(0);
+const totalContacts = ref(0);
+const totalGroups = ref(0);
+const isLoadingStats = ref(false);
+
+// Data ToDo List
+const todoList = ref<any[]>([]);
+const isLoadingTodo = ref(false);
+
+// --- LIFECYCLE ---
 onMounted(() => {
-  // Update waktu setiap detik
   timer = setInterval(() => {
     currentTime.value = new Date();
   }, 1000);
   
-  // Load dashboard stats
-  loadDashboardStats();
+  loadDashboardData();
 });
 
 onActivated(() => {
-    console.log('Page Active: Refreshing Stats...');
-    loadDashboardStats();
+    loadDashboardData();
 });
 
 onUnmounted(() => {
-  // Bersihkan timer saat komponen dihancurkan
-  if (timer !== undefined) {
-    clearInterval(timer);
-  }
+  if (timer !== undefined) clearInterval(timer);
 });
 
+// --- METHODS ---
+const loadDashboardData = () => {
+    loadStats();
+    loadTodos();
+};
+
+const loadStats = async () => {
+  isLoadingStats.value = true;
+  try {
+    const response = await ApiService.get("dashboard/stats");
+    if (response.data?.data?.summary) {
+        const s = response.data.data.summary;
+        unreadMessages.value = s.unread_messages || 0;
+        totalContacts.value = s.total_contacts || 0;
+        totalGroups.value = s.total_groups || 0;
+    }
+  } catch (error) {
+    console.error("Err stats:", error);
+  } finally {
+    isLoadingStats.value = false;
+  }
+};
+
+const loadTodos = async () => {
+    isLoadingTodo.value = true;
+    try {
+        const response = await ApiService.get("chat/todos"); 
+        let allTodos: any[] = [];
+
+        // Deteksi Struktur Data (Array Langsung / Pagination / Wrapper)
+        if (Array.isArray(response.data)) {
+            allTodos = response.data;
+        } else if (response.data && Array.isArray(response.data.data)) {
+            allTodos = response.data.data;
+        } else if (response.data && response.data.data && Array.isArray(response.data.data.data)) {
+             allTodos = response.data.data.data;
+        }
+
+        // FILTER PENDING
+        // Kita ambil semua yang belum selesai (tanpa limit .slice, karena sudah ada scroll)
+        todoList.value = allTodos.filter((t: any) => {
+            const statusVal = t.is_completed ?? t.completed ?? t.status;
+            // Anggap belum selesai jika: false, 0, "0", atau null
+            return statusVal === false || statusVal === 0 || statusVal === "0" || statusVal === null;
+        });
+
+    } catch (error) {
+        console.error("Error todos:", error);
+    } finally {
+        isLoadingTodo.value = false;
+    }
+};
+
+const formatCount = (count: number) => count > 99 ? '99+' : count.toString();
+
 const formattedTime = computed(() => {
-  // Menggunakan format 24 jam (tanpa AM/PM)
-  return currentTime.value.toLocaleTimeString('id-ID', { 
-    hour: '2-digit', 
-    minute: '2-digit',
-    hour12: false 
-  });
+  return currentTime.value.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
 });
 
 const formattedDate = computed(() => {
-  // Menggunakan 'id-ID' untuk format tanggal lengkap
   return currentTime.value.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 });
-
-// Data Dinamis untuk Dashboard Chat
-const unreadMessages = ref(0); // Hijau - Pesan belum dibaca (personal + group)
-const totalContacts = ref(0);   // Biru - Total kontak/user personal
-const totalGroups = ref(0);     // Oranye - Total grup
-
-const isLoading = ref(false);
-
-// Fungsi untuk load data dari API
-const loadDashboardStats = async () => {
-  isLoading.value = true;
-  try {
-    const response = await ApiService.get("dashboard/stats");
-    
-    // Debugging: Cek apa isi response di Console browser
-    console.log('Dashboard Response:', response.data);
-
-    // LOGIKA BARU:
-    // Sesuaikan path ini dengan struktur JSON dari DashboardController
-    // Controller mengembalikan: { success: true, data: { summary: { ... } } }
-    
-    if (response.data && response.data.data) {
-        const stats = response.data.data;
-        
-        // Ambil data dari 'summary' untuk total gabungan
-        if (stats.summary) {
-            unreadMessages.value = stats.summary.unread_messages || 0;
-            totalContacts.value = stats.summary.total_contacts || 0;
-            totalGroups.value = stats.summary.total_groups || 0;
-        } else {
-            // Fallback jika summary tidak ada (untuk jaga-jaga)
-            unreadMessages.value = (stats.personal?.unread || 0) + (stats.groups?.unread_messages || 0);
-        }
-    }
-  } catch (error) {
-    console.error("Gagal memuat statistik dashboard:", error);
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-// Format angka untuk display (jika lebih dari 99 tampilkan 99+)
-const formatCount = (count: number): string => {
-  return count > 99 ? '99+' : count.toString();
-};
 </script>
 
 <template>
   <div class="dashboard-container" :class="{ 'dark-mode': currentThemeMode === 'dark' }">
-    <div class="dashboard-grid">
+    <div class="dashboard-grid" >
       
-      <!-- Bagian Kiri: Welcome Card -->
-      <div class="welcome-card">
-        <div class="welcome-content">
-          <div class="icon-wrapper">
-            <MessagesSquare />
+      <div class="left-column">
+        
+        <div class="welcome-card card-base">
+          <div class="welcome-content">
+            <div class="icon-wrapper">
+              <MessagesSquare />
+            </div>
+            <h2 class="welcome-title">HELLO {{ currentUser?.name?.toUpperCase() || 'USER' }}!</h2>
+            <h4 class="welcome-subtitle">Selamat datang di pusat obrolan Anda!</h4>
           </div>
-          
-          <h2 class="welcome-title">HELLO {{ currentUser?.name?.toUpperCase() || 'USER' }}!</h2>
-          
-          <h4 class="welcome-subtitle">
-            Selamat datang di pusat obrolan Anda!
-          </h4>
+          <div class="button-wrapper">
+            <router-link :to="{ name: 'dashboard.private-chat' }" class="btn-chat-private">
+              LIHAT CHAT PRIBADI
+            </router-link>
+            <router-link :to="{ name: 'dashboard.group-chat' }" class="btn-chat-group">
+              LIHAT CHAT GRUP
+            </router-link>
+          </div>
         </div>
-        <div class="button-wrapper">
-          <router-link :to="{ name: 'dashboard.private-chat' }" class="btn-chat-private text-decoration-none d-flex align-items-center justify-content-center">
-            LIHAT CHAT PRIBADI
-          </router-link>
-          
-          <router-link :to="{ name: 'dashboard.group-chat' }" class="btn-chat-group text-decoration-none d-flex align-items-center justify-content-center">
-            LIHAT CHAT GRUP
-          </router-link>
+
+        <div class="todo-card card-base">
+            <div class="todo-header">
+                <div class="d-flex align-items-center gap-2">
+                    <ListTodo class="text-primary icon-todo" />
+                    <h3 class="todo-title">To Do List Kamu</h3>
+                </div>
+                <router-link to="/dashboard/todo-list" class="btn-todo-link" title="Lihat Semua">
+                    <ArrowRight class="w-5 h-5" />
+                </router-link>
+            </div>
+
+            <div class="todo-body">
+                <div v-if="isLoadingTodo" class="loading-state">
+                    <span class="loading-spinner-sm"></span> Memuat...
+                </div>
+                
+                <div v-else-if="todoList.length > 0" class="todo-list-wrapper">
+                    <div v-for="todo in todoList" :key="todo.id" class="todo-item">
+                        <div class="todo-icon">
+                            <Circle class="w-5 h-5 text-gray-400" />
+                        </div>
+                        <div class="todo-text">
+                            <span class="todo-name">{{ todo.title }}</span>
+                            <span v-if="todo.description" class="todo-desc">{{ todo.description }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else class="empty-state">
+                    <CheckCircle2 class="w-10 h-10 text-success mb-2" />
+                    <p class="mb-0">Semua tugas selesai! <br><small class="text-muted">Tidak ada pending task.</small></p>
+                </div>
+            </div>
         </div>
+
       </div>
 
-      <!-- Bagian Kanan: Info Cards -->
-      <div class="info-section">
+      <div class="right-column">
         
-        <!-- Card Phone -->
-        <div class="info-card phone-card">
-          <p class="phone-text" :title="currentUser?.phone">
-            <Phone class="phone-icon"/> : {{ currentUser?.phone || 'xxxxxxx' }}
+        <div class="info-card phone-card card-base">
+          <p class="phone-text">
+            <Phone class="phone-icon"/> : {{ currentUser?.phone || '-' }}
           </p>
         </div>
 
-        <!-- Card Time & Date -->
-        <div class="info-card time-card">
+        <div class="info-card time-card card-base">
           <h1 class="time-display">{{ formattedTime }}</h1>
           <p class="date-display">{{ formattedDate }}</p>
         </div>
 
-        <!-- Card Statistics -->
-        <div class="info-card stats-card">
+        <div class="info-card stats-card card-base">
           <div class="stat-item">
-            <div class="stat-circle stat-circle-green" :class="{ 'loading': isLoading }">
-              <span v-if="!isLoading">{{ formatCount(unreadMessages) }}</span>
-              <span v-else class="loading-spinner"></span>
+            <div class="stat-circle stat-circle-green">
+              <span>{{ isLoadingStats ? '-' : formatCount(unreadMessages) }}</span>
             </div>
             <p class="stat-label">Pesan Belum Dibaca</p>
           </div>
           
           <div class="stat-item">
-            <div class="stat-circle stat-circle-blue" :class="{ 'loading': isLoading }">
-              <span v-if="!isLoading">{{ formatCount(totalContacts) }}</span>
-              <span v-else class="loading-spinner"></span>
+            <div class="stat-circle stat-circle-blue">
+              <span>{{ isLoadingStats ? '-' : formatCount(totalContacts) }}</span>
             </div>
             <p class="stat-label">Kontak Personal</p>
           </div>
           
           <div class="stat-item">
-            <div class="stat-circle stat-circle-orange" :class="{ 'loading': isLoading }">
-              <span v-if="!isLoading">{{ formatCount(totalGroups) }}</span>
-              <span v-else class="loading-spinner"></span>
+            <div class="stat-circle stat-circle-orange">
+              <span>{{ isLoadingStats ? '-' : formatCount(totalGroups) }}</span>
             </div>
             <p class="stat-label">Total Grup</p>
           </div>
@@ -176,351 +209,235 @@ const formatCount = (count: number): string => {
 </template>
 
 <style scoped>
-/* Base Container */
+/* --- LAYOUT UTAMA --- */
 .dashboard-container {
-  min-height: 70vh;
+  min-height: 100vh;
   padding: 2rem;
   background-color: #f5f5f5;
-  transition: background-color 0.3s ease;
+  transition: background-color 0.3s;
 }
-
-/* Dark Mode Background */
-.dashboard-container.dark-mode {
-  background-color: #1e1e2d;
-}
+.dashboard-container.dark-mode { background-color: #1e1e2d; }
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr 0.75fr;
-  gap: 2rem;
+  /* Grid 2 Kolom: Kiri (Main) 1.2 bagian, Kanan (Side) 0.8 bagian */
+  /* Ini menjaga agar card kanan tidak terlalu lebar (sesuai request dimensi lama) */
+  grid-template-columns: 1.2fr 0.8fr; 
+  gap: 1.5rem;
   max-width: 1400px;
   margin: 0 auto;
 }
 
-/* Welcome Card - Kiri */
-.welcome-card {
-  background: white;
-  border-radius: 1rem;
-  padding: 3rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
-}
-
-.dark-mode .welcome-card {
-  background: #2b2b40;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.welcome-content {
-  text-align: center;
-}
-
-.icon-wrapper {
-  display: inline-flex;
-  padding: 1.5rem;
-  background: #f0f0f0;
-  border-radius: 50%;
-  margin-bottom: 2rem;
-  transition: background-color 0.3s ease;
-}
-
-.dark-mode .icon-wrapper {
-  background: #3a3a52;
-}
-
-.icon-wrapper svg {
-  width: 3rem;
-  height: 3rem;
-  color: #333;
-  transition: color 0.3s ease;
-}
-
-.dark-mode .icon-wrapper svg {
-  color: #a1a5b7;
-}
-
-.welcome-title {
-  font-size: 2rem;
-  font-weight: bold;
-  margin-bottom: 1rem;
-  color: #0959ee;
-  transition: color 0.3s ease;
-}
-
-.dark-mode .welcome-title {
-  color: #10a4fa;
-}
-
-.welcome-subtitle {
-  font-size: 1.125rem;
-  color: #666;
-  margin-bottom: 2rem;
-  transition: color 0.3s ease;
-}
-
-.dark-mode .welcome-subtitle {
-  color: #a1a5b7;
-}
-
-.button-wrapper {
-  display: flex;
-  gap: 1rem;
-  width: 100%;
-  margin-top: auto;
-}
-
-.btn-chat-private {
-  flex: 1; 
-  background: #fa930c;
-  padding: 1rem 1rem;
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.btn-chat-private:hover {
-  background: #bd3f05;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.btn-chat-group {
-  flex: 1; 
-  background: #1ca509;
-  padding: 1rem 1rem;
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  display: flex;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.btn-chat-group:hover {
-  background: #167908;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-/* Info Section - Kanan */
-.info-section {
+.left-column, .right-column {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-.info-card {
+/* --- CARD BASE STYLE --- */
+.card-base {
   background: white;
   border-radius: 1rem;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+  overflow: hidden;
 }
+.dark-mode .card-base { background: #2b2b40; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+.card-base:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
 
-.dark-mode .info-card {
-  background: #2b2b40;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-/* Phone Card */
-.phone-card {
+/* --- WELCOME CARD --- */
+.welcome-card {
+  padding: 2.5rem;
+  flex: 1; /* Mengisi ruang yang tersedia jika card lain pendek */
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-}
-
-.phone-text {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 1rem;
-  color: #333;
-  transition: color 0.3s ease;
-}
-
-.dark-mode .phone-text {
-  color: #ffffff;
-}
-
-.phone-icon {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-/* Time Card */
-.time-card {
   text-align: center;
+  min-height: 320px;
 }
-
-.time-display {
-  font-size: 2.5rem;
-  font-weight: bold;
-  margin-bottom: 0.5rem;
-  color: #0959ee;
-  transition: color 0.3s ease;
-}
-
-.dark-mode .time-display {
-  color: #10a4fa;
-}
-
-.date-display {
-  font-size: 1rem;
-  color: #666;
-  transition: color 0.3s ease;
-}
-
-.dark-mode .date-display {
-  color: #a1a5b7;
-}
-
-/* Stats Card */
-.stats-card {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  gap: 1rem;
-}
-
-.stat-item {
-  text-align: center;
-}
-
-.stat-circle {
-  width: 80px;
-  height: 80px;
+.icon-wrapper {
+  padding: 1.2rem;
+  background: #eef4ff;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 0.75rem;
-  font-size: 1.5rem;
-  font-weight: bold;
-  border: 4px solid;
-  transition: all 0.3s ease;
+  margin-bottom: 1.5rem;
 }
+.dark-mode .icon-wrapper { background: #3a3a52; }
+.icon-wrapper svg { width: 48px; height: 48px; color: #0959ee; }
 
-.stat-circle-green {
-  border-color: #4ade80;
-  color: #4ade80;
-  background: rgba(74, 222, 128, 0.1);
+.welcome-title { font-size: 1.8rem; font-weight: 800; color: #0959ee; margin-bottom: 0.5rem; }
+.welcome-subtitle { font-size: 1rem; color: #7e8299; margin-bottom: 2rem; }
+.dark-mode .welcome-title { color: #10a4fa; }
+.dark-mode .welcome-subtitle { color: #a1a5b7; }
+
+.button-wrapper { display: flex; gap: 1rem; width: 100%; max-width: 500px; }
+.btn-chat-private, .btn-chat-group {
+  flex: 1; padding: 0.8rem; border-radius: 0.5rem; font-weight: 700; color: white;
+  text-decoration: none; display: flex; align-items: center; justify-content: center;
+  transition: background 0.2s;
 }
+.btn-chat-private { background: #fa930c; } .btn-chat-private:hover { background: #d67a00; }
+.btn-chat-group { background: #1ca509; } .btn-chat-group:hover { background: #147a06; }
 
-.dark-mode .stat-circle-green {
-  background: rgba(74, 222, 128, 0.15);
-}
-
-.stat-circle-blue {
-  border-color: #60a5fa;
-  color: #60a5fa;
-  background: rgba(96, 165, 250, 0.1);
-}
-
-.dark-mode .stat-circle-blue {
-  background: rgba(96, 165, 250, 0.15);
-}
-
-.stat-circle-orange {
-  border-color: #fb923c;
-  color: #fb923c;
-  background: rgba(251, 146, 60, 0.1);
-}
-
-.dark-mode .stat-circle-orange {
-  background: rgba(251, 146, 60, 0.15);
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: #666;
-  transition: color 0.3s ease;
-}
-
-.dark-mode .stat-label {
-  color: #a1a5b7;
-}
-
-/* Loading State */
-.stat-circle.loading {
-  opacity: 0.6;
-}
-
-.loading-spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-top-color: currentColor;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* Hover Effects */
-.info-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-}
-
-.dark-mode .info-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-}
-
-.stat-circle:hover {
-  transform: scale(1.1);
-}
-
-/* Responsive */
-@media (max-width: 1024px) {
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 768px) {
-  .dashboard-container {
-    padding: 1rem;
-  }
-
-  .welcome-card {
-    padding: 2rem;
-  }
-
-  .welcome-title {
-    font-size: 1.5rem;
-  }
-
-  .stats-card {
+/* --- TODO CARD (Baru) --- */
+.todo-card {
+    padding: 1.5rem;
+    /* 1. KITA KUNCI TINGGI CARD-NYA */
+    height: 400px; /* Card tidak akan pernah lebih tinggi dari ini */
+    display: flex;
     flex-direction: column;
-  }
-  
-  .stat-circle {
-    width: 100px;
-    height: 100px;
-  }
-
-  .btn-chat-private {
-    padding: 1rem;
-    border-radius: 0.5rem;
-  }
-
-  .btn-chat-group {
-    padding: 1rem;
-    border-radius: 0.5rem;
-  }
+    /* Opsional: Agar background tetap rapi */
+    overflow: hidden; 
 }
+
+.todo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 1rem;
+    /* Header tidak boleh mengecil/tergencet */
+    flex-shrink: 0; 
+}
+.todo-body {
+    /* Mengisi sisa ruang kosong di bawah header */
+    flex: 1; 
+    display: flex;
+    flex-direction: column;
+    /* PENTING: min-height: 0 diperlukan agar flex-child bisa scroll di Firefox/Chrome */
+    min-height: 0; 
+}
+.dark-mode .todo-header { border-bottom-color: #3f3f55; }
+.todo-title { font-size: 1.1rem; font-weight: 700; margin: 0; color: #3f4254; }
+.dark-mode .todo-title { color: #fff; }
+.icon-todo { width: 24px; height: 24px; color: #0959ee; }
+
+.btn-todo-link {
+    width: 32px; height: 32px; background: #f1faff; color: #009ef7;
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+}
+.btn-todo-link:hover { background: #009ef7; color: white; }
+
+.todo-list-wrapper {
+    /* 2. AREA INI YANG AKAN SCROLL */
+    flex: 1; /* Mengambil semua ruang yang tersedia di .todo-body */
+    overflow-y: auto; /* Munculkan scrollbar jika konten panjang */
+    padding-right: 8px; /* Jarak agar teks tidak tertutup scrollbar */
+    
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+/* --- KUSTOMISASI SCROLLBAR (Agar terlihat cantik di dalam card) --- */
+.todo-list-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+.todo-list-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+.todo-list-wrapper::-webkit-scrollbar-thumb {
+    background-color: #e4e6ef; /* Warna scrollbar soft */
+    border-radius: 10px;
+}
+.todo-list-wrapper::-webkit-scrollbar-thumb:hover {
+    background-color: #b5b5c3;
+}
+.dark-mode .todo-list-wrapper::-webkit-scrollbar-thumb {
+    background-color: #474761;
+}
+
+/* Sisa style item tetap sama */
+.todo-item {
+    display: flex; align-items: flex-start; gap: 0.8rem;
+    padding: 0.5rem; border-radius: 6px;
+    flex-shrink: 0; /* Mencegah item gepeng */
+    transition: background 0.2s;
+}
+.todo-item:hover { background: #f9f9f9; }
+.dark-mode .todo-item:hover { background: #323248; }
+
+.todo-name { font-weight: 600; color: #3f4254; font-size: 0.95rem; line-height: 1.4; }
+.todo-desc { font-size: 0.8rem; color: #b5b5c3; display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dark-mode .todo-name { color: #e1e1e1; }
+
+.icon-todo { width: 24px; height: 24px; color: #0959ee; }
+.todo-title { font-size: 1.1rem; font-weight: 700; margin: 0; color: #3f4254; }
+.dark-mode .todo-title { color: #fff; }
+
+.btn-todo-link {
+    width: 32px; height: 32px; background: #f1faff; color: #009ef7;
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+}
+.btn-todo-link:hover { background: #009ef7; color: white; }
+
+.empty-state, .loading-state { 
+    text-align: center; 
+    padding: 2rem; 
+    color: #a1a5b7;
+    /* Agar pesan kosong ada di tengah vertikal */
+    margin: auto; 
+}
+/* --- INFO CARDS (Kanan) --- */
+.info-card { padding: 1.5rem; text-align: center; }
+
+/* Phone */
+.phone-card { display: flex; align-items: center; justify-content: center; min-height: 80px; }
+.phone-text { font-size: 1.1rem; font-weight: 600; color: #3f4254; display: flex; align-items: center; gap: 0.5rem; margin: 0; }
+.phone-icon { color: #0959ee; }
+.dark-mode .phone-text { color: #fff; }
+
+/* Time */
+.time-card { min-height: 120px; }
+.time-display { font-size: 2.5rem; font-weight: 800; color: #0959ee; margin: 0; line-height: 1; }
+.date-display { font-size: 1rem; color: #7e8299; margin-top: 0.5rem; }
+.dark-mode .time-display { color: #10a4fa; }
+
+/* Stats */
+.stats-card {
+    display: flex; justify-content: space-around; padding: 2rem 8.5rem;
+    flex-wrap: wrap; gap: 1rem;
+}
+.stat-item { flex: 1; min-width: 80px; }
+.stat-circle {
+    width: 70px; height: 70px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; font-weight: 700; margin: 0 auto 0.5rem;
+}
+.stat-circle-green { background: #e8fff3; color: #50cd89; border: 3px solid #50cd89; }
+.stat-circle-blue { background: #f1faff; color: #009ef7; border: 3px solid #009ef7; }
+.stat-circle-orange { background: #fff8dd; color: #ffc700; border: 3px solid #ffc700; }
+.dark-mode .stat-circle-green { background: rgba(80, 205, 137, 0.1); }
+.dark-mode .stat-circle-blue { background: rgba(0, 158, 247, 0.1); }
+.dark-mode .stat-circle-orange { background: rgba(255, 199, 0, 0.1); }
+
+.stat-label { font-size: 0.8rem; font-weight: 600; color: #7e8299; margin: 0; }
+
+/* --- RESPONSIVE --- */
+@media (max-width: 992px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .welcome-card { order: 1; }
+  .right-column { order: 2; display: grid; grid-template-columns: 1fr 1fr; } /* Tablet: Info card jadi 2 kolom */
+  .stats-card { grid-column: span 2; }
+  .todo-card { order: 3; }
+}
+
+@media (max-width: 576px) {
+  .right-column { display: flex; flex-direction: column; }
+  .button-wrapper { flex-direction: column; }
+}
+
+@media (max-width: 390px) {
+  .right-column { display: flex;}
+  .button-wrapper { flex-direction: column; }
+}
+
+.loading-spinner-sm {
+    display: inline-block; width: 16px; height: 16px; border: 2px solid #ccc;
+    border-top-color: #0959ee; border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>

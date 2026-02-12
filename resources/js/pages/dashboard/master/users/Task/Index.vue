@@ -2,6 +2,7 @@
 import { ref, onMounted, watch, computed } from "vue";
 import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
+import { themeMode } from "@/layouts/default-layout/config/helper"; 
 import {
     CheckCircle2,
     Circle,
@@ -40,6 +41,7 @@ const props = withDefaults(
 );
 
 // --- STATE ---
+const currentThemeMode = computed(() => themeMode.value);
 const todoList = ref<Todo[]>([]);
 const searchQuery = ref("");
 const activeFilter = ref<FilterType>("all");
@@ -172,7 +174,7 @@ const clearSearch = () => {
 </script>
 
 <template>
-    <div class="d-flex flex-column flex-column-fluid">
+    <div class="d-flex flex-column flex-column-fluid" :class="{ 'dark-mode': currentThemeMode === 'dark' }">
         <div id="kt_app_content" class="app-content flex-column-fluid">
             <div
                 id="kt_app_content_container"
@@ -194,7 +196,7 @@ const clearSearch = () => {
                                 >
                             </div>
                             <span
-                                class="text-gray-400 mt-1 fw-semibold fs-7 ms-12"
+                                class="text-gray-700 mt-1 fw-semibold fs-7 ms-12"
                             >
                                 {{ counts.pending }} tugas tersisa hari ini
                             </span>
@@ -202,7 +204,7 @@ const clearSearch = () => {
 
                         <div class="card-toolbar gap-3">
                             <div class="search-box position-relative">
-                                <Search class="search-icon text-gray-500" />
+                                <Search class="search-icon text-gray-800" />
                                 <input
                                     v-model="searchQuery"
                                     type="text"
@@ -478,6 +480,10 @@ const clearSearch = () => {
     overflow: hidden;
 }
 
+.dark-mode .main-card {
+    background: #1e1e2d;
+}
+
 /* --- 2. HEADER ELEMENTS --- */
 .search-box {
     width: 220px;
@@ -486,6 +492,7 @@ const clearSearch = () => {
 .search-box:focus-within {
     width: 280px;
 }
+
 .search-input {
     padding-left: 38px;
     padding-right: 32px;
@@ -498,6 +505,11 @@ const clearSearch = () => {
     background-color: #fff;
     border-color: #009ef7;
 }
+
+.dark-mode .search-input {
+    background: #3c3c41;
+}
+
 .search-icon {
     position: absolute;
     left: 12px;
@@ -541,6 +553,11 @@ const clearSearch = () => {
     background-color: #f5f8fa;
     color: #009ef7;
 }
+
+.dark-mode .tab-btn:hover {
+    background-color: #4a4f53;
+}
+
 .tab-btn.active {
     background-color: #009ef7;
     color: #ffffff;
@@ -573,10 +590,18 @@ const clearSearch = () => {
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
     border-color: #e4e6ef;
 }
+.dark-mode .todo-card {
+    background: #3c3c41;
+    border: 1px solid #3c3c41;
+}
+
 .accent-border {
     width: 4px;
     background-color: #e4e6ef;
     transition: background-color 0.3s;
+}
+.dark-mode .accent-border{
+    background-color: #8f9094;
 }
 .todo-card:hover .accent-border {
     background-color: #009ef7;
@@ -607,6 +632,10 @@ const clearSearch = () => {
     color: #3f4254;
     transition: color 0.2s;
 }
+.dark-mode .todo-title {
+    color: #a4aacf;
+}
+
 .todo-desc {
     font-size: 0.85rem;
     color: #7e8299;
@@ -649,6 +678,9 @@ const clearSearch = () => {
     background: #fff8dd;
     color: #f6c000;
 }
+.dark-mode .btn-icon-action.edit {
+    background: #3c3c41;
+}
 .btn-icon-action.edit:hover {
     background: #f6c000;
     color: #fff;
@@ -656,6 +688,9 @@ const clearSearch = () => {
 .btn-icon-action.delete {
     background: #fff5f8;
     color: #f1416c;
+}
+.dark-mode .btn-icon-action.delete {
+    background: #3c3c41;
 }
 .btn-icon-action.delete:hover {
     background: #f1416c;
