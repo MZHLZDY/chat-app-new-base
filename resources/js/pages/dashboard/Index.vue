@@ -281,15 +281,17 @@ const formattedDate = computed(() => {
 
 /* --- TODO CARD (Baru) --- */
 .todo-card {
-    padding: 1.5rem;
-    /* 1. KITA KUNCI TINGGI CARD-NYA */
-    height: 400px; /* Card tidak akan pernah lebih tinggi dari ini */
-    display: flex;
-    flex-direction: column;
-    /* Opsional: Agar background tetap rapi */
-    overflow: hidden; 
+  height: 200px;                /* tinggi tetap, tidak berubah */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;            /* potong konten yang keluar dari card */
+  padding: 1.5rem;
+  box-sizing: border-box;      /* padding termasuk dalam height 300px */
+  transition: all 0.3s ease;
+  /* hapus atau timpa properti max-height */
 }
 
+/* 2. HEADER TETAP (TIDAK BOLEH MENGECIL) */
 .todo-header {
     display: flex;
     justify-content: space-between;
@@ -300,14 +302,15 @@ const formattedDate = computed(() => {
     /* Header tidak boleh mengecil/tergencet */
     flex-shrink: 0; 
 }
+
+/* 3. BODY MENGISI SISA RUANG & MEMBUAT KONTEKS SCROLL */
 .todo-body {
-    /* Mengisi sisa ruang kosong di bawah header */
-    flex: 1; 
-    display: flex;
-    flex-direction: column;
-    /* PENTING: min-height: 0 diperlukan agar flex-child bisa scroll di Firefox/Chrome */
-    min-height: 0; 
+  flex: 1;
+  min-height: 0;      /* wajib agar flex item bisa mengecil di bawah konten */
+  display: flex;
+  flex-direction: column;
 }
+
 .dark-mode .todo-header { border-bottom-color: #3f3f55; }
 .todo-title { font-size: 1.1rem; font-weight: 700; margin: 0; color: #3f4254; }
 .dark-mode .todo-title { color: #fff; }
@@ -321,26 +324,24 @@ const formattedDate = computed(() => {
 .btn-todo-link:hover { background: #009ef7; color: white; }
 
 .todo-list-wrapper {
-    /* 2. AREA INI YANG AKAN SCROLL */
-    flex: 1; /* Mengambil semua ruang yang tersedia di .todo-body */
-    overflow-y: auto; /* Munculkan scrollbar jika konten panjang */
-    padding-right: 8px; /* Jarak agar teks tidak tertutup scrollbar */
-    
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
+  flex: 1;
+  overflow-y: auto;   /* scroll hanya di sini */
+  padding-right: 5px;
 }
 
-/* --- KUSTOMISASI SCROLLBAR (Agar terlihat cantik di dalam card) --- */
+/* --- OPTIONAL: PERCANTIK SCROLLBAR (Agar tidak terlihat kaku) --- */
 .todo-list-wrapper::-webkit-scrollbar {
-    width: 6px;
+  width: 6px;
 }
 .todo-list-wrapper::-webkit-scrollbar-track {
-    background: transparent;
+  background: transparent;
 }
 .todo-list-wrapper::-webkit-scrollbar-thumb {
-    background-color: #e4e6ef; /* Warna scrollbar soft */
-    border-radius: 10px;
+  background-color: #e4e6ef;
+  border-radius: 10px;
+}
+.dashboard-container.dark-mode .todo-list-wrapper::-webkit-scrollbar-thumb {
+  background-color: #474761;
 }
 .todo-list-wrapper::-webkit-scrollbar-thumb:hover {
     background-color: #b5b5c3;
@@ -374,12 +375,13 @@ const formattedDate = computed(() => {
 }
 .btn-todo-link:hover { background: #009ef7; color: white; }
 
-.empty-state, .loading-state { 
-    text-align: center; 
-    padding: 2rem; 
-    color: #a1a5b7;
-    /* Agar pesan kosong ada di tengah vertikal */
-    margin: auto; 
+.empty-state {
+  margin: auto; /* Ini akan menaruh pesan 'Kosong' TEPAT DI TENGAH vertikal & horizontal */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%; /* Pastikan mengisi ruang */
 }
 /* --- INFO CARDS (Kanan) --- */
 .info-card { padding: 1.5rem; text-align: center; }
@@ -398,7 +400,7 @@ const formattedDate = computed(() => {
 
 /* Stats */
 .stats-card {
-    display: flex; justify-content: space-around; padding: 2rem 8.5rem;
+    display: flex; justify-content: space-around; padding: 2rem 9rem;
     flex-wrap: wrap; gap: 1rem;
 }
 .stat-item { flex: 1; min-width: 80px; }
