@@ -1,154 +1,206 @@
 <template>
-    <div class="d-flex flex-column flex-lg-row flex-column-fluid h-100">
+    <div class="login-container">
+        <!-- Background dengan animasi -->
+        <div class="background-animated">
+            <div class="circle circle-1"></div>
+            <div class="circle circle-2"></div>
+            <div class="circle circle-3"></div>
+        </div>
 
-        <div class="d-flex flex-lg-row-fluid w-lg-50 bgi-size-cover bgi-position-center order-1 order-lg-1 position-relative aside-img"
-             :style="`background-image: url('${getAssetPath('media/misc/auth-bg.png')}')`">
-
-            <div class="position-absolute top-0 start-0 w-100 h-100"
-                 style="background-color: rgba(0, 0, 0, 0.5); z-index: 1;">
-            </div>
-
-            <div class="d-flex flex-column flex-center py-7 py-lg-15 px-5 px-md-15 w-100 position-relative" style="z-index: 2;">
-                <router-link to="/" class="mb-0 mb-lg-12">
-                    <img :src="setting?.logo_depan" alt="Logo" class="h-60px h-lg-75px" />
-                </router-link>
-
-                <h1 class="text-white fs-2qx fw-bolder text-center mb-7">
-                    Registrasi Akun
+        <!-- Left Side - Branding -->
+        <div class="login-left">
+            <div class="branding-content">
+                <div class="logo-wrapper animate-fade-in">
+                    <img :src="setting?.logo_depan" class="logo" alt="Logo" />
+                </div>
+                
+                <h1 class="brand-title animate-slide-up">
+                    Bergabunglah Bersama Kami
                 </h1>
-                <div class="text-white fs-base text-center opacity-75">
-                    Bergabunglah dengan komunitas kami dan rasakan pengalaman <br>
-                    komunikasi yang lebih baik dan aman.
+
+                <p class="brand-subtitle animate-slide-up" style="animation-delay: 0.1s">
+                    Buat akun Anda dan mulai berkomunikasi dengan lebih efektif dan aman
+                </p>
+
+                <div class="feature-list animate-slide-up" style="animation-delay: 0.2s">
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 11l3 3L22 4"></path>
+                                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                            </svg>
+                        </div>
+                        <span>Registrasi cepat & mudah</span>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 11l3 3L22 4"></path>
+                                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                            </svg>
+                        </div>
+                        <span>Keamanan data terjamin</span>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 11l3 3L22 4"></path>
+                                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                            </svg>
+                        </div>
+                        <span>Verifikasi email otomatis</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="d-flex flex-column flex-lg-row-fluid w-lg-50 p-10 order-2 order-lg-2 justify-content-center" style="background-color: rgba(255, 255, 255, 0.3); backdrop-filter: blur(9px);">
-            <div class="d-flex flex-center flex-column flex-lg-row-fluid">
-                <div class="w-lg-500px p-10">
-
-                    <div class="text-center mb-10">
-                        <h1 class="text-white mb-5 fs-3x fw-bold"
-                        style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">Sign Up</h1>
-                    </div>
-
-                    <div v-if="showEmailVerificationAlert" class="alert alert-success d-flex align-items-center mb-10">
-                        <i class="ki-duotone ki-shield-tick fs-2hx text-success me-4">
-                            <span class="path1"></span>
-                            <span class="path2"></span>
-                        </i>
-                        <div class="d-flex flex-column">
-                            <h4 class="mb-1 text-success">Registrasi Berhasil!</h4>
-                            <span>Email verifikasi telah dikirim ke <strong>{{ formData.email }}</strong>. Cek inbox/spam.</span>
+        <!-- Right Side - Register Form -->
+        <div class="login-right">
+            <div class="form-container animate-fade-in" style="animation-delay: 0.3s">
+                
+                <!-- Card Register -->
+                <div class="login-card">
+                    
+                    <!-- Success Alert -->
+                    <div v-if="showEmailVerificationAlert" class="alert-success">
+                        <div class="alert-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                        </div>
+                        <div class="alert-content">
+                            <h4 class="alert-title">Registrasi Berhasil!</h4>
+                            <p class="alert-text">Email verifikasi telah dikirim ke <strong>{{ formData.email }}</strong>. Silakan cek inbox/spam Anda.</p>
                         </div>
                     </div>
 
-                    <div v-if="!showEmailVerificationAlert"
-                        class="stepper stepper-links d-flex flex-column"
-                        id="kt_create_account_stepper"
-                        ref="horizontalWizardRef"
-                    >
-                        <div class="stepper-nav py-5 mt-5 d-none">
-                            <div class="stepper-item current" data-kt-stepper-element="nav">
-                                <h3 class="stepper-title">Akun</h3>
+                    <!-- Form Content -->
+                    <div v-if="!showEmailVerificationAlert">
+                        <div class="card-header">
+                            <h2 class="card-title">Daftar Akun</h2>
+                            <p class="card-subtitle">Lengkapi informasi di bawah ini</p>
+                        </div>
+
+                        <!-- Stepper Progress -->
+                        <div class="stepper-progress">
+                            <div class="step-item" :class="{ active: currentStepIndex === 0, completed: currentStepIndex > 0 }">
+                                <div class="step-circle">
+                                    <span class="step-number" v-if="currentStepIndex === 0">1</span>
+                                    <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="step-label">
+                                    <div class="step-title">Informasi Dasar</div>
+                                    <div class="step-desc">Nama, Email & Telepon</div>
+                                </div>
                             </div>
-                            <div class="stepper-item" data-kt-stepper-element="nav">
-                                <h3 class="stepper-title">Password</h3>
+
+                            <div class="step-line" :class="{ completed: currentStepIndex > 0 }"></div>
+
+                            <div class="step-item" :class="{ active: currentStepIndex === 1 }">
+                                <div class="step-circle">
+                                    <span class="step-number">2</span>
+                                </div>
+                                <div class="step-label">
+                                    <div class="step-title">Keamanan</div>
+                                    <div class="step-desc">Password Akun</div>
+                                </div>
                             </div>
                         </div>
 
                         <form
-                            class="mx-auto w-100 pb-10"
+                            class="login-form"
                             novalidate
                             id="kt_create_account_form"
-                            @submit="handleStep"
+                            ref="horizontalWizardRef"
+                            @submit.prevent="handleStep"
                         >
-                            <div class="current" data-kt-stepper-element="content">
+                            <!-- Step 1: Credential -->
+                            <div v-show="currentStepIndex === 0">
                                 <Credential :formData="formData"></Credential>
                             </div>
 
-                            <div data-kt-stepper-element="content">
+                            <!-- Step 2: Password -->
+                            <div v-show="currentStepIndex === 1">
                                 <Password :formData="formData"></Password>
                             </div>
 
-                            <div class="d-flex flex-stack pt-10">
-                                <div class="mr-2">
-                                    <button
-                                        type="button"
-                                        class="btn btn-lg btn-light-primary me-3"
-                                        data-kt-stepper-action="previous"
-                                        @click="previousStep"
-                                        v-if="currentStepIndex > 0"
-                                    >
-                                        <KTIcon icon-name="arrow-left" icon-class="fs-4 me-1" />
-                                        Kembali
-                                    </button>
-                                </div>
+                            <!-- Action Buttons -->
+                            <div class="form-actions">
+                                <button
+                                    v-if="currentStepIndex > 0"
+                                    type="button"
+                                    class="btn-back"
+                                    @click="previousStep"
+                                >
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="19" y1="12" x2="5" y2="12"></line>
+                                        <polyline points="12 19 5 12 12 5"></polyline>
+                                    </svg>
+                                    Kembali
+                                </button>
 
-                                <div>
-                                    <button
-                                        type="submit"
-                                        id="submit-form"
-                                        class="btn btn-lg btn-primary w-100 mb-5"
-                                        data-kt-stepper-action="submit"
-                                        v-if="currentStepIndex === totalSteps - 1"
-                                    >
-                                        <span class="indicator-label">
-                                            Daftar
-                                        </span>
-                                        <span class="indicator-progress">
-                                            Memproses...
-                                            <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
-                                        </span>
-                                    </button>
+                                <button
+                                    v-if="currentStepIndex === totalSteps - 1"
+                                    type="submit"
+                                    id="submit-form"
+                                    ref="submitButton"
+                                    class="btn-submit"
+                                    :class="{ 'full-width': currentStepIndex === 0 }"
+                                >
+                                    <span class="indicator-label">Daftar Sekarang</span>
+                                    <span class="indicator-progress">
+                                        <span class="spinner"></span>
+                                        Memproses...
+                                    </span>
+                                </button>
 
-                                    <button
-                                        v-else
-                                        type="submit"
-                                        id="next-form"
-                                        class="btn btn-lg btn-primary w-100 mb-5"
-                                    >
-                                        <span class="indicator-label">
-                                            Selanjutnya
-                                            <KTIcon icon-name="arrow-right" icon-class="fs-4 ms-2 me-0" />
-                                        </span>
-                                        <span class="indicator-progress">
-                                            <span class="spinner-border spinner-border-sm align-middle ms-2"></span>
-                                        </span>
-                                    </button>
-                                </div>
+                                <button
+                                    v-else
+                                    type="submit"
+                                    id="next-form"
+                                    class="btn-submit full-width"
+                                >
+                                    <span class="indicator-label">
+                                        Selanjutnya
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 0.5rem;">
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                            <polyline points="12 5 19 12 12 19"></polyline>
+                                        </svg>
+                                    </span>
+                                    <span class="indicator-progress">
+                                        <span class="spinner"></span>
+                                    </span>
+                                </button>
                             </div>
                         </form>
+
+                        <!-- Sign In Link -->
+                        <div class="card-footer">
+                            <span class="footer-text">Sudah punya akun?</span>
+                            <router-link to="/sign-in" class="signup-link">
+                                Masuk sekarang
+                            </router-link>
+                        </div>
                     </div>
 
-                    <div v-else class="text-center pt-10">
-                        <router-link to="/sign-in" class="btn btn-lg btn-primary w-100">
+                    <!-- After Success -->
+                    <div v-else>
+                        <router-link to="/sign-in" class="btn-submit">
                             Kembali ke Login
                         </router-link>
                     </div>
 
-                    <div class="text-center text-gray-200 fw-bold fs-4" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
-                            Sudah punya akun?
-                            <router-link to="/sign-in" class="link-primary fw-bolder" style="text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
-                                LOGIN DISINI
-                            </router-link>
-                    </div>
-
-                    <!-- <div class="d-flex flex-center flex-wrap fs-6 p-5 pb-0">
-                        <div class="d-flex flex-center fw-bold fs-6">
-                            <a href="#" class="text-muted text-hover-primary px-2" target="_blank">Tentang</a>
-                            <a href="#" class="text-muted text-hover-primary px-2" target="_blank">Support</a>
-                        </div>
-                    </div> -->
-
                 </div>
+
             </div>
         </div>
     </div>
 </template>
 
 <script lang="ts">
-// ... (Bagian script tidak ada perubahan, tetap sama seperti sebelumnya)
 import { getAssetPath } from "@/core/helpers/assets";
 import { defineComponent, ref, onMounted, computed } from "vue";
 import * as Yup from "yup";
@@ -187,6 +239,7 @@ export default defineComponent({
         const horizontalWizardRef = ref<HTMLElement | null>(null);
         const currentStepIndex = ref(0);
         const showEmailVerificationAlert = ref(false);
+        const submitButton = ref<HTMLButtonElement | null>(null);
 
         const formData = ref<CreateAccount>({
             nama: "",
@@ -232,11 +285,7 @@ export default defineComponent({
         });
 
         const totalSteps = computed(() => {
-            if (_stepperObj.value) {
-                return _stepperObj.value.totalStepsNumber;
-            } else {
-                return 1;
-            }
+            return 2;
         });
 
         const handleStep = handleSubmit((values) => {
@@ -244,20 +293,30 @@ export default defineComponent({
 
             if (currentStepIndex.value === 0) {
                 currentStepIndex.value++;
-                _stepperObj.value?.goNext();
+                if (_stepperObj.value) {
+                    _stepperObj.value.goNext();
+                }
             } else if (currentStepIndex.value === 1) {
                 formSubmit(formData.value);
             }
         });
 
         const previousStep = () => {
-            if (!_stepperObj.value) return;
-            currentStepIndex.value--;
-            _stepperObj.value.goPrev();
+            if (currentStepIndex.value > 0) {
+                currentStepIndex.value--;
+                if (_stepperObj.value) {
+                    _stepperObj.value.goPrev();
+                }
+            }
         };
 
         const formSubmit = (values: CreateAccount) => {
-            blockBtn("#submit-form");
+            if (submitButton.value) {
+                submitButton.value.disabled = true;
+                submitButton.value.setAttribute("data-kt-indicator", "on");
+            } else {
+                blockBtn("#submit-form");
+            }
 
             axios
                 .post("/auth/register", values)
@@ -268,7 +327,14 @@ export default defineComponent({
                 })
                 .catch((err) => {
                     toast.error(err.response?.data?.message || "Terjadi kesalahan");
-                    unblockBtn("#submit-form");
+                })
+                .finally(() => {
+                    if (submitButton.value) {
+                        submitButton.value.removeAttribute("data-kt-indicator");
+                        submitButton.value.disabled = false;
+                    } else {
+                        unblockBtn("#submit-form");
+                    }
                 });
         };
 
@@ -282,43 +348,812 @@ export default defineComponent({
             formData,
             setting,
             showEmailVerificationAlert,
+            submitButton,
         };
     },
 });
 </script>
+
 <style lang="scss" scoped>
-/* MENGGUNAKAN :deep() 
-   Ini akan memaksa style ini menembus ke dalam component anak (Credential.vue & Password.vue)
-*/
-
-:deep(.form-control) {
-    /* 1. Background Transparan Gelap (Glass Effect) */
-    background-color: rgba(0, 0, 0, 0.2) !important; 
-    
-    /* 2. Border Biru Muda Permanen */
-    border: 3px solid #54b7f0 !important; 
-    
-    /* 3. Teks Putih (agar kontras dengan background gelap) */
-    color: #ffffff !important;
-    
-    /* 4. Radius Melengkung */
-    border-radius: 10px;
+/* --- ANIMATIONS --- */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
-/* Mengatur warna placeholder (teks petunjuk "Email", "Password", dll) */
-:deep(.form-control::placeholder) {
-    color: rgba(255, 255, 255, 0.6) !important;
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
-/* Efek Glow saat kolom diklik */
-:deep(.form-control:focus) {
-    box-shadow: 0 0 10px rgba(0, 158, 247, 0.3) !important;
-    background-color: rgba(0, 0, 0, 0.3) !important; /* Sedikit lebih gelap saat fokus */
+@keyframes float {
+    0%, 100% {
+        transform: translate(0, 0);
+    }
+    33% {
+        transform: translate(30px, -30px);
+    }
+    66% {
+        transform: translate(-20px, 20px);
+    }
 }
 
-/* Menyesuaikan warna label form agar putih & punya bayangan (opsional jika belum di-set di component anak) */
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes errorSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+    opacity: 0;
+}
+
+.animate-slide-up {
+    animation: slideUp 0.8s ease-out forwards;
+    opacity: 0;
+}
+
+/* --- LAYOUT --- */
+.login-container {
+    display: flex;
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Animated Background */
+.background-animated {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    overflow: hidden;
+}
+
+.circle {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.1);
+    animation: float 20s ease-in-out infinite;
+}
+
+.circle-1 {
+    width: 300px;
+    height: 300px;
+    top: -100px;
+    left: -100px;
+}
+
+.circle-2 {
+    width: 400px;
+    height: 400px;
+    top: 50%;
+    right: -150px;
+    animation-delay: -5s;
+    animation-duration: 25s;
+}
+
+.circle-3 {
+    width: 250px;
+    height: 250px;
+    bottom: -80px;
+    left: 40%;
+    animation-delay: -10s;
+    animation-duration: 30s;
+}
+
+/* --- LEFT SIDE (BRANDING) --- */
+.login-left {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    position: relative;
+    z-index: 1;
+}
+
+.branding-content {
+    max-width: 500px;
+    color: white;
+}
+
+.logo-wrapper {
+    margin-bottom: 2.5rem;
+}
+
+.logo {
+    height: 50px;
+    filter: brightness(0) invert(1);
+}
+
+.brand-title {
+    font-size: 2.75rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+    text-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.brand-subtitle {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    opacity: 0.95;
+    margin-bottom: 3rem;
+}
+
+.feature-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 1.05rem;
+    font-weight: 500;
+}
+
+.feature-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    svg {
+        color: white;
+    }
+}
+
+/* --- RIGHT SIDE (FORM) --- */
+.login-right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(40px);
+    position: relative;
+    z-index: 1;
+}
+
+.form-container {
+    width: 100%;
+    max-width: 480px;
+}
+
+/* --- CARD --- */
+.login-card {
+    background: white;
+    border-radius: 24px;
+    padding: 2rem;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.login-card:hover {
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.2);
+}
+
+.card-header {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.card-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #1a202c;
+    margin-bottom: 0.5rem;
+}
+
+.card-subtitle {
+    font-size: 0.95rem;
+    color: #718096;
+    margin: 0;
+}
+
+/* --- STEPPER PROGRESS --- */
+.stepper-progress {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
+.step-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.step-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    border: 3px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.step-number {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #a0aec0;
+}
+
+.step-label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.step-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #a0aec0;
+    transition: color 0.3s;
+}
+
+.step-desc {
+    font-size: 0.7rem;
+    color: #cbd5e0;
+}
+
+.step-line {
+    width: 50px;
+    height: 3px;
+    background: #e2e8f0;
+    margin: 0 0.75rem;
+    transition: all 0.3s ease;
+}
+
+/* Active Step */
+.step-item.active .step-circle {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.step-item.active .step-number {
+    color: white;
+}
+
+.step-item.active .step-title {
+    color: #667eea;
+}
+
+.step-item.active .step-desc {
+    color: #718096;
+}
+
+/* Completed Step */
+.step-item.completed .step-circle {
+    background: #48bb78;
+    border-color: #48bb78;
+}
+
+.step-item.completed .step-circle svg {
+    color: white;
+}
+
+.step-item.completed .step-title {
+    color: #48bb78;
+}
+
+.step-line.completed {
+    background: #48bb78;
+}
+
+/* --- FORM STYLES --- */
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+:deep(.form-group) {
+    display: flex;
+    flex-direction: column;
+}
+
 :deep(.form-label) {
-    color: #ffffff;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 0.5rem;
+}
+
+:deep(.input-wrapper) {
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: #f7fafc;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+:deep(.input-wrapper:focus-within) {
+    background: white;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+:deep(.input-icon) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1rem;
+    color: #a0aec0;
+}
+
+:deep(.input-wrapper:focus-within .input-icon) {
+    color: #667eea;
+}
+
+:deep(.form-input) {
+    flex: 1;
+    padding: 0.875rem 1rem 0.875rem 0;
+    border: none;
+    background: transparent;
+    font-size: 0.95rem;
+    color: #2d3748;
+    outline: none;
+
+    &::placeholder {
+        color: #a0aec0;
+    }
+}
+
+:deep(.toggle-password) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 1rem;
+    background: transparent;
+    border: none;
+    color: #a0aec0;
+    cursor: pointer;
+    transition: color 0.2s;
+
+    &:hover {
+        color: #667eea;
+    }
+}
+
+/* Error Container & Message */
+:deep(.error-container) {
+    min-height: 20px;
+    margin-top: 0.35rem;
+}
+
+:deep(.error-message) {
+    display: block;
+    font-size: 0.8rem;
+    color: #f56565;
+    padding-left: 0.25rem;
+    animation: errorSlide 0.3s ease-out;
+}
+
+/* --- FORM ACTIONS --- */
+.form-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+.btn-back {
+    flex: 1;
+    padding: 1rem;
+    border: 2px solid #e2e8f0;
+    background: white;
+    color: #4a5568;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    transition: all 0.3s ease;
+
+    &:hover {
+        border-color: #cbd5e0;
+        background: #f7fafc;
+    }
+}
+
+.btn-submit {
+    flex: 2;
+    padding: 1rem;
+    border: none;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-size: 1rem;
+    font-weight: 700;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+
+    &.full-width {
+        flex: 1;
+        width: 100%;
+    }
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        transition: left 0.5s;
+    }
+
+    &:hover:not(:disabled)::before {
+        left: 100%;
+    }
+
+    &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    &:disabled {
+        opacity: 0.8;
+        cursor: not-allowed;
+    }
+}
+
+/* Loading Indicator */
+.indicator-label {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.indicator-progress {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-submit[data-kt-indicator="on"] {
+    .indicator-label {
+        display: none;
+    }
+    
+    .indicator-progress {
+        display: flex;
+    }
+}
+
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+/* --- CARD FOOTER --- */
+.card-footer {
+    text-align: center;
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #e2e8f0;
+}
+
+.footer-text {
+    font-size: 0.875rem;
+    color: #718096;
+    margin-right: 0.5rem;
+}
+
+.signup-link {
+    font-size: 0.875rem;
+    color: #667eea;
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s;
+
+    &:hover {
+        color: #5a67d8;
+    }
+}
+
+/* --- SUCCESS ALERT --- */
+.alert-success {
+    background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+    color: white;
+    padding: 1.25rem;
+    border-radius: 16px;
+    display: flex;
+    gap: 0.85rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 12px rgba(72, 187, 120, 0.3);
+}
+
+.alert-icon {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.alert-content {
+    flex: 1;
+}
+
+.alert-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 0.4rem 0;
+}
+
+.alert-text {
+    font-size: 0.9rem;
+    margin: 0;
+    opacity: 0.95;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 992px) {
+    .login-container {
+        flex-direction: column;
+    }
+
+    .login-left {
+        padding: 2.5rem 2rem;
+        min-height: auto;
+    }
+
+    .login-right {
+        padding: 2rem;
+        background: white;
+        backdrop-filter: none;
+    }
+
+    .brand-title {
+        font-size: 2rem;
+    }
+
+    .brand-subtitle {
+        font-size: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .feature-list {
+        gap: 1rem;
+    }
+
+    .feature-item {
+        font-size: 0.95rem;
+    }
+
+    .login-card {
+        padding: 2rem 1.75rem;
+        box-shadow: none;
+    }
+
+    .card-title {
+        font-size: 1.6rem;
+    }
+
+    .step-line {
+        width: 40px;
+    }
+}
+
+@media (max-width: 768px) {
+    .login-left {
+        padding: 2rem 1.5rem;
+    }
+
+    .login-right {
+        padding: 1.5rem;
+    }
+
+    .brand-title {
+        font-size: 1.75rem;
+    }
+
+    .brand-subtitle {
+        font-size: 0.95rem;
+    }
+
+    .feature-list {
+        display: none;
+    }
+
+    .login-card {
+        padding: 1.75rem 1.5rem;
+    }
+
+    .card-title {
+        font-size: 1.5rem;
+    }
+
+    .card-subtitle {
+        font-size: 0.9rem;
+    }
+
+    .stepper-progress {
+        margin-bottom: 1.25rem;
+    }
+
+    .step-circle {
+        width: 38px;
+        height: 38px;
+    }
+
+    .step-title {
+        font-size: 0.75rem;
+    }
+
+    .step-desc {
+        font-size: 0.65rem;
+    }
+
+    .step-line {
+        width: 30px;
+        margin: 0 0.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .login-left {
+        padding: 1.5rem 1rem;
+        min-height: 200px;
+    }
+
+    .login-right {
+        padding: 1rem;
+    }
+
+    .logo {
+        height: 40px;
+    }
+
+    .logo-wrapper {
+        margin-bottom: 1.5rem;
+    }
+
+    .brand-title {
+        font-size: 1.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .brand-subtitle {
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .login-card {
+        padding: 1.5rem 1.25rem;
+        border-radius: 16px;
+    }
+
+    .card-title {
+        font-size: 1.35rem;
+    }
+
+    .login-form {
+        gap: 1rem;
+    }
+
+    .step-label {
+        display: none;
+    }
+
+    .step-line {
+        width: 50px;
+    }
+
+    .btn-submit, .btn-back {
+        padding: 0.9rem;
+        font-size: 0.95rem;
+    }
+
+    .card-footer {
+        margin-top: 1.25rem;
+        padding-top: 1.25rem;
+        font-size: 0.85rem;
+    }
+
+    .footer-text,
+    .signup-link {
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 400px) {
+    .login-card {
+        padding: 1.25rem 1rem;
+    }
+
+    .step-circle {
+        width: 36px;
+        height: 36px;
+    }
+
+    .step-number {
+        font-size: 0.95rem;
+    }
+}
+
+/* Landscape Mobile */
+@media (max-width: 992px) and (orientation: landscape) {
+    .login-left {
+        min-height: auto;
+        padding: 1.5rem 2rem;
+    }
+
+    .brand-title {
+        font-size: 1.5rem;
+    }
+
+    .brand-subtitle {
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .feature-list {
+        display: none;
+    }
 }
 </style>

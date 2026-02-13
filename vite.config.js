@@ -7,7 +7,7 @@ import { visualizer } from "rollup-plugin-visualizer";
 
 export default defineConfig(({ mode }) => {
     process.env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
-    const myIp = '192.168.112.158'; 
+    const myIp = '192.168.112.197'; 
 
     return {
         server: {
