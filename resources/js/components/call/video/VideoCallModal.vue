@@ -7,7 +7,7 @@ import { useAgora } from '@/composables/useAgora';
 import { useAuthStore } from '@/stores/authStore';
 import VideoPlayer from './VideoPlayer.vue';
 import CallControls from '../shared/CallControls.vue';
-import { MicOff, VideoOff, VideoOffIcon } from 'lucide-vue-next';
+import { MicOff, VideoOff, VideoOffIcon, Minimize2 } from 'lucide-vue-next';
 import { usePage } from '@inertiajs/vue3';
 
 const store = useCallStore();
@@ -15,6 +15,7 @@ const page = usePage();
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
 const localVideoOrientation = ref<'landscape' | 'portrait'>('landscape');
+const emit = defineEmits(['minimize']);
 
 const { toggleAudio, toggleVideo } = useVideoCall();
 const { endCall } = usePersonalCall();
@@ -82,6 +83,36 @@ const remoteUser = computed(() => {
     return null;
 });
 
+// Logic minimize video call / floating
+const showMinimizeDesktop = ref(false);
+let minimizeHideTimeout: any = null;
+
+const handleMinimize = () => {
+    emit('minimize');
+};
+
+const handleMouseMove = (e: MouseEvent) => {
+    // Hanya jalan di desktop (> 768px)
+    if (window.innerWidth > 768) { 
+        // Jika kursor mouse ada di 120px teratas layar
+        if (e.clientY < 120) {
+            showMinimizeDesktop.value = true;
+            if (minimizeHideTimeout) {
+                clearTimeout(minimizeHideTimeout);
+                minimizeHideTimeout = null;
+            }
+        } else {
+            // Jika mouse turun, sembunyikan tombol setelah 2 detik
+            if (showMinimizeDesktop.value && !minimizeHideTimeout) {
+                minimizeHideTimeout = setTimeout(() => {
+                    showMinimizeDesktop.value = false;
+                    minimizeHideTimeout = null;
+                }, 2000);
+            }
+        }
+    }
+}
+
 // join agora channel saat modal muncul
 onMounted(async () => {
     console.log('📹 VideoCallModal mounted');
@@ -93,6 +124,8 @@ onMounted(async () => {
     console.log('📦 currentUser.id:', currentUser.value?.id);
     console.log('📦 agoraToken:', store.agoraToken ? 'AVAILABLE' : 'NULL');
     console.log('📦 channelName:', store.channelName);
+
+    window.addEventListener('mousemove', handleMouseMove);
 
     if (!isVideoCallActive.value) {
         console.warn('⚠️ Video call tidak aktif, skip join channel');
@@ -201,6 +234,7 @@ watch(() => isVideoCallActive.value, (active) => {
 }, { immediate: true });
 
 onUnmounted(() => {
+    window.removeEventListener('mousemove', handleMouseMove);
     if (timerInterval) clearInterval(timerInterval);
 });
 
@@ -332,6 +366,17 @@ watch(() => remoteVideoTracks.value.size, (size) => {
 
             <!-- UI overlay (timer + kontrol) -->
             <div class="call-ui-overlay">
+
+                <!-- Button minimize muncul dari atas (khusus desktop) -->
+                <Transition name="slide-down">
+                    <div v-if="showMinimizeDesktop" class="desktop-minimize-wrapper" @click="handleMinimize">
+                        <div class="minimize-btn-content">
+                            <Minimize2 :size="20" />
+                            <span>Minimize</span>
+                        </div>
+                    </div>
+                </Transition>
+
                 <!-- timer diatas -->
                 <div class="top-bar">
                     <CallTimer
@@ -365,6 +410,11 @@ watch(() => remoteVideoTracks.value.size, (size) => {
                     <div class="island timer-island">
                         <div class="rec-dot" :class="{ 'animate-pulse': !remoteUser?.videoTrack }"></div>
                         <span class="timer-text">{{ formattedDuration }}</span>
+                    </div>
+
+                    <!-- Button minimize versi island (khusus mobile) -->
+                    <div class="island minimize-island custom-clickable" @click="handleMinimize">
+                        <Minimize2 :size="14" />
                     </div>
                 </div>
 
@@ -571,6 +621,12 @@ watch(() => remoteVideoTracks.value.size, (size) => {
 }
 
 /* Responsive - Tablet */
+@media (min-width: 768px) {
+    .minimize-island {
+        display: none !important;
+    }
+}
+
 @media (max-width: 768px) {
     .local-video-wrapper.landscape {
         width: clamp(140px, 20vw, 180px);
@@ -582,6 +638,10 @@ watch(() => remoteVideoTracks.value.size, (size) => {
         width: clamp(100px, 15vw, 130px);
         top: 15px;
         right: 15px;
+    }
+
+    .desktop-minimize-wrapper {
+        display: none !important;
     }
 }
 
@@ -749,5 +809,58 @@ watch(() => remoteVideoTracks.value.size, (size) => {
 }
 .slide-icon-enter-from, .slide-icon-leave-to {
     max-width: 0; opacity: 0; margin-left: 0;
+}
+
+/* Desktop Minimize Wrapper */
+.desktop-minimize-wrapper {
+    position: absolute;
+    top: 40px; 
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.minimize-btn-content {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 24px;
+    background: rgba(20, 20, 20, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 30px;
+    color: white; font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    transition: all 0.2s;
+}
+
+.minimize-btn-content:hover {
+    background: rgba(50, 50, 50, 0.85);
+    transform: scale(1.05);
+}
+
+/* Animasi Slide Down */
+.slide-down-enter-active, .slide-down-leave-active {
+    transition: all 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+    transform: translateY(0) translateX(-50%); opacity: 1;
+}
+
+.slide-down-enter-from, .slide-down-leave-to {
+    transform: translateY(-80px) translateX(-50%); opacity: 0;
+}
+
+/* Mobile Minimize Island */
+.minimize-island {
+    width: 38px; padding: 0 !important;
+    justify-content: center; cursor: pointer;
+    background: rgba(255, 255, 255, 0.1);
+}
+.minimize-island:active {
+    transform: scale(0.92);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.custom-clickable {
+    pointer-events: auto !important;
 }
 </style>

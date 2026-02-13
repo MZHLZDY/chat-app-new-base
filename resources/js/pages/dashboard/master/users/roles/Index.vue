@@ -25,6 +25,7 @@ import VoiceCallingModal from "@/components/call/voice/VoiceCallingModal.vue";
 import VideoCallingModal from "@/components/call/video/VideoCallingModal.vue";
 import VideoIncomingModal from "@/components/call/video/VideoIncomingModal.vue";
 import VideoCallModal from "@/components/call/video/VideoCallModal.vue";
+import VideoFloating from "@/components/call/video/VideoFloating.vue";
 
 // Component Form Kontak
 import ContactForm from "./Form.vue";
@@ -139,7 +140,7 @@ const showOngoingModal = computed(
         !callStore.isMinimized
 );
 const showFloatingModal = computed(
-    () => isCallActive.value && callStore.isMinimized
+    () => isCallActive.value && callStore.isMinimized && callStore.currentCall?.type === 'voice'
 );
 
 // Perbaikan 2: Sesuaikan akses properti (caller.id & receiver)
@@ -459,10 +460,18 @@ const showVideoIncomingModal = computed(
     () => callStore.incomingCall?.type === "video" && !callStore.isInCall
 );
 
-const showVideoCallModal = computed(
-    () =>
-        callStore.currentCall?.type === "video" &&
-        callStore.callStatus === "ongoing"
+const showVideoCallModal = computed(() =>
+    isCallActive.value &&
+    callStore.currentCall?.type === "video" &&
+    callStore.callStatus === "ongoing" &&
+    !callStore.isMinimized
+);
+
+const showVideoFloatingModal = computed(() => 
+    isCallActive.value &&
+    callStore.callStatus === 'ongoing' &&
+    callStore.currentCall?.type === 'video' &&
+    callStore.isMinimized
 );
 
 // --- PRIVATE CHAT LOGIC ---
@@ -1708,7 +1717,12 @@ onUnmounted(() => {
             <!-- Video call modals tetap sama -->
             <VideoCallingModal v-if="showVideoCallingModal" />
             <VideoIncomingModal v-if="showVideoIncomingModal" />
-            <VideoCallModal v-if="showVideoCallModal" />
+            <VideoCallModal v-if="showVideoCallModal" @minimize="callStore.toggleMinimize" />
+            <VideoFloating
+                v-if="showVideoFloatingModal"
+                @maximize="callStore.toggleMinimize"
+                @end-call="handleEndVoiceCall"
+            />
         </Teleport>
 
         <div
