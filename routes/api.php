@@ -10,6 +10,7 @@ use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\TodoController;
+use App\Http\Controllers\TodoCommentController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -33,15 +34,15 @@ Route::prefix('auth')->group(function () {
     Route::post('reset-password', [AuthController::class, 'resetPassword']);
     Route::post('forgot-password/send-otp', [AuthController::class, 'sendResetOtp']);
     Route::post('forgot-password/reset', [AuthController::class, 'resetWithOtp']);
-    
+
     // Email Verification Routes (Redirect to Frontend)
     Route::get('email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
         ->middleware('signed')
         ->name('verification.verify');
-    
+
     Route::post('email/resend', [AuthController::class, 'resendVerification'])
         ->name('verification.resend');
-    
+
     // Protected Auth Routes
     Route::middleware('auth:api')->group(function () {
         Route::delete('logout', [AuthController::class, 'logout']);
@@ -65,7 +66,7 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::post('/profile/email', [ProfileController::class, 'updateEmail']);
         Route::post('/profile/password', [ProfileController::class, 'updatePassword']);
     });
-    
+
     // Setting Update
     Route::prefix('setting')->group(function () {
         Route::post('', [SettingController::class, 'update']);
@@ -78,7 +79,7 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::post('heartbeat', [ChatController::class, 'heartbeat']);
         Route::post('add-contact', [ChatController::class, 'addContact']);
         Route::get('contacts/{id}', [ChatController::class, 'showContact']);
-        Route::put('contacts/{id}', [ChatController::class, 'updateContact']); 
+        Route::put('contacts/{id}', [ChatController::class, 'updateContact']);
         Route::get('messages/{id}', [ChatController::class, 'getMessages']);
         Route::post('send', [ChatController::class, 'sendMessage']);
         Route::post('send-file', [ChatController::class, 'sendMessage']);
@@ -93,25 +94,39 @@ Route::middleware(['auth', 'json'])->group(function () {
 
         // Group Chat Routes
         Route::get('groups', [GroupController::class, 'index']);
-        Route::post('groups', [GroupController::class, 'store']); 
+        Route::post('groups', [GroupController::class, 'store']);
         Route::post('groups/{id}/read', [GroupController::class, 'markAsRead']);
         Route::get('groups/{id}', [GroupController::class, 'show']);
-        Route::put('groups/{id}', [GroupController::class, 'update']); 
-        Route::post('group/{id}/leave', [GroupController::class, 'leaveGroup']); 
-        Route::get('group-messages/{groupId}', [GroupController::class, 'getMessages']); 
-        Route::post('group/send', [GroupController::class, 'sendMessage']); 
-        Route::delete('group/delete/{msgId}', [GroupController::class, 'deleteMessage']); 
+        Route::put('groups/{id}', [GroupController::class, 'update']);
+        Route::post('group/{id}/leave', [GroupController::class, 'leaveGroup']);
+        Route::get('group-messages/{groupId}', [GroupController::class, 'getMessages']);
+        Route::post('group/send', [GroupController::class, 'sendMessage']);
+        Route::delete('group/delete/{msgId}', [GroupController::class, 'deleteMessage']);
         Route::get('group/download/{msgId}', [GroupController::class, 'downloadAttachment']);
-        Route::get('users/search', [GroupController::class, 'searchUsers']); 
+        Route::get('users/search', [GroupController::class, 'searchUsers']);
         Route::post('groups/{id}/members', [GroupController::class, 'addMembers']);
         Route::delete('groups/{id}/members/{userId}', [GroupController::class, 'removeMember']);
         Route::delete('group/{id}/clear', [GroupController::class, 'clearChat']);
 
         // Todo List Routes
-        Route::get('/todos', [TodoController::class, 'index'])->name('todos.index');
-        Route::post('/todos', [TodoController::class, 'store'])->name('todos.store');
-        Route::put('/todos/{todo}', [TodoController::class, 'update'])->name('todos.update');
-        Route::delete('/todos/{todo}', [TodoController::class, 'destroy'])->name('todos.destroy');
+        // Attachments
+        Route::post('todos/attachments', [TodoController::class, 'storeAttachment'])->name('todos.attachments.store');
+        Route::delete('todos/attachments/{attachment}', [TodoController::class, 'destroyAttachment'])->name('todos.attachments.destroy');
+
+        // Komentar (sebelum {todo} agar tidak bentrok)
+        Route::get('todos/{todo}/comments', [TodoCommentController::class, 'index'])->name('todos.comments.index');
+        Route::post('todos/{todo}/comments', [TodoCommentController::class, 'store'])->name('todos.comments.store');
+        Route::delete('todos/{todo}/comments/{comment}', [TodoCommentController::class, 'destroy'])->name('todos.comments.destroy');
+
+        // Assignees
+        Route::post('todos/{todo}/assignees', [TodoController::class, 'addAssignee'])->name('todos.assignees.add');
+        Route::delete('todos/{todo}/assignees/{user}', [TodoController::class, 'removeAssignee'])->name('todos.assignees.remove');
+
+        // CRUD
+        Route::get('todos', [TodoController::class, 'index'])->name('todos.index');
+        Route::post('todos', [TodoController::class, 'store'])->name('todos.store');
+        Route::put('todos/{todo}', [TodoController::class, 'update'])->name('todos.update');
+        Route::delete('todos/{todo}', [TodoController::class, 'destroy'])->name('todos.destroy');
     });
 
     Route::prefix('call')->group(function () {
@@ -130,13 +145,13 @@ Route::middleware(['auth', 'json'])->group(function () {
     });
 
     Route::prefix('group-call')->as('group-call.')->group(function () {
-      Route::post('/invite', [AgoraController::class, 'inviteGroupCall'])->name('invite');
-      Route::post('/answer', [AgoraController::class, 'answerGroupCall'])->name('answer');
-      Route::post('/end', [AgoraController::class, 'endGroupCall'])->name('end');
-      Route::post('/cancel', [AgoraController::class, 'cancelGroupCall'])->name('cancel'); // <-- PASTIKAN BARIS INI ADA
-      Route::post('/leave', [AgoraController::class, 'leaveGroupCall'])->name('leave');
-      Route::post('/recall', [AgoraController::class, 'recallParticipant'])->name('recall');
-      Route::post('/missed', [AgoraController::class, 'missedGroupCall'])->name('missed');
-      Route::post('/token', [AgoraController::class, 'generateGroupToken'])->name('token');
+        Route::post('/invite', [AgoraController::class, 'inviteGroupCall'])->name('invite');
+        Route::post('/answer', [AgoraController::class, 'answerGroupCall'])->name('answer');
+        Route::post('/end', [AgoraController::class, 'endGroupCall'])->name('end');
+        Route::post('/cancel', [AgoraController::class, 'cancelGroupCall'])->name('cancel'); // <-- PASTIKAN BARIS INI ADA
+        Route::post('/leave', [AgoraController::class, 'leaveGroupCall'])->name('leave');
+        Route::post('/recall', [AgoraController::class, 'recallParticipant'])->name('recall');
+        Route::post('/missed', [AgoraController::class, 'missedGroupCall'])->name('missed');
+        Route::post('/token', [AgoraController::class, 'generateGroupToken'])->name('token');
     });
 });
