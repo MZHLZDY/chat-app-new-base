@@ -25,26 +25,24 @@ const playVideo = () => {
         nextTick(() => {
             props.videoTrack.play(videoContainer.value);
 
-            if (props.isLocal) {
-                setTimeout(() => {
-                    const videoElement = videoContainer.value?.querySelector('video') as HTMLVideoElement;
+            setTimeout(() => {
+                const videoElement = videoContainer.value?.querySelector('video') as HTMLVideoElement;
 
-                    if (videoElement) {
-                        const checkDimension = () => {
-                            const width = videoElement.videoWidth;
-                            const height = videoElement.videoHeight;
+                if (videoElement) {
+                    const checkDimension = () => {
+                        const width = videoElement.videoWidth;
+                        const height = videoElement.videoHeight;
 
-                            if (width > 0 && height > 0) {
-                                const orientation = width > height ? 'landscape' : 'portrait';
-                                emit('orientationDetected', orientation);
-                            } else {
-                                requestAnimationFrame(checkDimension);
-                            }
-                        };
-                        checkDimension();
-                    }
-                }, 200);
-            }
+                        if (width > 0 && height > 0) {
+                            const orientation = width > height ? 'landscape' : 'portrait';
+                            emit('orientationDetected', orientation);
+                        } else {
+                            requestAnimationFrame(checkDimension);
+                        }
+                    };
+                    checkDimension();
+                }
+            }, 500);
         });
     }
 };

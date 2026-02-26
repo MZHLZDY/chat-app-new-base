@@ -18,6 +18,8 @@ export const useCallStore = defineStore('call', () => {
     const callTimeoutDuration = ref<number>(30); // durasi timeout dalam detik
     const timerCount = ref<number>(30); // untuk output interval timeout
     const isLocalEnd = ref<boolean>(false);
+    // Simpan waktu mulai call
+    const callStartTime = ref<number | null>(null);
 
     // Actions
     const setCurrentCall = (call: Call) => {
@@ -44,6 +46,8 @@ export const useCallStore = defineStore('call', () => {
         channelName.value = null;
         remoteUsers.value = [];
         hasJoinedAgora.value = false;
+        // Reset waktu
+        callStartTime.value = null;
     };
 
     const setIncomingCall = (call: Call) => {
@@ -57,6 +61,10 @@ export const useCallStore = defineStore('call', () => {
 
     const resetLocalEnd = () => {
         isLocalEnd.value = false;
+    };
+
+    const setCallStartTime = (time: number) => {
+        callStartTime.value = time;
     };
 
     const updateCallStatus = (status: CallStatus) => {
@@ -170,6 +178,7 @@ export const useCallStore = defineStore('call', () => {
         callTimeoutDuration,
         timerCount,
         isLocalEnd,
+        callStartTime,
         // Actions
         setCurrentCall,
         clearCurrentCall,
@@ -188,5 +197,6 @@ export const useCallStore = defineStore('call', () => {
         setCallTimeout,
         startCallTimeout,
         clearCallTimeout,
+        setCallStartTime,
     }
 });

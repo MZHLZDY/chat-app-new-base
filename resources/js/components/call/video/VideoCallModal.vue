@@ -91,6 +91,12 @@ const handleMinimize = () => {
     emit('minimize');
 };
 
+// Logic tap to hide dock toggle button
+const showControls = ref(true);
+const toggleControls = () => {
+    showControls.value = !showControls.value;
+};
+
 const handleMouseMove = (e: MouseEvent) => {
     // Hanya jalan di desktop (> 768px)
     if (window.innerWidth > 768) { 
@@ -210,18 +216,18 @@ const formattedDuration = computed(() => {
 
 // Fungsi update timer
 const updateTimer = () => {
-    if (currentCall.value?.startedAt) {
-        // Hitung sesisih waktu sekarang sampai waktu mulai
-        const startTime = new Date(currentCall.value.startedAt).getTime();
+    // Gunakan waktu lokal dari store biar ga kereset saat maximize
+    if (store.callStatus === 'ongoing' && store.callStartTime && remoteUsers.value.length > 0) {
         const now = Date.now();
-        const diff = Math.floor((now - startTime) / 1000);
-
+        const diff = Math.floor((now - store.callStartTime) / 1000);
         // Pastikan tidak berkurang / minus
         durationSeconds.value = diff > 0 ? diff : 0;
-    } else {
-        durationSeconds.value++
     }
-}
+    // Jika belum connect, countdown tetap 0
+    else {
+        durationSeconds.value = 0;
+    }
+};
 
 // Memulai durasi ketika panggilan berlangsung
 watch(() => isVideoCallActive.value, (active) => {
@@ -232,6 +238,14 @@ watch(() => isVideoCallActive.value, (active) => {
         if (timerInterval) clearInterval(timerInterval);
     }
 }, { immediate: true });
+
+watch(() => remoteUsers.value.length, (count) => {
+    // Jika ada remote user masuk DAN waktu mulai belum diset
+    if (count > 0 && !store.callStartTime) {
+        console.log('👥 Remote user joined, starting timer now!');
+        store.setCallStartTime(Date.now());
+    }
+});
 
 onUnmounted(() => {
     window.removeEventListener('mousemove', handleMouseMove);
@@ -334,7 +348,7 @@ watch(() => remoteVideoTracks.value.size, (size) => {
         <div v-if="isVideoCallActive" class="video-call-container">
 
             <!-- Remote video (layar utama) -->
-            <div class="remote-video-wrapper">
+            <div class="remote-video-wrapper" @click="toggleControls">
                 <VideoPlayer
                     v-if="remoteUser"
                     :video-track="remoteUser.videoTrack"
@@ -377,6 +391,21 @@ watch(() => remoteVideoTracks.value.size, (size) => {
                     </div>
                 </Transition>
 
+                <Transition name="slide-up">
+                    <div v-show="showControls" class="bottom-bar">
+                        <CallControls
+                            call-type="video"
+                            :is-muted="!isAudioEnabled"
+                            :is-speaker-on="false"
+                            :is-camera-on="isVideoEnabled"
+                            @toggle-mute="handleToggleMute"
+                            @toggle-speaker="() => {}"
+                            @toggle-camera="handleToggleCamera"
+                            @end-call="handleEndCall"
+                        />
+                    </div>
+                </Transition>
+
                 <!-- timer diatas -->
                 <div class="top-bar">
                     <CallTimer
@@ -416,20 +445,6 @@ watch(() => remoteVideoTracks.value.size, (size) => {
                     <div class="island minimize-island custom-clickable" @click="handleMinimize">
                         <Minimize2 :size="14" />
                     </div>
-                </div>
-
-                <!-- kontrol dibawah (seperti button camera, mic, dll yang ada di dock bawah) -->
-                <div class="bottom-bar">
-                    <CallControls
-                        call-type="video"
-                        :is-muted="!isAudioEnabled"
-                        :is-speaker-on="false"
-                        :is-camera-on="isVideoEnabled"
-                        @toggle-mute="handleToggleMute"
-                        @toggle-speaker="() => {}"
-                        @toggle-camera="handleToggleCamera"
-                        @end-call="handleEndCall"
-                    />
                 </div>
             </div>
         </div>
@@ -837,6 +852,20 @@ watch(() => remoteVideoTracks.value.size, (size) => {
 .minimize-btn-content:hover {
     background: rgba(50, 50, 50, 0.85);
     transform: scale(1.05);
+}
+
+/* Animasi slide up */
+.slide-up-enter-active,
+.slide-up-leave-active {
+    transition: all 0.4s cubic-bezier(0.19, 1, 0.22, 1);
+    transform: translateY(0) translateX(-50%); /* Posisi normal */
+    opacity: 1;
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+    transform: translateY(120px) translateX(-50%); /* Turun ke bawah 120px */
+    opacity: 0;
 }
 
 /* Animasi Slide Down */
