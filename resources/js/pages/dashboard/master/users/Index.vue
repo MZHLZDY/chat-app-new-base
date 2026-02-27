@@ -40,7 +40,7 @@ import { useVoiceGroupCall } from "@/composables/useVoiceGroupCall";
 import VoiceGroupCallingModal from "@/components/call/voice/VoiceGroupCallingModal.vue";
 import VoiceGroupIncomingModal from "@/components/call/voice/VoiceGroupIncomingModal.vue";
 import VoiceGroupCallModal from "@/components/call/voice/VoiceGroupCallModal.vue";
-// import VoiceGroupFloating from "@/components/call/voiveVoiceGroupFloating.vue";
+import VoiceGroupFloating from "@/components/call/voice/VoiceGroupFloating.vue";
 
 // --- STATE UTAMA ---
 const authStore = useAuthStore();
@@ -506,14 +506,32 @@ const openEditGroupModal = () => {
     isEditGroupOpen.value = true;
 };
 
-const handleStartVoiceGroupCall = () => {
-    if (!activeGroup.value) return;
-    
-    const participantIds = activeGroup.value.users
-        .filter((u: any) => u.id !== currentUser.value?.id)
+// ✅ KODE YANG DIPERBAIKI
+const handleStartVoiceGroupCall = async () => {
+    if (!activeGroup.value) {
+        toast.error("Tidak ada grup yang dipilih.");
+        return;
+    }
+
+    // 1. Debugging: Cek apa isi sebenarnya dari activeGroup
+    console.log("Data activeGroup:", activeGroup.value);
+
+    // 2. Amankan dengan optional chaining (?.) dan beri array kosong jika undefined
+    // PERHATIKAN: Ganti '.users' dengan key yang benar dari database/backend kamu
+    // (Bisa jadi .members, .participants, dll)
+    const groupMembers = activeGroup.value.users || activeGroup.value.members || [];
+
+    const participantIds = groupMembers
+        .filter((u: any) => u.id !== currentUser.value?.id) // Pastikan ID kita tidak ikut ditelepon
         .map((u: any) => u.id);
 
-    startGroupVoiceCall(activeGroup.value.id, participantIds);
+    if (participantIds.length === 0) {
+        toast.warning("Tidak ada peserta lain di dalam grup untuk ditelepon.");
+        return;
+    }
+
+    // Panggil fungsi composable-nya
+    await startGroupVoiceCall(activeGroup.value.id, participantIds);
 };
 
 // --- [TS FIX] Format Data agar sesuai dengan Modal ---

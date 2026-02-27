@@ -121,7 +121,7 @@ const statusText = computed(() => {
   justify-content: center;
   gap: 20px; 
   /* Padding disesuaikan sedikit agar muat ParticipantUsers */
-  padding: 80px 100px; 
+  padding: 140px 300px;
   background: rgba(255, 255, 255, 0.600);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
