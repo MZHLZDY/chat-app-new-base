@@ -1070,4 +1070,82 @@ const overdueTodos = computed(
 :global([data-bs-theme="dark"]) .add-card-bottom:hover {
     background: #2b2b40;
 }
+
+/* ===================== DRAG GHOST ===================== */
+.ghost-card {
+    opacity: 0.4;
+    background: #eef0ff;
+    border: 2px dashed #5e6ad2 !important;
+}
+
+.dragging-card {
+    box-shadow: 0 10px 30px rgba(94, 106, 210, 0.25) !important;
+    transform: rotate(2deg) !important;
+}
+
+/* ===================== RESPONSIVE ===================== */
+@media (max-width: 1024px) {
+    .kanban-board {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 640px) {
+    .kanban-page {
+        padding: 12px;
+    }
+    .kanban-board {
+        grid-template-columns: 1fr;
+    }
+    .kanban-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .progress-area {
+        display: none;
+    }
+    .search-field {
+        width: 140px;
+    }
+}
+
+/* ===================== DARK MODE (DIPERBAIKI) ===================== */
+:global([data-bs-theme="dark"]) .kanban-page {
+    background: #0f0f1a;
+}
+:global([data-bs-theme="dark"]) .kanban-column {
+    background: #1e1e2d;
+    border-color: #2b2b40;
+}
+:global([data-bs-theme="dark"]) .col-header {
+    background: #1a1a2e;
+}
+:global([data-bs-theme="dark"]) .col-title,
+:global([data-bs-theme="dark"]) .header-title,
+:global([data-bs-theme="dark"]) .card-title {
+    color: #e5e7eb;
+}
+:global([data-bs-theme="dark"]) .todo-card {
+    background: #1e1e2d;
+    border-color: #2b2b40;
+}
+:global([data-bs-theme="dark"]) .todo-card:hover {
+    border-color: #5e6ad2;
+}
+:global([data-bs-theme="dark"]) .search-field {
+    background: #1e1e2d;
+    border-color: #2b2b40;
+    color: #e5e7eb;
+}
+:global([data-bs-theme="dark"]) .btn-icon {
+    background: #1e1e2d;
+    border-color: #2b2b40;
+    color: #9ca3af;
+}
+:global([data-bs-theme="dark"]) .add-card-bottom {
+    border-color: #2b2b40;
+}
+:global([data-bs-theme="dark"]) .add-card-bottom:hover {
+    background: #2b2b40;
+}
 </style>
