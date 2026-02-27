@@ -34,6 +34,14 @@ import {
 } from "firebase/database";
 import { onAuthStateChanged } from "firebase/auth";
 
+// --- Group Call Import ---
+import { useCallStore } from "@/stores/callStore";
+import { useVoiceGroupCall } from "@/composables/useVoiceGroupCall";
+import VoiceGroupCallingModal from "@/components/call/voice/VoiceGroupCallingModal.vue";
+import VoiceGroupIncomingModal from "@/components/call/voice/VoiceGroupIncomingModal.vue";
+import VoiceGroupCallModal from "@/components/call/voice/VoiceGroupCallModal.vue";
+// import VoiceGroupFloating from "@/components/call/voiveVoiceGroupFloating.vue";
+
 // --- STATE UTAMA ---
 const authStore = useAuthStore();
 const currentUser = computed(() => authStore.user);
@@ -71,6 +79,15 @@ const searchQuery = ref("");
 const chatDrafts = ref<Record<string | number, string>>({});
 const showMobileChat = ref(false);
 const openMessageMenuId = ref<number | string | null>(null);
+
+// Group Call State
+const callStore = useCallStore();
+const { 
+    startGroupVoiceCall, 
+    answerGroupVoiceCall, 
+    rejectGroupVoiceCall, 
+    leaveGroupVoiceCall 
+} = useVoiceGroupCall();    
 
 // Typing State untuk Group
 const typingUsers = ref<string[]>([]);
@@ -489,6 +506,29 @@ const openEditGroupModal = () => {
     isEditGroupOpen.value = true;
 };
 
+const handleStartVoiceGroupCall = () => {
+    if (!activeGroup.value) return;
+    
+    const participantIds = activeGroup.value.users
+        .filter((u: any) => u.id !== currentUser.value?.id)
+        .map((u: any) => u.id);
+
+    startGroupVoiceCall(activeGroup.value.id, participantIds);
+};
+
+// --- [TS FIX] Format Data agar sesuai dengan Modal ---
+const formattedGroupParticipants = computed(() => {
+    return callStore.groupParticipants.map((p: any) => ({
+        id: p.user_id || p.id,
+        name: p.user?.name || 'Unknown',
+        avatar: p.user?.photo || p.user?.profile_photo_url || '',
+        status: p.status
+    }));
+});
+
+// --- [TS FIX] Cast incomingCall ke any untuk mengakses custom properti ---
+const incomingCallAsAny = computed(() => callStore.incomingCall as any);
+
 const handleGroupUpdated = (updatedGroup: any) => {
     if (activeGroup.value && activeGroup.value.id === updatedGroup.id) {
         activeGroup.value.name = updatedGroup.name;
@@ -896,6 +936,43 @@ onUnmounted(() => {
             </div>
         </div>
 
+        <Teleport to="body">
+        
+        <VoiceGroupFloating />
+
+        <VoiceGroupCallingModal
+            v-if="callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'calling' && !callStore.isMinimized"
+            :groupName="activeGroup?.name || 'Group Call'"
+            :groupPhoto="activeGroup?.photo || activeGroup?.avatar || ''"
+            :participants="formattedGroupParticipants"
+            :callStatus="callStore.callStatus"
+            @cancel="leaveGroupVoiceCall(callStore.currentCall.id)"
+        />
+
+        <VoiceGroupIncomingModal
+            v-if="callStore.incomingCall && callStore.incomingCall.isGroup"
+            :groupName="incomingCallAsAny.groupName || 'Group Call'"
+            :groupPhoto="incomingCallAsAny.groupAvatar || ''"
+            :inviterName="callStore.incomingCall.caller?.name"
+            :participants="incomingCallAsAny.participants || []"
+            @accept="() => answerGroupVoiceCall(callStore.incomingCall!.id)"
+            @reject="() => rejectGroupVoiceCall(callStore.incomingCall!.id)"
+        />
+
+        <VoiceGroupCallModal
+            v-if="callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'ongoing' && !callStore.isMinimized"
+        />
+
+        <!-- <div v-if="callStore.isGroupCall" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #00ff00; padding: 15px; border-radius: 8px; z-index: 999999; font-family: monospace;">
+            <b>🛠️ CALL STATE DEBUGGER</b><br/>
+            isGroupCall: {{ callStore.isGroupCall }}<br/>
+            Status: {{ callStore.callStatus }}<br/>
+            CurrentCall: {{ !!callStore.currentCall }}<br/>
+            isMinimized: {{ callStore.isMinimized }}
+        </div> -->
+
+        </Teleport>
+
         <div
             class="flex-lg-row-fluid ms-lg-7 ms-xl-10"
             style="min-width: 0"
@@ -953,7 +1030,7 @@ onUnmounted(() => {
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <button class="btn btn-icon btn-sm text-gray-500">
+                            <button @click="handleStartVoiceGroupCall" class="btn btn-icon btn-sm text-gray-500">
                                 <Phone class="w-20px h-20px" />
                             </button>
                             <button class="btn btn-icon btn-sm text-gray-500">

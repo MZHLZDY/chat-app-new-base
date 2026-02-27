@@ -75,9 +75,9 @@ const statusText = computed(() => {
           </p>  
         </transition>
 
-        <h4 class="call-timeout">
+        <!-- <h4 class="call-timeout">
            Ditutup dalam {{ store.timerCount }} detik 
-        </h4>
+        </h4> -->
 
         <div class="mt-6 w-full max-w-md transform scale-90">
              <ParticipantUsers :participants="props.participants" />

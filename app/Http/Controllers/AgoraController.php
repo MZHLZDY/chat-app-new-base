@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Models\User;
+use App\Models\Group;
+use App\Models\GroupCall;
+use App\Models\GroupParticipant;
 use App\Jobs\EndMissedCall;
 use App\Models\CallEvent;
 use App\Models\PersonalCall;
@@ -17,6 +20,15 @@ use App\Events\CallAccepted;
 use App\Events\CallCancelled;
 use App\Events\CallRejected;
 use App\Events\CallEnded;
+use App\Events\GroupCallInitiated; // Atau GroupCallInvitation (sesuai yang Anda pakai untuk memanggil)
+use App\Events\GroupCallInvitation;
+use App\Events\GroupIncomingCall;
+use App\Events\GroupCallAccepted;
+use App\Events\GroupCallAnswered;
+use App\Events\GroupCallCancelled;
+use App\Events\GroupCallEnded;
+use App\Events\GroupParticipantLeft;
+use App\Events\GroupParticipantRecalled;
 use Kreait\Firebase\Factory;
 
 class AgoraController extends Controller
@@ -665,6 +677,262 @@ class AgoraController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
             return response()->json(['error' => 'Gagal mendapatkan histori panggilan'], 500);
+        }
+    }
+
+    // ==== Group Call Methods =====
+
+    // 1. Host Memulai Panggilan Grup
+    public function inviteGroupCall(Request $request)
+    {
+        $request->validate([
+            'group_id' => 'required|integer',
+            'call_type' => 'required|in:video,voice',
+            'participants' => 'required|array' // Array berisi ID user anggota grup yang akan ditelepon
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $host = auth()->user();
+            $group = Group::findOrFail($request->group_id);
+            $channelName = 'group_' . $group->id . '_' . Str::random(10);
+
+            // Buat record panggilan grup
+            $call = GroupCall::create([
+                'group_id' => $group->id,
+                'host_id' => $host->id,
+                'channel_name' => $channelName,
+                'call_type' => $request->call_type,
+                'status' => 'ongoing', // Langsung ongoing karena host masuk duluan
+                'started_at' => now(),
+            ]);
+
+            // Masukkan Host sebagai participant yang sudah 'joined'
+            GroupParticipant::create([
+                'call_id' => $call->id,
+                'user_id' => $host->id,
+                'status' => 'joined',
+                'joined_at' => now(),
+            ]);
+
+            // Masukkan anggota lain sebagai 'ringing' & kirim notifikasi/broadcast
+            foreach ($request->participants as $userId) {
+                if ($userId !== $host->id) {
+                    GroupParticipant::create([
+                        'call_id' => $call->id,
+                        'user_id' => $userId,
+                        'status' => 'ringing',
+                    ]);
+
+                    // Broadcast agar HP anggota berdering (Pakai GroupCallInitiated)
+                    broadcast(new GroupCallInitiated(
+                        $host, 
+                        $userId, 
+                        $group->id, 
+                        $group->name, 
+                        $request->call_type, 
+                        $call->id, 
+                        $request->participants
+                    ));
+                }
+            }
+
+            DB::commit();
+
+            // Generate Token Agora untuk Host
+            $token = $this->agoraService->generateRtcToken($channelName, $host->id, 'publisher', 3600);
+
+            return response()->json([
+                'message' => 'Panggilan grup dimulai',
+                'call' => $call->load('participants', 'group'), 
+                'token' => $token,
+                'channel_name' => $channelName
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('❌ [GROUP CALL INVITE] Error: ' . $e->getMessage());
+            return response()->json(['error' => 'Gagal memulai panggilan grup'], 500);
+        }
+    }
+
+    // 2. Peserta Mengangkat/Menjawab Panggilan Grup
+    public function answerGroupCall(Request $request)
+    {
+        $request->validate(['call_id' => 'required|integer']);
+
+        try {
+            $call = GroupCall::with('group')->findOrFail($request->call_id);
+            $user = auth()->user();
+
+            // Update status partisipan
+            $participant = GroupParticipant::where('call_id', $call->id)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($participant) {
+                $participant->update([
+                    'status' => 'joined',
+                    'joined_at' => now()
+                ]);
+
+                // Broadcast ke dalam channel grup agar UI member lain update
+                // Memakai GroupCallAnswered dengan accepted = true
+                broadcast(new GroupCallAnswered($call->id, $call->group, $user, true));
+            }
+
+            // Generate token untuk user yang baru join
+            $token = $this->agoraService->generateRtcToken($call->channel_name, $user->id, 'publisher', 3600);
+
+            return response()->json([
+                'message' => 'Berhasil bergabung ke panggilan',
+                'call' => $call->load('participants'),
+                'token' => $token,
+                'channel_name' => $call->channel_name
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('❌ [GROUP CALL ANSWER] Error: ' . $e->getMessage());
+            return response()->json(['error' => 'Gagal menjawab panggilan grup'], 500);
+        }
+    }
+
+    // 3. Peserta Menolak Panggilan Awal (Decline)
+    public function rejectGroupCall(Request $request)
+    {
+        $request->validate(['call_id' => 'required|integer']);
+        
+        try {
+            $call = GroupCall::with('group')->findOrFail($request->call_id);
+            $user = auth()->user();
+
+            GroupParticipant::where('call_id', $call->id)
+                ->where('user_id', $user->id)
+                ->update(['status' => 'declined']);
+                
+            // Broadcast ke room bahwa user menolak (pakai event GroupParticipantLeft dengan status 'declined')
+            broadcast(new GroupParticipantLeft($call->id, $call->group, $user, 'declined'));
+            
+            return response()->json(['message' => 'Panggilan ditolak']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Gagal menolak panggilan'], 500);
+        }
+    }
+
+    // 4. Peserta Keluar dari Panggilan yang Sedang Berjalan (Leave)
+    public function leaveGroupCall(Request $request)
+    {
+        $request->validate(['call_id' => 'required|integer']);
+
+        try {
+            $call = GroupCall::with('group')->findOrFail($request->call_id);
+            $user = auth()->user();
+
+            GroupParticipant::where('call_id', $call->id)
+                ->where('user_id', $user->id)
+                ->update([
+                    'status' => 'left',
+                    'left_at' => now()
+                ]);
+
+            // Broadcast ke grup bahwa user ini keluar (status 'left')
+            broadcast(new GroupParticipantLeft($call->id, $call->group, $user, 'left'));
+
+            return response()->json(['message' => 'Berhasil keluar dari panggilan']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Gagal keluar dari panggilan'], 500);
+        }
+    }
+
+    // 5. Host Membubarkan Panggilan (End For All)
+    public function endGroupCallForAll(Request $request)
+    {
+        $request->validate(['call_id' => 'required|integer']);
+
+        try {
+            $call = GroupCall::with('participants')->findOrFail($request->call_id);
+            $host = auth()->user();
+
+            if ($call->host_id !== $host->id) {
+                return response()->json(['error' => 'Hanya host yang bisa membubarkan panggilan.'], 403);
+            }
+
+            // Hitung durasi (selisih dari started_at sampai sekarang)
+            $duration = $call->started_at ? now()->diffInSeconds($call->started_at) : 0;
+
+            // Tutup panggilan
+            $call->update([
+                'status' => 'ended', 
+                'ended_at' => now()
+            ]);
+
+            // Keluarkan semua partisipan yang masih join
+            GroupParticipant::where('call_id', $call->id)
+                ->where('status', 'joined')
+                ->update(['status' => 'left', 'left_at' => now()]);
+
+            // Ambil array ID semua member grup untuk dikirim ke event
+            $memberIds = $call->participants->pluck('user_id')->toArray();
+
+            // Broadcast "Ended" agar layar semua orang tertutup
+            // Sesuaikan dengan parameter __construct di GroupCallEnded Anda
+            broadcast(new GroupCallEnded(
+                $host->id, 
+                $call->group_id, 
+                $call->id, 
+                'ended', 
+                $duration, 
+                $memberIds, 
+                $host
+            ));
+
+            return response()->json(['message' => 'Panggilan grup berhasil dibubarkan.']);
+        } catch (\Exception $e) {
+            Log::error('❌ [GROUP CALL END ALL] Error: ' . $e->getMessage());
+            return response()->json(['error' => 'Gagal membubarkan panggilan'], 500);
+        }
+    }
+
+    // 6. Memanggil Kembali Peserta (Recall)
+    public function recallParticipant(Request $request)
+    {
+        $request->validate([
+            'call_id' => 'required|integer',
+            'user_id' => 'required|integer'
+        ]);
+
+        try {
+            $call = GroupCall::with(['group', 'participants'])->findOrFail($request->call_id);
+            $userToRecall = User::findOrFail($request->user_id);
+            $caller = auth()->user();
+
+            // 1. Ubah status di database jadi ringing lagi
+            GroupParticipant::where('call_id', $call->id)
+                ->where('user_id', $userToRecall->id)
+                ->update(['status' => 'ringing']);
+
+            // Dapatkan ID semua member untuk parameter event
+            $memberIds = $call->participants->pluck('user_id')->toArray();
+
+            // 2. Bikin HP user tersebut bunyi lagi (Pakai GroupCallInitiated)
+            broadcast(new GroupCallInitiated(
+                $caller, 
+                $userToRecall->id, 
+                $call->group->id, 
+                $call->group->name, 
+                $call->call_type, 
+                $call->id, 
+                $memberIds
+            ));
+
+            // 3. Kasih tau orang-orang di room bahwa user ini lagi di-recall (Pakai GroupParticipantRecalled)
+            broadcast(new GroupParticipantRecalled($call->id, $call->group, $userToRecall));
+
+            return response()->json(['message' => 'Peserta berhasil dipanggil ulang.']);
+        } catch (\Exception $e) {
+            Log::error('❌ [GROUP CALL RECALL] Error: ' . $e->getMessage());
+            return response()->json(['error' => 'Gagal memanggil ulang'], 500);
         }
     }
 

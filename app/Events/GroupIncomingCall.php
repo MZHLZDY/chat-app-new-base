@@ -9,7 +9,7 @@ use Illuminate\Queue\SerializesModels;
 use App\Models\User;
 use App\Models\Group;
 
-class GroupIncomingCallVoice implements ShouldBroadcast
+class GroupIncomingCall implements ShouldBroadcast
 {
     use Dispatchable, SerializesModels;
 

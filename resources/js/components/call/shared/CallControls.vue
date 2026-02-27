@@ -6,8 +6,9 @@ import {
   PhoneForwarded, 
   Volume2, 
   VolumeOff, 
-  Camera,      // Import Icon Kamera
-  CameraOff    // Import Icon Kamera Off
+  Camera,      
+  CameraOff,
+  PhoneOff     // Import Icon baru untuk End Call For All
 } from 'lucide-vue-next';
 import { themeMode } from "@/layouts/default-layout/config/helper"; 
 
@@ -16,6 +17,8 @@ interface Props {
   isSpeakerOn: boolean;
   isCameraOn?: boolean;
   callType: 'voice' | 'video';
+  isGroupCall?: boolean; // Penanda group call
+  isHost?: boolean;      // Penanda jika user ini adalah host
 }
 
 const currentThemeMode = computed(() => themeMode.value);
@@ -23,16 +26,19 @@ const currentThemeMode = computed(() => themeMode.value);
 const props = withDefaults(defineProps<Props>(), {
   isMuted: false,
   isSpeakerOn: false,
-  isCameraOn: false, // Default mati untuk Voice Call
+  isCameraOn: false, 
   callType: 'voice',
+  isGroupCall: false,
+  isHost: false,
 });
 
-// Update emits
+// Update emits dengan event baru
 const emit = defineEmits([
   'toggleMute', 
   'toggleSpeaker', 
   'toggleCamera',
   'endCall', 
+  'endCallForAll' // Emit baru untuk bubarkan panggilan
 ]);
 </script>
 
@@ -49,19 +55,9 @@ const emit = defineEmits([
     </button>
 
     <button 
-      v-if="props.callType === 'voice'"
-      @click="emit('toggleSpeaker')" 
-      class="control-btn" 
-      :class="{ 'active': props.isSpeakerOn }"
-      title="Speaker"
-    >
-      <component :is="props.isSpeakerOn ? Volume2 : VolumeOff" :size="24" />
-    </button>
-
-    <button 
       v-if="props.callType === 'video'"
       @click="emit('toggleCamera')" 
-      class="control-btn"
+      class="control-btn" 
       :class="{ 'active': !props.isCameraOn }"
       title="Toggle Camera"
     >
@@ -71,9 +67,18 @@ const emit = defineEmits([
     <button 
       @click="emit('endCall')" 
       class="control-btn end-call-btn"
-      title="End Call"
+      title="Leave Call"
     >
       <PhoneForwarded :size="24" />
+    </button>
+
+    <button 
+      v-if="props.isGroupCall && props.isHost"
+      @click="emit('endCallForAll')" 
+      class="control-btn end-all-btn"
+      title="End Call for All (Bubarkan)"
+    >
+      <PhoneOff :size="24" />
     </button>
 
   </div>
@@ -112,39 +117,32 @@ const emit = defineEmits([
 }
 
 .control-btn:hover {
-  background-color: rgba(25, 103, 248, 0.404);
+  background-color: rgba(105, 104, 104, 0.8);
   transform: scale(1.05);
 }
 
 .control-btn.active {
-  background-color: #fff;
-  color: #333;
+  background-color: white;
+  color: black;
 }
 
+/* Style tombol Leave Call biasa (Merah Standard) */
 .end-call-btn {
-  background-color: #ff4d4d;
+  background-color: #ff3b30 !important;
+  color: white !important;
+  box-shadow: 0 4px 15px rgba(255, 59, 48, 0.4);
 }
-
-.dark-mode .end-call-btn {
-  background-color: #ff4d4d;
-}
-
 .end-call-btn:hover {
-  background-color: #ff3333;
+  background-color: #ff1f1f !important;
 }
 
-.rotate-icon {
-  transform: rotate(135deg);
+/* Style tombol Bubarkan (Merah Lebih Gelap/Tegas) */
+.end-all-btn {
+  background-color: #ba000d !important; 
+  color: white !important;
+  box-shadow: 0 4px 15px rgba(186, 0, 13, 0.4);
 }
-
-@media (max-width: 480px) {
-  .call-controls-container {
-    gap: 12px;
-    padding: 15px;
-  }
-  .control-btn {
-    width: 45px;
-    height: 45px;
-  }
+.end-all-btn:hover {
+  background-color: #9a0007 !important;
 }
 </style>

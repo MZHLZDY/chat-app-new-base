@@ -3,44 +3,43 @@
 namespace App\Events;
 
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow; // Pakai ShouldBroadcastNow agar real-time tanpa delay queue
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use App\Models\User;
 use App\Models\Group;
 
-class GroupParticipantLeft implements ShouldBroadcastNow
+class GroupParticipantRecalled implements ShouldBroadcastNow
 {
     use Dispatchable, SerializesModels;
 
     public function __construct(
         public string $callId,
         public Group $group,
-        public User $user,
-        public string $status = 'left' // Bisa 'left' atau 'declined'
+        public User $user // User yang sedang dipanggil ulang
     ) {}
 
     public function broadcastOn(): array
     {
-        // Broadcast ke seluruh anggota grup yang sedang ada di dalam room
+        // Broadcast ke channel grup agar semua peserta yang di dalam call tahu
         return [ new PrivateChannel('group.' . $this->group->id) ];
     }
 
     public function broadcastAs(): string
     {
-        return 'group-participant-left';
+        return 'group-participant-recalled';
     }
 
     public function broadcastWith(): array
     {
         return [
             'call_id' => $this->callId,
-            'status' => $this->status, // Frontend butuh ini untuk membedakan tulisan "Left" atau "Declined"
+            'status' => 'ringing', // Kita tegaskan statusnya kembali ringing
             'user' => [
-                'id' => $this->user->id, 
-                'name' => $this->user->name,
-                'profile_photo_url' => $this->user->profile_photo_url,
+                'id' => $this->user->id,
+                'name' => $this->user->name
             ],
+            'message' => $this->user->name . ' is being recalled...'
         ];
     }
 }

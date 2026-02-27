@@ -7,15 +7,25 @@ export interface User {
     profile_photo_url?: string;
 }
 
+// telepon grup
+export interface Group {
+    id: number;
+    name: string;
+    avatar?: string;
+    photo?: string | null;
+}
+
 export type CallType = 'video' | 'voice';
 
-export type CallStatus = 'calling' | 'ringing' | 'ongoing' | 'ended' | 'rejected' | 'missed' | 'cancelled' | 'incoming';
+export type CallStatus = 'calling' | 'ringing' | 'ongoing' | 'ended' | 'rejected' | 'missed' | 'cancelled' | 'incoming' | 'recalled' | 'dismissed';
 
 export interface Call {
     id: number;
     type: CallType;
+    isGroup?: boolean;
     caller: User;
     receiver: User;
+    group?: Group;
     status: CallStatus;
     token: string;
     channel: string;
@@ -39,6 +49,33 @@ export interface PersonalCall {
     updated_at: string;
     caller?: User;
     callee?: User;
+}
+
+// interface telepon grup
+export interface GroupParticipant {
+    id: number;
+    user_id: number;
+    call_id: number;
+    status: 'joined' | 'ringing' | 'declined' | 'left' | 'missed';
+    user?: User;
+    joined_at?: string;
+    left_at?: string;
+}
+
+// interface telepon grup
+export interface GroupCall {
+    id: number;
+    group_id: number;
+    host_id: number;
+    channel_name: string;
+    call_type: CallType;
+    status: CallStatus;
+    started_at: string | null;
+    ended_at: string | null;
+    created_at: string;
+    group?: Group;
+    host?: User;
+    participants?: GroupParticipant[];
 }
 
 // Response dari API /call/invite

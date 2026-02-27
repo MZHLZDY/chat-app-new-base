@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { Call, CallStatus, PersonalCall } from "@/types/call";
+import type { Call, CallStatus, PersonalCall, GroupCall, GroupParticipant } from "@/types/call";
 
 export const useCallStore = defineStore('call', () => {
     // State
@@ -20,6 +20,10 @@ export const useCallStore = defineStore('call', () => {
     const isLocalEnd = ref<boolean>(false);
     // Simpan waktu mulai call
     const callStartTime = ref<number | null>(null);
+    // state baru telepon grup
+    const isGroupCall = ref<boolean>(false);
+    const backendGroupCall = ref<GroupCall | null>(null);
+    const groupParticipants = ref<GroupParticipant[]>([]);
 
     // Actions
     const setCurrentCall = (call: Call) => {
@@ -115,6 +119,37 @@ export const useCallStore = defineStore('call', () => {
         }
     };
 
+    const setBackendGroupCall = (call: GroupCall, token: string, channel: string) => {
+        backendGroupCall.value = call;
+        agoraToken.value = token;
+        channelName.value = channel;
+        isGroupCall.value = true;
+        
+        if (call.participants) {
+            groupParticipants.value = call.participants;
+        }
+    };
+
+    const updateGroupParticipantStatus = (userId: number, status: GroupParticipant['status']) => {
+        const participant = groupParticipants.value.find(p => p.user_id === userId);
+        if (participant) {
+            participant.status = status;
+        }
+    };
+
+    // Fungsi untuk mereset/mengubah status partisipan kembali menjadi 'ringing' saat di-recall
+    const setParticipantRecalled = (userId: number) => {
+        updateGroupParticipantStatus(userId, 'ringing');
+    };
+
+    // Fungsi yang dijalankan ketika panggilan grup dibubarkan oleh Host
+    // Fungsi ini dipanggil setelah sukses API endGroupCallForAll atau menerima WebSocket/Pusher 'dismissed'
+    const dismissGroupCall = () => {
+        console.log('🛑 Panggilan grup telah DIBUBARKAN oleh Host');
+        updateCallStatus('ended');
+        clearCurrentCall();
+    };
+
     const setHasJoinedAgora = (value: boolean) => {
         hasJoinedAgora.value = value;
         console.log('✅ callStore.hasJoinedAgora set di:', value);
@@ -179,6 +214,9 @@ export const useCallStore = defineStore('call', () => {
         timerCount,
         isLocalEnd,
         callStartTime,
+        isGroupCall,
+        backendGroupCall,
+        groupParticipants,
         // Actions
         setCurrentCall,
         clearCurrentCall,
@@ -198,5 +236,9 @@ export const useCallStore = defineStore('call', () => {
         startCallTimeout,
         clearCallTimeout,
         setCallStartTime,
+        setBackendGroupCall,
+        updateGroupParticipantStatus,
+        setParticipantRecalled,
+        dismissGroupCall,
     }
 });
