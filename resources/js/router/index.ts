@@ -88,7 +88,7 @@ const routes: Array<RouteRecordRaw> = [
                 path: "/dashboard/todo-list",
                 name: "dashboard.todo-list",
                 component: () =>
-                    import("@/pages/dashboard/master/users/Task/Index.vue"),
+                    import("@/pages/dashboard/master/users/Task/BoardList.vue"),
                 meta: {
                     pageTitle: "Todo List",
                     breadcrumbs: ["Todo List"],

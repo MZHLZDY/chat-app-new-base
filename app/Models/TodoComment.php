@@ -6,7 +6,6 @@ use Illuminate\Database\Eloquent\Model;
 
 class TodoComment extends Model
 {
-<<<<<<< HEAD
     protected $fillable = ['todo_id', 'user_id', 'content'];
 
     public function todo()
@@ -19,7 +18,3 @@ class TodoComment extends Model
         return $this->belongsTo(User::class);
     }
 }
-=======
-    //
-}
->>>>>>> d365469 (Update Outgoing call telepon group (belum listener) + fix todo list)

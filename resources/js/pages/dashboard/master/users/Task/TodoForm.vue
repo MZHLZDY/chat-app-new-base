@@ -1,8 +1,16 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from "vue";
 import {
-    X, Sparkles, PenLine, AlignLeft, Calendar, Users,
-    Search, ChevronDown, Flag, Clock
+    X,
+    Sparkles,
+    PenLine,
+    AlignLeft,
+    Calendar,
+    Users,
+    Search,
+    ChevronDown,
+    Flag,
+    Clock,
 } from "lucide-vue-next";
 import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
@@ -10,6 +18,7 @@ import { toast } from "vue3-toastify";
 // --- PROPS & EMITS ---
 const props = defineProps<{
     show: boolean;
+    boardId: number;
     defaultStatus?: "todo" | "in_progress" | "done";
 }>();
 
@@ -76,7 +85,9 @@ watch(contactSearch, async (q) => {
     }
     isLoadingContacts.value = true;
     try {
-        const res = await axios.get("/chat/contacts", { params: { search: q } });
+        const res = await axios.get("/chat/contacts", {
+            params: { search: q },
+        });
         contacts.value = (res.data.data ?? res.data).filter(
             (c: Contact) => !selectedAssignees.value.find((a) => a.id === c.id)
         );
@@ -88,18 +99,28 @@ watch(contactSearch, async (q) => {
 });
 
 // --- COMPUTED ---
-const minDate = computed((): string => new Date().toISOString().split("T")[0] ?? '');
+const minDate = computed(
+    (): string => new Date().toISOString().split("T")[0] ?? ""
+);
 
 // Helper: delay tutup dropdown agar click item sempat terpanggil dulu
 const closeDropdownDelayed = () => {
-    setTimeout(() => { showContactDropdown.value = false; }, 200);
+    setTimeout(() => {
+        showContactDropdown.value = false;
+    }, 200);
 };
 
 // --- ACTIONS ---
 const submit = async () => {
     if (!title.value.trim()) {
         inputRef.value?.parentElement?.classList.add("shake-animation");
-        setTimeout(() => inputRef.value?.parentElement?.classList.remove("shake-animation"), 500);
+        setTimeout(
+            () =>
+                inputRef.value?.parentElement?.classList.remove(
+                    "shake-animation"
+                ),
+            500
+        );
         errorMessage.value = "Judul tugas tidak boleh kosong.";
         return;
     }
@@ -114,6 +135,7 @@ const submit = async () => {
         }
 
         const payload = {
+            board_id: props.boardId,
             title: title.value,
             description: description.value,
             status: status.value,
@@ -148,23 +170,28 @@ const addAssignee = (contact: Contact) => {
 };
 
 const removeAssignee = (id: number) => {
-    selectedAssignees.value = selectedAssignees.value.filter((a) => a.id !== id);
+    selectedAssignees.value = selectedAssignees.value.filter(
+        (a) => a.id !== id
+    );
 };
 
 const handleClose = () => {
     emit("close");
 };
 
-const priorityConfig: Record<string, { label: string; color: string; bg: string }> = {
-    low:    { label: "Rendah",  color: "#10b981", bg: "#ecfdf5" },
-    medium: { label: "Sedang",  color: "#f59e0b", bg: "#fffbeb" },
-    high:   { label: "Tinggi",  color: "#ef4444", bg: "#fef2f2" },
+const priorityConfig: Record<
+    string,
+    { label: string; color: string; bg: string }
+> = {
+    low: { label: "Rendah", color: "#10b981", bg: "#ecfdf5" },
+    medium: { label: "Sedang", color: "#f59e0b", bg: "#fffbeb" },
+    high: { label: "Tinggi", color: "#ef4444", bg: "#fef2f2" },
 };
 
 const statusConfig = [
-    { key: "todo",        label: "To Do",       color: "#5e6ad2" },
-    { key: "in_progress", label: "In Progress",  color: "#f59e0b" },
-    { key: "done",        label: "Done",         color: "#10b981" },
+    { key: "todo", label: "To Do", color: "#5e6ad2" },
+    { key: "in_progress", label: "In Progress", color: "#f59e0b" },
+    { key: "done", label: "Done", color: "#10b981" },
 ];
 </script>
 
@@ -172,7 +199,11 @@ const statusConfig = [
     <Teleport to="body">
         <div class="modal-wrapper">
             <Transition name="backdrop">
-                <div v-if="show" class="modal-backdrop" @click="handleClose"></div>
+                <div
+                    v-if="show"
+                    class="modal-backdrop"
+                    @click="handleClose"
+                ></div>
             </Transition>
 
             <Transition name="modal-spring">
@@ -186,7 +217,9 @@ const statusConfig = [
                                 </div>
                                 <div>
                                     <h5 class="modal-title">Tugas Baru</h5>
-                                    <p class="modal-sub">Tambahkan tugas ke board-mu</p>
+                                    <p class="modal-sub">
+                                        Tambahkan tugas ke board-mu
+                                    </p>
                                 </div>
                             </div>
                             <button class="btn-close-x" @click="handleClose">
@@ -197,7 +230,10 @@ const statusConfig = [
                         <!-- BODY -->
                         <div class="modal-body">
                             <!-- Title -->
-                            <div class="field-group" :class="{ error: errorMessage }">
+                            <div
+                                class="field-group"
+                                :class="{ error: errorMessage }"
+                            >
                                 <label class="field-label">
                                     <PenLine class="w-3 h-3" /> Judul Tugas *
                                 </label>
@@ -210,7 +246,9 @@ const statusConfig = [
                                     :disabled="isLoading"
                                 />
                             </div>
-                            <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
+                            <p v-if="errorMessage" class="error-text">
+                                {{ errorMessage }}
+                            </p>
 
                             <!-- Description -->
                             <div class="field-group">
@@ -222,7 +260,7 @@ const statusConfig = [
                                     rows="2"
                                     class="field-input"
                                     placeholder="Tambahkan detail atau catatan..."
-                                    style="resize: none; min-height: 60px;"
+                                    style="resize: none; min-height: 60px"
                                     :disabled="isLoading"
                                 ></textarea>
                             </div>
@@ -252,7 +290,10 @@ const statusConfig = [
                                 </div>
 
                                 <!-- Priority -->
-                                <div class="field-group" style="min-width: 120px">
+                                <div
+                                    class="field-group"
+                                    style="min-width: 120px"
+                                >
                                     <label class="field-label">
                                         <Flag class="w-3 h-3" /> Prioritas
                                     </label>
@@ -262,8 +303,19 @@ const statusConfig = [
                                             :key="key"
                                             type="button"
                                             class="priority-btn"
-                                            :class="{ active: priority === key }"
-                                            :style="priority === key ? { background: cfg.bg, color: cfg.color, borderColor: cfg.color } : {}"
+                                            :class="{
+                                                active: priority === key,
+                                            }"
+                                            :style="
+                                                priority === key
+                                                    ? {
+                                                          background: cfg.bg,
+                                                          color: cfg.color,
+                                                          borderColor:
+                                                              cfg.color,
+                                                      }
+                                                    : {}
+                                            "
                                             @click="priority = key as any"
                                         >
                                             {{ cfg.label }}
@@ -282,10 +334,20 @@ const statusConfig = [
                                         type="button"
                                         class="status-btn"
                                         :class="{ active: status === s.key }"
-                                        :style="status === s.key ? { borderColor: s.color, color: s.color } : {}"
+                                        :style="
+                                            status === s.key
+                                                ? {
+                                                      borderColor: s.color,
+                                                      color: s.color,
+                                                  }
+                                                : {}
+                                        "
                                         @click="status = s.key as any"
                                     >
-                                        <span class="status-dot" :style="{ background: s.color }"></span>
+                                        <span
+                                            class="status-dot"
+                                            :style="{ background: s.color }"
+                                        ></span>
                                         {{ s.label }}
                                     </button>
                                 </div>
@@ -298,18 +360,34 @@ const statusConfig = [
                                 </label>
 
                                 <!-- Selected Assignees -->
-                                <div v-if="selectedAssignees.length" class="selected-assignees">
+                                <div
+                                    v-if="selectedAssignees.length"
+                                    class="selected-assignees"
+                                >
                                     <div
                                         v-for="a in selectedAssignees"
                                         :key="a.id"
                                         class="assignee-chip"
                                     >
                                         <div class="chip-avatar">
-                                            <img v-if="a.profile_photo_url" :src="a.profile_photo_url" :alt="a.name" />
-                                            <span v-else>{{ a.name?.[0]?.toUpperCase() ?? '?' }}</span>
+                                            <img
+                                                v-if="a.profile_photo_url"
+                                                :src="a.profile_photo_url"
+                                                :alt="a.name"
+                                            />
+                                            <span v-else>{{
+                                                a.name?.[0]?.toUpperCase() ??
+                                                "?"
+                                            }}</span>
                                         </div>
-                                        <span class="chip-name">{{ a.name.split(" ")[0] }}</span>
-                                        <button class="chip-remove" @click="removeAssignee(a.id)" type="button">
+                                        <span class="chip-name">{{
+                                            a.name.split(" ")[0]
+                                        }}</span>
+                                        <button
+                                            class="chip-remove"
+                                            @click="removeAssignee(a.id)"
+                                            type="button"
+                                        >
                                             <X class="w-3 h-3" />
                                         </button>
                                     </div>
@@ -328,9 +406,22 @@ const statusConfig = [
                                         :disabled="isLoading"
                                     />
                                     <!-- Dropdown -->
-                                    <div v-if="showContactDropdown && (contacts.length || isLoadingContacts)" class="contact-dropdown">
-                                        <div v-if="isLoadingContacts" class="contact-loading">
-                                            <span class="spinner-border spinner-border-sm"></span> Mencari...
+                                    <div
+                                        v-if="
+                                            showContactDropdown &&
+                                            (contacts.length ||
+                                                isLoadingContacts)
+                                        "
+                                        class="contact-dropdown"
+                                    >
+                                        <div
+                                            v-if="isLoadingContacts"
+                                            class="contact-loading"
+                                        >
+                                            <span
+                                                class="spinner-border spinner-border-sm"
+                                            ></span>
+                                            Mencari...
                                         </div>
                                         <div
                                             v-for="c in contacts"
@@ -339,15 +430,33 @@ const statusConfig = [
                                             @mousedown.prevent="addAssignee(c)"
                                         >
                                             <div class="contact-avatar">
-                                                <img v-if="c.profile_photo_url" :src="c.profile_photo_url" :alt="c.name" />
-                                                <span v-else>{{ c.name?.[0]?.toUpperCase() ?? '?' }}</span>
+                                                <img
+                                                    v-if="c.profile_photo_url"
+                                                    :src="c.profile_photo_url"
+                                                    :alt="c.name"
+                                                />
+                                                <span v-else>{{
+                                                    c.name?.[0]?.toUpperCase() ??
+                                                    "?"
+                                                }}</span>
                                             </div>
                                             <div>
-                                                <p class="contact-name">{{ c.name }}</p>
-                                                <p class="contact-email">{{ c.email }}</p>
+                                                <p class="contact-name">
+                                                    {{ c.name }}
+                                                </p>
+                                                <p class="contact-email">
+                                                    {{ c.email }}
+                                                </p>
                                             </div>
                                         </div>
-                                        <div v-if="!isLoadingContacts && !contacts.length && contactSearch.length >= 2" class="contact-empty">
+                                        <div
+                                            v-if="
+                                                !isLoadingContacts &&
+                                                !contacts.length &&
+                                                contactSearch.length >= 2
+                                            "
+                                            class="contact-empty"
+                                        >
                                             Kontak tidak ditemukan
                                         </div>
                                     </div>
@@ -357,11 +466,24 @@ const statusConfig = [
 
                         <!-- FOOTER -->
                         <div class="modal-footer">
-                            <button type="button" class="btn-cancel" @click="handleClose" :disabled="isLoading">
+                            <button
+                                type="button"
+                                class="btn-cancel"
+                                @click="handleClose"
+                                :disabled="isLoading"
+                            >
                                 Batal
                             </button>
-                            <button type="button" class="btn-submit" @click="submit" :disabled="isLoading">
-                                <span v-if="isLoading" class="spinner-border spinner-border-sm me-2"></span>
+                            <button
+                                type="button"
+                                class="btn-submit"
+                                @click="submit"
+                                :disabled="isLoading"
+                            >
+                                <span
+                                    v-if="isLoading"
+                                    class="spinner-border spinner-border-sm me-2"
+                                ></span>
                                 <span v-else>✨ Simpan Tugas</span>
                             </button>
                         </div>
@@ -511,16 +633,26 @@ const statusConfig = [
     display: flex;
     gap: 12px;
 }
-.flex-1 { flex: 1; }
+.flex-1 {
+    flex: 1;
+}
 
 /* Deadline inputs */
 .deadline-inputs {
     display: flex;
     gap: 8px;
 }
-.date-inp { flex: 1; font-size: 0.88rem; }
-.time-inp { width: 90px; font-size: 0.88rem; }
-.time-inp:disabled { opacity: 0.4; }
+.date-inp {
+    flex: 1;
+    font-size: 0.88rem;
+}
+.time-inp {
+    width: 90px;
+    font-size: 0.88rem;
+}
+.time-inp:disabled {
+    opacity: 0.4;
+}
 
 /* Priority */
 .priority-btns {
@@ -770,34 +902,92 @@ const statusConfig = [
 }
 
 /* --- ANIMATIONS --- */
-.backdrop-enter-active, .backdrop-leave-active { transition: opacity 0.3s ease; }
-.backdrop-enter-from, .backdrop-leave-to { opacity: 0; }
-.modal-spring-enter-active { transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.modal-spring-leave-active { transition: all 0.25s ease; }
-.modal-spring-enter-from { opacity: 0; transform: scale(0.85) translateY(30px); }
-.modal-spring-leave-to { opacity: 0; transform: scale(0.95); }
+.backdrop-enter-active,
+.backdrop-leave-active {
+    transition: opacity 0.3s ease;
+}
+.backdrop-enter-from,
+.backdrop-leave-to {
+    opacity: 0;
+}
+.modal-spring-enter-active {
+    transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.modal-spring-leave-active {
+    transition: all 0.25s ease;
+}
+.modal-spring-enter-from {
+    opacity: 0;
+    transform: scale(0.85) translateY(30px);
+}
+.modal-spring-leave-to {
+    opacity: 0;
+    transform: scale(0.95);
+}
 
 .shake-animation {
     animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 @keyframes shake {
-    10%, 90% { transform: translate3d(-1px, 0, 0); }
-    20%, 80% { transform: translate3d(2px, 0, 0); }
-    30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
-    40%, 60% { transform: translate3d(4px, 0, 0); }
+    10%,
+    90% {
+        transform: translate3d(-1px, 0, 0);
+    }
+    20%,
+    80% {
+        transform: translate3d(2px, 0, 0);
+    }
+    30%,
+    50%,
+    70% {
+        transform: translate3d(-4px, 0, 0);
+    }
+    40%,
+    60% {
+        transform: translate3d(4px, 0, 0);
+    }
 }
 
 /* --- DARK MODE --- */
-:global(.dark) .modal-card { background: #1e1e2d; }
-:global(.dark) .modal-title { color: #e5e7eb; }
-:global(.dark) .field-group { background: #151521; }
-:global(.dark) .field-group:focus-within { background: #1a1a2e; }
-:global(.dark) .field-input { color: #e5e7eb; }
-:global(.dark) .contact-search-input { background: #151521; border-color: #2b2b40; color: #e5e7eb; }
-:global(.dark) .contact-dropdown { background: #1e1e2d; border-color: #2b2b40; }
-:global(.dark) .contact-item:hover { background: #2b2b40; }
-:global(.dark) .contact-name { color: #e5e7eb; }
-:global(.dark) .btn-cancel { border-color: #2b2b40; color: #9ca3af; }
-:global(.dark) .btn-cancel:hover { background: #2b2b40; }
-:global(.dark) .modal-header, :global(.dark) .modal-footer { border-color: #2b2b40; }
+:global(.dark) .modal-card {
+    background: #1e1e2d;
+}
+:global(.dark) .modal-title {
+    color: #e5e7eb;
+}
+:global(.dark) .field-group {
+    background: #151521;
+}
+:global(.dark) .field-group:focus-within {
+    background: #1a1a2e;
+}
+:global(.dark) .field-input {
+    color: #e5e7eb;
+}
+:global(.dark) .contact-search-input {
+    background: #151521;
+    border-color: #2b2b40;
+    color: #e5e7eb;
+}
+:global(.dark) .contact-dropdown {
+    background: #1e1e2d;
+    border-color: #2b2b40;
+}
+:global(.dark) .contact-item:hover {
+    background: #2b2b40;
+}
+:global(.dark) .contact-name {
+    color: #e5e7eb;
+}
+:global(.dark) .btn-cancel {
+    border-color: #2b2b40;
+    color: #9ca3af;
+}
+:global(.dark) .btn-cancel:hover {
+    background: #2b2b40;
+}
+:global(.dark) .modal-header,
+:global(.dark) .modal-footer {
+    border-color: #2b2b40;
+}
 </style>

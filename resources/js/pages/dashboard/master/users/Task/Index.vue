@@ -19,13 +19,15 @@ import {
 import TodoForm from "./TodoForm.vue";
 import TodoDetailModal from "./TodoDetailModal.vue";
 
-// --- TIPE DATA ---
+// ─── TYPES ───────────────────────────────────────────────────────────────────
 type ColumnKey = "todo" | "in_progress" | "done";
 
 interface Assignee {
     id: number;
     name: string;
+    email?: string;
     profile_photo_url?: string;
+    pivot?: { role: string };
 }
 
 interface Attachment {
@@ -39,6 +41,7 @@ interface Attachment {
 interface Todo {
     id: number;
     user_id: number;
+    board_id: number;
     title: string;
     description?: string;
     status: ColumnKey;
@@ -48,10 +51,31 @@ interface Todo {
     attachments?: Attachment[];
 }
 
-// --- PROPS ---
-const props = withDefaults(defineProps<{ todos?: Todo[] }>(), {
-    todos: () => [],
-});
+interface Board {
+    id: number;
+    user_id: number;
+    name: string;
+    description?: string;
+    color: string;
+    icon: string;
+}
+
+// ─── PROPS ───────────────────────────────────────────────────────────────────
+const props = withDefaults(
+    defineProps<{
+        board?: Board;
+    }>(),
+    {
+        board: () => ({
+            id: 0,
+            user_id: 0,
+            name: "Board Tugas",
+            color: "#5e6ad2",
+            icon: "📋",
+        }),
+    }
+);
+const emit = defineEmits(["back"]);
 
 // --- STATE ---
 const allTodos = ref<Todo[]>([]);
@@ -101,9 +125,13 @@ const columnConfig = [
 
 // --- DATA LOADING ---
 const fetchTodos = async () => {
+    // Jika tidak ada board (standalone), jangan fetch
+    if (!props.board?.id) return;
     isLoading.value = true;
     try {
-        const res = await axios.get("/chat/todos");
+        const res = await axios.get("/chat/todos", {
+            params: { board_id: props.board.id },
+        });
         allTodos.value = res.data.data ?? res.data;
         distributeTodos();
     } catch {
@@ -272,11 +300,35 @@ const overdueTodos = computed(
         <!-- HEADER -->
         <div class="kanban-header">
             <div class="header-left">
-                <div class="header-icon">
-                    <LayoutDashboard class="icon-svg" />
+                <!-- Tombol kembali ke daftar board -->
+                <button
+                    class="btn-back"
+                    @click="emit('back')"
+                    title="Kembali ke daftar board"
+                >
+                    <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                    >
+                        <polyline points="15 18 9 12 15 6" />
+                    </svg>
+                </button>
+                <div
+                    class="header-icon"
+                    :style="{
+                        background: `linear-gradient(135deg, ${props.board.color}, ${props.board.color}aa)`,
+                    }"
+                >
+                    <span style="font-size: 1.4rem">{{
+                        props.board.icon
+                    }}</span>
                 </div>
                 <div>
-                    <h1 class="header-title">Board Tugas</h1>
+                    <h1 class="header-title">{{ props.board.name }}</h1>
                     <p class="header-sub">
                         {{ doneTodos }}/{{ totalTodos }} tugas selesai
                         <span v-if="overdueTodos > 0" class="overdue-badge">
@@ -513,6 +565,7 @@ const overdueTodos = computed(
         <!-- MODALS -->
         <TodoForm
             :show="showCreateModal"
+            :board-id="props.board.id"
             :default-status="createInColumn"
             @close="showCreateModal = false"
             @created="onCreated"
@@ -674,6 +727,36 @@ const overdueTodos = computed(
 
 .search-clear:hover {
     color: #ef4444;
+}
+
+.btn-back {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #6b7280;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.btn-back:hover {
+    border-color: #5e6ad2;
+    color: #5e6ad2;
+    background: #eef0ff;
+}
+:global(.dark) .btn-back {
+    background: #1e1e2d;
+    border-color: #2b2b40;
+    color: #9ca3af;
+}
+:global(.dark) .btn-back:hover {
+    border-color: #5e6ad2;
+    color: #818cf8;
+    background: #16162a;
 }
 
 .btn-icon {
@@ -991,84 +1074,6 @@ const overdueTodos = computed(
 .add-card-bottom:hover {
     background: #f8faff;
     color: #5e6ad2;
-}
-
-/* ===================== DRAG GHOST ===================== */
-.ghost-card {
-    opacity: 0.4;
-    background: #eef0ff;
-    border: 2px dashed #5e6ad2 !important;
-}
-
-.dragging-card {
-    box-shadow: 0 10px 30px rgba(94, 106, 210, 0.25) !important;
-    transform: rotate(2deg) !important;
-}
-
-/* ===================== RESPONSIVE ===================== */
-@media (max-width: 1024px) {
-    .kanban-board {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-@media (max-width: 640px) {
-    .kanban-page {
-        padding: 12px;
-    }
-    .kanban-board {
-        grid-template-columns: 1fr;
-    }
-    .kanban-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    .progress-area {
-        display: none;
-    }
-    .search-field {
-        width: 140px;
-    }
-}
-
-/* ===================== DARK MODE (DIPERBAIKI) ===================== */
-:global([data-bs-theme="dark"]) .kanban-page {
-    background: #0f0f1a;
-}
-:global([data-bs-theme="dark"]) .kanban-column {
-    background: #1e1e2d;
-    border-color: #2b2b40;
-}
-:global([data-bs-theme="dark"]) .col-header {
-    background: #1a1a2e;
-}
-:global([data-bs-theme="dark"]) .col-title,
-:global([data-bs-theme="dark"]) .header-title,
-:global([data-bs-theme="dark"]) .card-title {
-    color: #e5e7eb;
-}
-:global([data-bs-theme="dark"]) .todo-card {
-    background: #1e1e2d;
-    border-color: #2b2b40;
-}
-:global([data-bs-theme="dark"]) .todo-card:hover {
-    border-color: #5e6ad2;
-}
-:global([data-bs-theme="dark"]) .search-field {
-    background: #1e1e2d;
-    border-color: #2b2b40;
-    color: #e5e7eb;
-}
-:global([data-bs-theme="dark"]) .btn-icon {
-    background: #1e1e2d;
-    border-color: #2b2b40;
-    color: #9ca3af;
-}
-:global([data-bs-theme="dark"]) .add-card-bottom {
-    border-color: #2b2b40;
-}
-:global([data-bs-theme="dark"]) .add-card-bottom:hover {
-    background: #2b2b40;
 }
 
 /* ===================== DRAG GHOST ===================== */

@@ -15,16 +15,26 @@ class TodoController extends Controller
     // ─── INDEX ────────────────────────────────────────────────────────────────
     public function index(Request $request)
     {
-        $userId = Auth::id();
+        $userId  = Auth::id();
+        $boardId = $request->query('board_id');
 
-        // Ambil todos milik user ATAU yang di-assign ke user
-        $todos = Todo::where('user_id', $userId)
-            ->orWhereHas('assignees', fn ($q) => $q->where('users.id', $userId))
+        // board_id wajib disertakan
+        if (!$boardId) {
+            return response()->json(['message' => 'board_id diperlukan'], 422);
+        }
+
+        // Pastikan user adalah member atau owner board ini
+        $board = \App\Models\TaskBoard::findOrFail($boardId);
+        $isMember = $board->members()->where('users.id', $userId)->exists();
+        if ($board->user_id !== $userId && !$isMember) {
+            abort(403, 'Unauthorized');
+        }
+
+        $todos = Todo::where('board_id', $boardId)
             ->with(['assignees:id,name,email,profile_photo_path', 'attachments'])
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Format profile_photo_url pada assignees
         $todos->each(function ($todo) {
             $todo->assignees->each(function ($user) {
                 $user->profile_photo_url = $user->profile_photo_path
@@ -40,6 +50,7 @@ class TodoController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'board_id'     => 'required|exists:task_boards,id',
             'title'        => 'required|string|max:255',
             'description'  => 'nullable|string',
             'status'       => 'sometimes|in:todo,in_progress,done',
@@ -49,7 +60,15 @@ class TodoController extends Controller
             'assignee_ids.*' => 'exists:users,id',
         ]);
 
+        // Pastikan user adalah member board
+        $board = \App\Models\TaskBoard::findOrFail($validated['board_id']);
+        $isMember = $board->members()->where('users.id', Auth::id())->exists();
+        if ($board->user_id !== Auth::id() && !$isMember) {
+            abort(403, 'Unauthorized');
+        }
+
         $todo = Todo::create([
+            'board_id'    => $validated['board_id'],
             'user_id'     => Auth::id(),
             'title'       => $validated['title'],
             'description' => $validated['description'] ?? null,
@@ -68,7 +87,6 @@ class TodoController extends Controller
             }
         }
         $todo->assignees()->sync($syncData);
-
         $todo->load(['assignees:id,name,email,profile_photo_path', 'attachments']);
 
         return response()->json(['message' => 'Tugas berhasil disimpan', 'data' => $todo], 201);

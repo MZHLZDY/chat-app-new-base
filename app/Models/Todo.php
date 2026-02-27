@@ -10,6 +10,7 @@ class Todo extends Model
     use HasFactory;
 
     protected $fillable = [
+        'board_id',  // ← wajib ada agar Todo::create() bisa menyimpan board_id
         'user_id',
         'title',
         'description',

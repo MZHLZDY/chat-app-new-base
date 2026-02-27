@@ -9,6 +9,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\AiChatController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\GroupController;
+use App\Http\Controllers\TaskBoardController;
 use App\Http\Controllers\TodoController;
 use App\Http\Controllers\TodoCommentController;
 use App\Http\Controllers\DashboardController;
@@ -108,7 +109,20 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::delete('groups/{id}/members/{userId}', [GroupController::class, 'removeMember']);
         Route::delete('group/{id}/clear', [GroupController::class, 'clearChat']);
 
-        // Todo List Routes
+        // ── Board Routes ───────────────────────────────────────────────────────
+        Route::get('boards', [TaskBoardController::class, 'index'])->name('boards.index');
+        Route::post('boards', [TaskBoardController::class, 'store'])->name('boards.store');
+        Route::get('boards/{taskBoard}', [TaskBoardController::class, 'show'])->name('boards.show');
+        Route::put('boards/{taskBoard}', [TaskBoardController::class, 'update'])->name('boards.update');
+        Route::delete('boards/{taskBoard}', [TaskBoardController::class, 'destroy'])->name('boards.destroy');
+        Route::post('boards/{taskBoard}/members', [TaskBoardController::class, 'addMember'])->name('boards.members.add');
+        Route::delete('boards/{taskBoard}/members/{user}', [TaskBoardController::class, 'removeMember'])->name('boards.members.remove');
+        // ──────────────────────────────────────────────────────────────────────
+
+        // ── Todo Routes ────────────────────────────────────────────────────────
+        // PENTING: Route statik harus di atas route dengan {wildcard}
+
+        // Attachments
         Route::post('todos/attachments', [TodoController::class, 'storeAttachment'])->name('todos.attachments.store');
         Route::delete('todos/attachments/{attachment}', [TodoController::class, 'destroyAttachment'])->name('todos.attachments.destroy');
 
