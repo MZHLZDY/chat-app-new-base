@@ -946,7 +946,7 @@ onUnmounted(() => {
             :groupPhoto="activeGroup?.photo || activeGroup?.avatar || ''"
             :participants="formattedGroupParticipants"
             :callStatus="callStore.callStatus"
-            @cancel="leaveGroupVoiceCall(callStore.currentCall.id)"
+            @cancel="leaveGroupVoiceCall(callStore.currentCall.id)" 
         />
 
         <VoiceGroupIncomingModal
