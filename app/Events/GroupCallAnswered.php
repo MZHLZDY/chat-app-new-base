@@ -18,7 +18,8 @@ class GroupCallAnswered implements ShouldBroadcast
         public Group $group,
         public User $user,
         public bool $accepted,
-        public ?string $reason = null
+        public ?string $reason = null,
+        public string $context = 'initial'
     ) {}
 
     public function broadcastOn(): array
@@ -44,6 +45,7 @@ class GroupCallAnswered implements ShouldBroadcast
             ],
             'accepted' => $this->accepted,
             'reason' => $this->reason,
+            'context' => $this->context,
         ];
     }
 }

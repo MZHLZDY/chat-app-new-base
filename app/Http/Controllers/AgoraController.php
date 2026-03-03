@@ -936,6 +936,52 @@ class AgoraController extends Controller
         }
     }
 
+    // Handle panggilan yang tidak dijawab (missed call)
+    public function missedGroupCall(Request $request)
+    {
+        $request->validate([
+            'call_id' => 'required|exists:group_calls,id',
+        ]);
+
+        $user = auth()->user();
+        $call = GroupCall::with('group')->findOrFail($request->call_id);
+
+        $participant = GroupParticipant::where('call_id', $call->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($participant && $participant->status === 'ringing') {
+            $participant->update(['status' => 'missed']);
+
+            // Broadcast event that participant missed the call
+            broadcast(new GroupParticipantLeft($call->id, $call->group, $user, 'missed'));
+
+            return response()->json([
+                'message' => 'Group call missed',
+                'call' => $call->load('participants.user')
+            ]);
+        }
+
+        return response()->json(['message' => 'Participant not found or already responded'], 404);
+    }
+
+    // Generate token untuk panggilan grup
+    public function generateGroupToken(Request $request)
+    {
+        $request->validate([
+            'channel_name' => 'required|string',
+            'uid' => 'required|integer'
+        ]);
+
+        $token = $this->agoraService->generateRtcToken($request->channel_name, $request->uid);
+
+        return response()->json([
+            'token' => $token,
+            'channel_name' => $request->channel_name,
+            'uid' => $request->uid
+        ]);
+    }
+
     // Format durasi dalam detik agar bisa dibaca oleh user
     private function formatDuration($seconds)
     {

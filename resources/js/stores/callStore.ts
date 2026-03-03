@@ -24,6 +24,7 @@ export const useCallStore = defineStore('call', () => {
     const isGroupCall = ref<boolean>(false);
     const backendGroupCall = ref<GroupCall | null>(null);
     const groupParticipants = ref<GroupParticipant[]>([]);
+    const remoteVideoStates = ref<Record<number, boolean>>({}); // Simpan status video remote
 
     // Actions
     const setCurrentCall = (call: Call) => {
@@ -155,6 +156,14 @@ export const useCallStore = defineStore('call', () => {
         console.log('✅ callStore.hasJoinedAgora set di:', value);
     }
 
+    const updateRemoteVideoStates = (uid: number, isVideoOn: boolean) => {
+        remoteVideoStates.value[uid] = isVideoOn;
+    };
+
+    const clearRemoteVideoStates = () => {
+        remoteVideoStates.value = {};
+    };
+
     // fitur voice
     const toggleMinimize = () => {
         isMinimized.value = !isMinimized.value;
@@ -217,6 +226,7 @@ export const useCallStore = defineStore('call', () => {
         isGroupCall,
         backendGroupCall,
         groupParticipants,
+        remoteVideoStates,
         // Actions
         setCurrentCall,
         clearCurrentCall,
@@ -240,5 +250,7 @@ export const useCallStore = defineStore('call', () => {
         updateGroupParticipantStatus,
         setParticipantRecalled,
         dismissGroupCall,
+        updateRemoteVideoStates,
+        clearRemoteVideoStates,
     }
 });

@@ -160,6 +160,7 @@ Route::middleware(['auth', 'json'])->group(function () {
     Route::prefix('group-call')->as('group-call.')->group(function () {
         Route::post('/invite', [AgoraController::class, 'inviteGroupCall'])->name('invite');
         Route::post('/answer', [AgoraController::class, 'answerGroupCall'])->name('answer');
+        Route::post('/reject', [AgoraController::class, 'rejectGroupCall'])->name('reject');
         // [UPDATE] Rute untuk Host membubarkan panggilan
         Route::post('/end-all', [AgoraController::class, 'endGroupCallForAll'])->name('end-all'); 
         Route::post('/cancel', [AgoraController::class, 'cancelGroupCall'])->name('cancel'); 

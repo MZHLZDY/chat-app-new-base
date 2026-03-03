@@ -19,8 +19,9 @@ class GroupCallInitiated implements ShouldBroadcast
     public $callType;
     public $callId;
     public $members;
+    public $context;
 
-    public function __construct($caller, $toId, $groupId, $groupName, $callType, $callId, $members)
+    public function __construct($caller, $toId, $groupId, $groupName, $callType, $callId, $members, $context = 'initial')
     {
         $this->caller = $caller;
         $this->toId = $toId;
@@ -29,6 +30,7 @@ class GroupCallInitiated implements ShouldBroadcast
         $this->callType = $callType;
         $this->callId = $callId;
         $this->members = $members;
+        $this->context = $context;
     }
 
     public function broadcastOn(): array
@@ -56,6 +58,7 @@ class GroupCallInitiated implements ShouldBroadcast
             'call_type' => $this->callType,
             'call_id' => $this->callId,
             'members' => $this->members,
+            'context' => $this->context,
         ];
     }
 }
