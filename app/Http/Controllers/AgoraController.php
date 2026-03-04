@@ -511,6 +511,15 @@ class AgoraController extends Controller
                 // 2. HAPUS node incoming call agar HP lawan berhenti berdering (PENTING)
                 $firebase->getReference("calls/{$targetUserId}/incoming")->remove();
 
+                // 3. Tulis status cancelled ke Firebase agar frontend listener langsung menutup modal
+                $firebase->getReference("calls/{$targetUserId}/status")
+                    ->set([
+                        'call_id' => $call->id,
+                        'status' => 'cancelled',
+                        'call_type' => $call->call_type,
+                        'timestamp' => now()->timestamp,
+                    ]);
+
                 Log::info('✅ Firebase: Notifikasi cancel dikirim ke target', ['target' => $targetUserId]);
 
             } catch (\Exception $e) {

@@ -545,14 +545,16 @@ onMounted(() => {
                         // Hapus status dari firebase
                         remove(statusRef);
                         break;
+                    case "missed":
                     case "cancelled":
-                        console.log("❌ Firebase: Panggilan dibatalkan");
+                        console.log(`❌ Firebase: Panggilan ${data.status}`);
+
+                        callStore.clearIncomingCall();
 
                         if (data.call_type === "video") {
-                            callStore.updateCallStatus("cancelled");
+                            callStore.updateCallStatus(data.status);
                             setTimeout(() => {
                                 callStore.clearCurrentCall();
-                                callStore.clearIncomingCall();
                             }, 2000);
                         } else {
                             // TAMBAHKAN INI UNTUK VOICE CALL

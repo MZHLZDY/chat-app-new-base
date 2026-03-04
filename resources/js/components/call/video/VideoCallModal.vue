@@ -44,6 +44,16 @@ const remoteProfile = computed(() => {
         : currentCall.value.caller;
 });
 
+const remoteAvatarUrl = computed(() => {
+    const p = remoteProfile.value;
+    return p?.avatar || p?.profile_photo_url || p?.photo || '';
+});
+
+const localAvatarUrl = computed(() => {
+    const u = currentUser.value;
+    return u?.avatar || u?.profile_photo_url || u?.photo || '';
+});
+
 // Video call aktif ketika panggilan dalam status 'ongoing' dan tipe nya video
 const isVideoCallActive = computed(() => 
     currentCall.value?.status === 'ongoing' && currentCall.value?.type === 'video'
@@ -355,7 +365,7 @@ watch(() => remoteVideoTracks.value.size, (size) => {
                     :audio-track="remoteUser.audioTrack"
                     :uid="Number(remoteUser.uid)"
                     :user-name="remoteUser.name || 'User'"
-                    :avatar-url="remoteProfile?.avatar"
+                    :avatar-url="remoteAvatarUrl"
                     :is-local="false"
                     :hide-name-label="true"
                 />
@@ -372,7 +382,7 @@ watch(() => remoteVideoTracks.value.size, (size) => {
                     :audio-track="localAudioTrack"
                     :uid="currentUser.id"
                     :user-name="currentUser.name"
-                    :avatar-url="currentUser.avatar"
+                    :avatar-url="localAvatarUrl"
                     :is-local="true"
                     @orientation-detected="(o) => localVideoOrientation = o"
                 />
