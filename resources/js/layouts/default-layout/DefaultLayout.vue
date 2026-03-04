@@ -692,7 +692,7 @@ watch(
     <!--end::App-->
     <KTScrollTop />
      <!-- Global Call Modals -->
-  <Teleport to="body">
+    <Teleport to="body">
             <VoiceIncomingModal
                 v-if="showIncomingModal"
                 :caller-name="incomingCallProps.callerName"
