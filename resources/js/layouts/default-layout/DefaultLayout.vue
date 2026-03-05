@@ -164,7 +164,10 @@ const {
     startGroupVoiceCall, 
     answerGroupVoiceCall, 
     rejectGroupVoiceCall, 
-    leaveGroupVoiceCall 
+    leaveGroupVoiceCall,
+    handleGroupIncomingCall,
+    handleGroupCallCancelled,
+    handleGroupCallEnded,
 } = useVoiceGroupCall();    
 
 const isMinimized = ref(false); // State untuk mode minimize
@@ -475,6 +478,8 @@ onMounted(() => {
     }  else if (data.call_type === 'voice') {
       // 🔥 TAMBAHKAN INI
       handleIncomingCall(data);
+    } else if (data.call_type === 'group_voice' || data.call_type === 'group_video') {
+        handleGroupIncomingCall(data);
     }
       // Hapus setelah dibaca
       remove(incomingCallRef);
@@ -522,6 +527,9 @@ onMounted(() => {
                                     callStore.updateBackendCall(data.call);
                                 }
                             })();
+                        } else if (data.call_type === "group_voice" || data.call_type === "group_video"){
+                            console.log('✅ Panggilan grup diterima');
+                            callStore.clearIncomingCall();
                         } else {
                             handleCallAccepted(data);
                         }
@@ -538,6 +546,8 @@ onMounted(() => {
                                 callStore.clearCurrentCall();
                                 callStore.clearIncomingCall();
                             }, 2000);
+                        } else if (data.call_type === "group_voice" || data.call_type === "group_video") {
+                            callStore.clearIncomingCall();
                         } else {
                             handleCallRejected();
                         }
@@ -556,6 +566,9 @@ onMounted(() => {
                             setTimeout(() => {
                                 callStore.clearCurrentCall();
                             }, 2000);
+                        } else if (data.call_type === "group_voice" || data.call_type === "group_video") {
+                            console.log('Panggilan group dibatalkan oleh caller');
+                            handleGroupCallCancelled(data);
                         } else {
                             // TAMBAHKAN INI UNTUK VOICE CALL
                             console.log(
@@ -601,6 +614,9 @@ onMounted(() => {
                                     callStore.clearIncomingCall();
                                 }
                             })();
+                        } else if (data.call_type === "group_voice" || data.call_type === "group_video") {
+                            console.log('Panggilan grup diakhiri');
+                            handleGroupCallEnded(data);
                         } else {
                          // VOICE CALL - Immediate response
                          console.log("🎤 Voice call ended via Firebase");

@@ -158,6 +158,27 @@ export function useVoiceGroupCall() {
     // 2. FIREBASE EVENT HANDLERS (Dipanggil dari Global Listener)
     // ======================================================
 
+    const handleGroupIncomingCall = (data: any) => {
+        console.log("📥 Handle Incoming Group Call via Firebase:", data);
+
+        // Ambil string 'voice' atau 'video' dari 'group_voice' / 'group_video'
+        const actualType = data.call_type.replace('group_', ''); 
+
+        const incomingCall = {
+            id: data.call_id,
+            isGroup: true,
+            type: actualType, // Akan menjadi 'voice' atau 'video'
+            caller: data.caller,
+            receiver: authStore.user as User,
+            status: 'ringing',
+            channelName: data.channel_name,
+            group: data.group
+        };
+
+        callStore.isGroupCall = true;
+        callStore.setIncomingCall(incomingCall as any);
+    };
+
     const handleGroupVoiceCallAnswered = (payload: any) => {
         console.log('📡 [Firebase] Group Call Answered:', payload);
         callStore.updateGroupParticipantStatus(payload.user.id, payload.accepted ? 'joined' : 'declined');
@@ -197,6 +218,7 @@ export function useVoiceGroupCall() {
         endGroupVoiceCallForAll,
         recallParticipant,
         toggleMute: toggleAudio,
+        handleGroupIncomingCall,
         handleGroupVoiceCallAnswered,
         handleGroupParticipantLeft,
         handleGroupParticipantRecalled,

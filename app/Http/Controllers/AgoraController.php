@@ -149,7 +149,7 @@ class AgoraController extends Controller
                 $firebase->getReference("calls/{$callee->id}/incoming")
                     ->set([
                         'call_id' => $call->id,
-                        'call_type' => $request->call_type,
+                        'call_type' => 'group_' . $request->call_type,
                         'caller' => [
                             'id' => $caller->id,
                             'name' => $caller->name,
