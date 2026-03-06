@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, nextTick, watch, ref } from 'vue';
+import CallAvatar from '../shared/CallAvatar.vue';
 
 // Definisikan props (apa yang diterima di komponen ini)
 const props = defineProps<{
@@ -89,11 +90,13 @@ onUnmounted(() => {
 
         <Transition name="fade-scale">
             <div v-if="!videoTrack" class="avatar-state" key="avatar-state">
-                <div class="avatar-circle">
-                    <img
-                        :src="avatarUrl || 'https://ui-avatars.com/api/?name=' + userName + '&background=random'"
-                        alt="User">
-                </div>
+                <CallAvatar
+                    :photo-url="avatarUrl"
+                    :display-name="userName"
+                    size="100%"
+                    :is-calling="false"
+                    class="fluid-avatar"
+                />
             </div>
         </Transition>
 
@@ -155,13 +158,14 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
 }
-.avatar-circle img {
-    width: 90px;
-    height: 90px; /* Ukuran dasar */
+.fluid-avatar {
+    position: relative;
+    width: clamp(70px, 20vmin, 130px) !important;
+    height: clamp(70px, 20vmin, 130px) !important;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
     border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid rgba(255,255,255,0.2);
-    box-shadow: 0 0 30px rgba(255,255,255,0.1);
+    transition: all 0.3s ease;
 }
 .status-text {
     margin-top: 10px;

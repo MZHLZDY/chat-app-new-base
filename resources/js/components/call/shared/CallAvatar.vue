@@ -29,7 +29,7 @@ const resolvedPhotoUrl = computed(() => {
   const photo = props.photoUrl;
   const name = props.displayName || 'Unknown';
 
-  // --- DEBUGGING LOG (Lihat di Console Browser F12) ---
+  // --- DEBUGGING LOG ---
   console.log('🔍 AVATAR CHECK:', {
     name: name,
     inputPhoto: photo,
@@ -45,24 +45,29 @@ const resolvedPhotoUrl = computed(() => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&color=7F9CF5&background=EBF4FF`;
   }
 
-  // 2. Jika photo sudah Full URL
+  // 2. Helper untuk mengambil Base URL backend
+  const apiBase = import.meta.env.VITE_APP_API_URL || 'http://localhost:8000/api';
+  const backendBase = apiBase.replace('/api', '');
+
+  // 3. Jika photo memuat '/storage/' (SOLUSI BUG PUBLIC IP)
+  if (photo.includes('/storage/')) {
+    const pathOnly = photo.substring(photo.indexOf('/storage/')); // Ambil bagian /storage/... dst
+    const result = `${backendBase}${pathOnly}`;
+    console.log('🚀 GENERATED URL:', result);
+    return result;
+  }
+
+  // 4. Jika photo sudah Full URL dari eksternal (misal Google/FB)
   if (photo.startsWith('http')) {
     return photo;
   }
 
-  // 3. Jika photo adalah Path Relative (Masalah sering di sini!)
-  const storageUrl = import.meta.env.VITE_STORAGE_URL || 'http://localhost:8000/storage';
-  let cleanBase = storageUrl.replace(/\/$/, '');
-  let cleanPath = photo.startsWith('/') ? photo : `/${photo}`;
-
-  if (cleanBase.endsWith('/storage') && cleanPath.startsWith('/storage')) {
-      cleanPath = cleanPath.replace('/storage', '');
-  }
-  
-  const result = `${cleanBase}${cleanPath}`;
-  console.log('🚀 GENERATED URL:', result); // Cek apakah URL ini bisa dibuka di tab baru?
-  return result;
+  // 5. Fallback sisa path biasa
+  const resultFallback = `${backendBase}/${photo.replace(/^\//, '')}`;
+  console.log('🚀 GENERATED URL FALLBACK:', resultFallback);
+  return resultFallback;
 });
+
 </script>
 
 <template>

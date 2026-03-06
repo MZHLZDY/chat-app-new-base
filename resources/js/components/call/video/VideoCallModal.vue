@@ -641,7 +641,7 @@ watch(() => remoteVideoTracks.value.size, (size) => {
 
 /* Orientasi portrait untuk kamera hp */
 .local-video-wrapper.portrait {
-    width: clamp(140px, 15vw, 180px);
+    width: clamp(180px, 15vw, 180px);
     aspect-ratio: 9/16;
 }
 
