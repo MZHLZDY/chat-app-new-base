@@ -38,7 +38,9 @@ import VoiceGroupFloating from "@/components/call/voice/VoiceGroupFloating.vue";
 const route = useRoute();
 const currentUser = computed(() => authStore.user);
 const authStore = useAuthStore();
+const groups = ref<any[]>([]);
 const activeContact = ref<any>(null);
+const activeGroup = ref<any>(null);
 
 // --- CALL LOGIC ---
 const callStore = useCallStore();
@@ -412,6 +414,47 @@ const showVideoFloatingModal = computed(() =>
     callStore.isMinimized
 );
 
+// Group Call Functions
+const handleStartVoiceGroupCall = async () => {
+    if (!activeGroup.value) {
+        toast.error("Tidak ada grup yang dipilih.");
+        return;
+    }
+
+    // 1. Debugging: Cek apa isi sebenarnya dari activeGroup
+    console.log("Data activeGroup:", activeGroup.value);
+
+    // 2. Amankan dengan optional chaining (?.) dan beri array kosong jika undefined
+    // PERHATIKAN: Ganti '.users' dengan key yang benar dari database/backend kamu
+    // (Bisa jadi .members, .participants, dll)
+    const groupMembers = activeGroup.value.users || activeGroup.value.members || [];
+
+    const participantIds = groupMembers
+        .filter((u: any) => u.id !== currentUser.value?.id) // Pastikan ID kita tidak ikut ditelepon
+        .map((u: any) => u.id);
+
+    if (participantIds.length === 0) {
+        toast.warning("Tidak ada peserta lain di dalam grup untuk ditelepon.");
+        return;
+    }
+
+    // Panggil fungsi composable-nya
+    await startGroupVoiceCall(activeGroup.value.id, participantIds);
+};
+
+// --- [TS FIX] Format Data agar sesuai dengan Modal ---
+const formattedGroupParticipants = computed(() => {
+    return callStore.groupParticipants.map((p: any) => ({
+        id: p.user_id || p.id,
+        name: p.user?.name || 'Unknown',
+        avatar: p.user?.photo || p.user?.profile_photo_url || '',
+        status: p.status
+    }));
+});
+
+// --- [TS FIX] Cast incomingCall ke any untuk mengakses custom properti ---
+const incomingCallAsAny = computed(() => callStore.incomingCall as any);
+
 onBeforeMount(() => {
     LayoutService.init();
 });
@@ -737,5 +780,30 @@ watch(
                 @maximize="callStore.toggleMinimize"
                 @end-call="handleEndVoiceCall"
             />
+            <VoiceGroupFloating />
+
+        <VoiceGroupCallingModal
+            v-if="callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'calling' && !callStore.isMinimized"
+            :groupName="activeGroup?.name || 'Group Call'"
+            :groupPhoto="activeGroup?.photo || activeGroup?.avatar || ''"
+            :participants="formattedGroupParticipants"
+            :callStatus="callStore.callStatus"
+            @cancel="leaveGroupVoiceCall(callStore.currentCall.id)" 
+        />
+
+        <VoiceGroupIncomingModal
+            v-if="callStore.incomingCall && callStore.incomingCall.isGroup"
+            :groupName="incomingCallAsAny.groupName || 'Group Call'"
+            :groupPhoto="incomingCallAsAny.groupAvatar || ''"
+            :inviterName="callStore.incomingCall.caller?.name"
+            :participants="incomingCallAsAny.participants || []"
+            @accept="() => answerGroupVoiceCall(callStore.incomingCall!.id)"
+            @reject="() => rejectGroupVoiceCall(callStore.incomingCall!.id)"
+        />
+
+        <VoiceGroupCallModal
+            v-if="callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'ongoing' && !callStore.isMinimized"
+        />
+
     </Teleport>
 </template>

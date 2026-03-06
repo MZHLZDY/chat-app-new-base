@@ -954,7 +954,7 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <Teleport to="body">
+        <!-- <Teleport to="body">
         
         <VoiceGroupFloating />
 
@@ -981,15 +981,15 @@ onUnmounted(() => {
             v-if="callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'ongoing' && !callStore.isMinimized"
         />
 
-        <!-- <div v-if="callStore.isGroupCall" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #00ff00; padding: 15px; border-radius: 8px; z-index: 999999; font-family: monospace;">
+        <div v-if="callStore.isGroupCall" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #00ff00; padding: 15px; border-radius: 8px; z-index: 999999; font-family: monospace;">
             <b>🛠️ CALL STATE DEBUGGER</b><br/>
             isGroupCall: {{ callStore.isGroupCall }}<br/>
             Status: {{ callStore.callStatus }}<br/>
             CurrentCall: {{ !!callStore.currentCall }}<br/>
             isMinimized: {{ callStore.isMinimized }}
-        </div> -->
+        </div>
 
-        </Teleport>
+        </Teleport> -->
 
         <div
             class="flex-lg-row-fluid ms-lg-7 ms-xl-10"
