@@ -48,6 +48,59 @@ const newBoardDesc = ref("");
 const newBoardColor = ref("#5e6ad2");
 const newBoardIcon = ref("📋");
 
+// Contacts untuk invite di board baru
+interface Contact {
+    id: number;
+    name: string;
+    email?: string;
+    profile_photo_url?: string;
+    alias?: string;
+}
+const contacts = ref<Contact[]>([]);
+const contactSearch = ref("");
+const isLoadingContacts = ref(false);
+const newBoardMembers = ref<Contact[]>([]);
+
+const fetchContacts = async () => {
+    isLoadingContacts.value = true;
+    try {
+        const res = await axios.get("/chat/contacts");
+        contacts.value = res.data.data ?? res.data;
+    } catch {
+        contacts.value = [];
+    } finally {
+        isLoadingContacts.value = false;
+    }
+};
+
+const filteredContacts = computed(() =>
+    contacts.value.filter(
+        (c) =>
+            !newBoardMembers.value.find((m) => m.id === c.id) &&
+            (c.alias ?? c.name)
+                .toLowerCase()
+                .includes(contactSearch.value.toLowerCase())
+    )
+);
+
+const addMemberToNew = (c: Contact) => {
+    if (!newBoardMembers.value.find((m) => m.id === c.id)) {
+        newBoardMembers.value.push(c);
+    }
+    contactSearch.value = "";
+};
+
+const removeMemberFromNew = (id: number) => {
+    newBoardMembers.value = newBoardMembers.value.filter((m) => m.id !== id);
+};
+
+const openCreateModal = () => {
+    showCreateModal.value = true;
+    newBoardMembers.value = [];
+    contactSearch.value = "";
+    fetchContacts();
+};
+
 // Modal edit board
 const showEditModal = ref(false);
 const editingBoard = ref<Board | null>(null);
@@ -56,6 +109,23 @@ const editDesc = ref("");
 const editColor = ref("");
 const editIcon = ref("");
 const isSavingEdit = ref(false);
+
+// Member management di edit modal
+const editExistingMembers = ref<BoardMember[]>([]); // member yang sudah ada
+const editNewMembers = ref<Contact[]>([]); // member baru yang akan ditambah
+const editRemovedMemberIds = ref<number[]>([]); // id member yang akan dihapus
+const editContactSearch = ref("");
+const isLoadingEditContacts = ref(false);
+const editFilteredContacts = computed(() =>
+    contacts.value.filter(
+        (c) =>
+            !editNewMembers.value.find((m) => m.id === c.id) &&
+            !editExistingMembers.value.find((m) => m.id === c.id) &&
+            (c.alias ?? c.name)
+                .toLowerCase()
+                .includes(editContactSearch.value.toLowerCase())
+    )
+);
 
 // Hapus board
 const deletingBoardId = ref<number | null>(null);
@@ -134,12 +204,26 @@ const createBoard = async () => {
             color: newBoardColor.value,
             icon: newBoardIcon.value,
         });
-        boards.value.unshift(res.data.data ?? res.data);
+        const board = res.data.data ?? res.data;
+
+        // Invite member yang sudah dipilih sebelum board dibuat
+        for (const member of newBoardMembers.value) {
+            try {
+                await axios.post(`/chat/boards/${board.id}/members`, {
+                    user_id: member.id,
+                });
+            } catch {
+                /* skip jika gagal */
+            }
+        }
+
+        await fetchBoards(); // refresh agar stats & members muncul
         showCreateModal.value = false;
         newBoardName.value = "";
         newBoardDesc.value = "";
         newBoardColor.value = "#5e6ad2";
         newBoardIcon.value = "📋";
+        newBoardMembers.value = [];
         toast.success("Board berhasil dibuat!");
     } catch {
         toast.error("Gagal membuat board");
@@ -155,13 +239,21 @@ const openEdit = (board: Board, e: Event) => {
     editDesc.value = board.description ?? "";
     editColor.value = board.color;
     editIcon.value = board.icon;
+    // Reset member state
+    editExistingMembers.value = board.members ? [...board.members] : [];
+    editNewMembers.value = [];
+    editRemovedMemberIds.value = [];
+    editContactSearch.value = "";
     showEditModal.value = true;
+    // Load kontak jika belum ada
+    if (!contacts.value.length) fetchContacts();
 };
 
 const saveEdit = async () => {
     if (!editingBoard.value || !editName.value.trim()) return;
     isSavingEdit.value = true;
     try {
+        // Update board info
         const res = await axios.put(`/chat/boards/${editingBoard.value.id}`, {
             name: editName.value,
             description: editDesc.value,
@@ -174,6 +266,33 @@ const saveEdit = async () => {
         );
         if (idx !== -1)
             boards.value[idx] = { ...boards.value[idx], ...updated };
+
+        // Tambah member baru
+        for (const member of editNewMembers.value) {
+            try {
+                await axios.post(
+                    `/chat/boards/${editingBoard.value.id}/members`,
+                    {
+                        user_id: member.id,
+                    }
+                );
+            } catch {
+                /* skip jika gagal */
+            }
+        }
+
+        // Hapus member yang diremove (kecuali owner)
+        for (const memberId of editRemovedMemberIds.value) {
+            try {
+                await axios.delete(
+                    `/chat/boards/${editingBoard.value.id}/members/${memberId}`
+                );
+            } catch {
+                /* skip jika gagal */
+            }
+        }
+
+        await fetchBoards(); // refresh agar members ter-update
         showEditModal.value = false;
         editingBoard.value = null;
         toast.success("Board diperbarui!");
@@ -224,7 +343,7 @@ const deleteBoard = async (board: Board, e: Event) => {
                     <p class="bl-sub">{{ boards.length }} board tersedia</p>
                 </div>
             </div>
-            <button class="btn-create-board" @click="showCreateModal = true">
+            <button class="btn-create-board" @click="openCreateModal()">
                 <Plus class="w-4 h-4" />
                 <span>Board Baru</span>
             </button>
@@ -241,7 +360,7 @@ const deleteBoard = async (board: Board, e: Event) => {
             <span style="font-size: 4rem">📋</span>
             <h2>Belum ada board</h2>
             <p>Buat board pertamamu untuk mulai mengorganisir tugas</p>
-            <button class="btn-create-board" @click="showCreateModal = true">
+            <button class="btn-create-board" @click="openCreateModal()">
                 <Plus class="w-4 h-4" /> Buat Board
             </button>
         </div>
@@ -418,7 +537,7 @@ const deleteBoard = async (board: Board, e: Event) => {
                             v-model="newBoardDesc"
                             class="bl-input bl-textarea"
                             placeholder="Opsional..."
-                            rows="2"
+                            rows="1"
                             maxlength="500"
                         ></textarea>
                     </div>
@@ -457,6 +576,114 @@ const deleteBoard = async (board: Board, e: Event) => {
                                 />
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Undang anggota dari kontak -->
+                    <div class="bl-form-group">
+                        <label
+                            >Undang Anggota
+                            <span style="color: #9ca3af; font-weight: 400"
+                                >(opsional)</span
+                            ></label
+                        >
+
+                        <!-- Chip anggota terpilih -->
+                        <div
+                            v-if="newBoardMembers.length"
+                            class="bl-selected-members"
+                        >
+                            <div
+                                v-for="m in newBoardMembers"
+                                :key="m.id"
+                                class="bl-member-chip"
+                            >
+                                <div class="bl-chip-avatar">
+                                    <img
+                                        v-if="m.profile_photo_url"
+                                        :src="m.profile_photo_url"
+                                    />
+                                    <span v-else>{{
+                                        (m.alias ?? m.name)?.[0]?.toUpperCase()
+                                    }}</span>
+                                </div>
+                                <span class="bl-chip-name">{{
+                                    m.alias ?? m.name
+                                }}</span>
+                                <button
+                                    class="bl-chip-remove"
+                                    @click="removeMemberFromNew(m.id)"
+                                >
+                                    <X class="w-3 h-3" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Search kontak -->
+                        <input
+                            v-model="contactSearch"
+                            type="text"
+                            class="bl-input"
+                            placeholder="Cari nama kontak..."
+                        />
+
+                        <!-- Loading -->
+                        <div
+                            v-if="isLoadingContacts"
+                            class="bl-contact-loading"
+                        >
+                            <span
+                                class="spinner-border spinner-border-sm"
+                            ></span>
+                            Memuat kontak...
+                        </div>
+
+                        <!-- Daftar kontak -->
+                        <div
+                            v-else-if="filteredContacts.length"
+                            class="bl-contact-list"
+                        >
+                            <div
+                                v-for="c in filteredContacts.slice(0, 5)"
+                                :key="c.id"
+                                class="bl-contact-item"
+                                @click="addMemberToNew(c)"
+                            >
+                                <div class="bl-contact-avatar">
+                                    <img
+                                        v-if="c.profile_photo_url"
+                                        :src="c.profile_photo_url"
+                                    />
+                                    <span v-else>{{
+                                        (c.alias ?? c.name)?.[0]?.toUpperCase()
+                                    }}</span>
+                                </div>
+                                <div class="bl-contact-info">
+                                    <p class="bl-contact-name">
+                                        {{ c.alias ?? c.name }}
+                                    </p>
+                                    <p class="bl-contact-email">
+                                        {{ c.email }}
+                                    </p>
+                                </div>
+                                <Plus class="w-3 h-3 bl-contact-add-icon" />
+                            </div>
+                        </div>
+                        <p
+                            v-else-if="
+                                !isLoadingContacts && contacts.length === 0
+                            "
+                            class="bl-contact-empty"
+                        >
+                            Belum ada kontak tersimpan
+                        </p>
+                        <p
+                            v-else-if="
+                                contactSearch && !filteredContacts.length
+                            "
+                            class="bl-contact-empty"
+                        >
+                            Kontak tidak ditemukan
+                        </p>
                     </div>
 
                     <div class="bl-modal-footer">
@@ -517,7 +744,7 @@ const deleteBoard = async (board: Board, e: Event) => {
                         <textarea
                             v-model="editDesc"
                             class="bl-input bl-textarea"
-                            rows="2"
+                            rows="1"
                             maxlength="500"
                         ></textarea>
                     </div>
@@ -552,6 +779,191 @@ const deleteBoard = async (board: Board, e: Event) => {
                                 />
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Kelola Anggota -->
+                    <div class="bl-form-group">
+                        <label>Anggota Board</label>
+
+                        <!-- Member yang sudah ada -->
+                        <div
+                            v-if="editExistingMembers.length"
+                            class="bl-existing-members"
+                        >
+                            <div
+                                v-for="m in editExistingMembers"
+                                :key="m.id"
+                                class="bl-existing-member-item"
+                                :class="{
+                                    'will-remove':
+                                        editRemovedMemberIds.includes(m.id),
+                                }"
+                            >
+                                <div
+                                    class="bl-contact-avatar"
+                                    style="
+                                        width: 28px;
+                                        height: 28px;
+                                        font-size: 0.7rem;
+                                    "
+                                >
+                                    <img
+                                        v-if="m.profile_photo_url"
+                                        :src="m.profile_photo_url"
+                                    />
+                                    <span v-else>{{
+                                        m.name[0]?.toUpperCase()
+                                    }}</span>
+                                </div>
+                                <div class="bl-contact-info">
+                                    <p
+                                        class="bl-contact-name"
+                                        style="font-size: 0.8rem"
+                                    >
+                                        {{ m.name }}
+                                    </p>
+                                    <p
+                                        v-if="m.pivot?.role === 'owner'"
+                                        class="bl-member-role"
+                                    >
+                                        Owner
+                                    </p>
+                                </div>
+                                <button
+                                    v-if="m.pivot?.role !== 'owner'"
+                                    class="bl-member-toggle-btn"
+                                    :class="{
+                                        'is-removing':
+                                            editRemovedMemberIds.includes(m.id),
+                                    }"
+                                    @click="
+                                        editRemovedMemberIds.includes(m.id)
+                                            ? editRemovedMemberIds.splice(
+                                                  editRemovedMemberIds.indexOf(
+                                                      m.id
+                                                  ),
+                                                  1
+                                              )
+                                            : editRemovedMemberIds.push(m.id)
+                                    "
+                                    :title="
+                                        editRemovedMemberIds.includes(m.id)
+                                            ? 'Batalkan'
+                                            : 'Keluarkan'
+                                    "
+                                >
+                                    <X
+                                        v-if="
+                                            !editRemovedMemberIds.includes(m.id)
+                                        "
+                                        class="w-3 h-3"
+                                    />
+                                    <Check v-else class="w-3 h-3" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Chip member baru -->
+                        <div
+                            v-if="editNewMembers.length"
+                            class="bl-selected-members"
+                            style="margin-top: 8px"
+                        >
+                            <div
+                                v-for="m in editNewMembers"
+                                :key="m.id"
+                                class="bl-member-chip"
+                            >
+                                <div class="bl-chip-avatar">
+                                    <img
+                                        v-if="m.profile_photo_url"
+                                        :src="m.profile_photo_url"
+                                    />
+                                    <span v-else>{{
+                                        (m.alias ?? m.name)?.[0]?.toUpperCase()
+                                    }}</span>
+                                </div>
+                                <span class="bl-chip-name">{{
+                                    m.alias ?? m.name
+                                }}</span>
+                                <button
+                                    class="bl-chip-remove"
+                                    @click="
+                                        editNewMembers = editNewMembers.filter(
+                                            (x) => x.id !== m.id
+                                        )
+                                    "
+                                >
+                                    <X class="w-3 h-3" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Search kontak baru -->
+                        <input
+                            v-model="editContactSearch"
+                            type="text"
+                            class="bl-input"
+                            style="margin-top: 8px"
+                            placeholder="Cari kontak untuk ditambah..."
+                        />
+
+                        <!-- Loading kontak -->
+                        <div
+                            v-if="isLoadingContacts"
+                            class="bl-contact-loading"
+                        >
+                            <span
+                                class="spinner-border spinner-border-sm"
+                            ></span>
+                            Memuat kontak...
+                        </div>
+
+                        <!-- Daftar kontak -->
+                        <div
+                            v-else-if="
+                                editFilteredContacts.length && editContactSearch
+                            "
+                            class="bl-contact-list"
+                        >
+                            <div
+                                v-for="c in editFilteredContacts.slice(0, 5)"
+                                :key="c.id"
+                                class="bl-contact-item"
+                                @click="
+                                    editNewMembers.push(c);
+                                    editContactSearch = '';
+                                "
+                            >
+                                <div class="bl-contact-avatar">
+                                    <img
+                                        v-if="c.profile_photo_url"
+                                        :src="c.profile_photo_url"
+                                    />
+                                    <span v-else>{{
+                                        (c.alias ?? c.name)?.[0]?.toUpperCase()
+                                    }}</span>
+                                </div>
+                                <div class="bl-contact-info">
+                                    <p class="bl-contact-name">
+                                        {{ c.alias ?? c.name }}
+                                    </p>
+                                    <p class="bl-contact-email">
+                                        {{ c.email }}
+                                    </p>
+                                </div>
+                                <Plus class="w-3 h-3 bl-contact-add-icon" />
+                            </div>
+                        </div>
+                        <p
+                            v-else-if="
+                                editContactSearch &&
+                                !editFilteredContacts.length
+                            "
+                            class="bl-contact-empty"
+                        >
+                            Kontak tidak ditemukan
+                        </p>
                     </div>
 
                     <div class="bl-modal-footer">
@@ -870,12 +1282,20 @@ const deleteBoard = async (board: Board, e: Event) => {
 .bl-modal {
     background: white;
     border-radius: 20px;
-    padding: 24px;
+    padding: 20px;
     width: 100%;
     max-width: 440px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
+    /* Batasi tinggi modal agar tidak melampaui layar */
+    max-height: 90dvh;
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.bl-modal::-webkit-scrollbar {
+    display: none;
 }
 .bl-modal-head {
     display: flex;
@@ -898,26 +1318,26 @@ const deleteBoard = async (board: Board, e: Event) => {
 .bl-preview {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
+    gap: 8px;
+    padding: 8px 12px;
     border: 2px solid;
-    border-radius: 12px;
+    border-radius: 10px;
     background: #f9fafb;
 }
 .bl-preview-icon {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
 }
 .bl-preview-name {
     font-weight: 600;
     color: #111827;
-    font-size: 0.95rem;
+    font-size: 0.875rem;
 }
 
 /* ─── FORM ─── */
 .bl-form-group {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 4px;
 }
 .bl-form-group label {
     font-size: 0.8rem;
@@ -947,12 +1367,12 @@ const deleteBoard = async (board: Board, e: Event) => {
     gap: 6px;
 }
 .bl-icon-btn {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border: 2px solid transparent;
     border-radius: 8px;
     background: #f3f4f6;
-    font-size: 1.1rem;
+    font-size: 1rem;
     cursor: pointer;
     display: flex;
     align-items: center;
@@ -986,70 +1406,391 @@ const deleteBoard = async (board: Board, e: Event) => {
 }
 
 /* ─── DARK MODE ─── */
-:global(.dark) .bl-page {
+[data-bs-theme="dark"] .bl-page {
     background: #0f0f1a;
 }
-:global(.dark) .bl-title {
+[data-bs-theme="dark"] .bl-title {
     color: #e5e7eb;
 }
-:global(.dark) .bl-card {
+[data-bs-theme="dark"] .bl-card {
     background: #1e1e2d;
     border-color: #2b2b40;
 }
-:global(.dark) .bl-card:hover {
+[data-bs-theme="dark"] .bl-card:hover {
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
-:global(.dark) .bl-card-name {
+[data-bs-theme="dark"] .bl-card-name {
     color: #e5e7eb;
 }
-:global(.dark) .bl-card-desc {
+[data-bs-theme="dark"] .bl-card-desc {
     color: #6b7280;
 }
-:global(.dark) .btn-board-action {
+[data-bs-theme="dark"] .btn-board-action {
     background: #1e1e2d;
     border-color: #2b2b40;
     color: #6b7280;
 }
-:global(.dark) .btn-board-action:hover {
+[data-bs-theme="dark"] .btn-board-action:hover {
     background: #2b2b40;
     color: #e5e7eb;
 }
-:global(.dark) .bl-progress-track {
+[data-bs-theme="dark"] .bl-progress-track {
     background: #2b2b40;
 }
-:global(.dark) .bl-member-avatar {
+[data-bs-theme="dark"] .bl-member-avatar {
     border-color: #1e1e2d;
 }
-:global(.dark) .bl-modal {
+[data-bs-theme="dark"] .bl-modal {
     background: #1e1e2d;
 }
-:global(.dark) .bl-modal-head h2 {
+[data-bs-theme="dark"] .bl-modal-head h2 {
     color: #e5e7eb;
 }
-:global(.dark) .bl-preview {
+[data-bs-theme="dark"] .bl-preview {
     background: #16162a;
 }
-:global(.dark) .bl-preview-name {
+[data-bs-theme="dark"] .bl-preview-name {
     color: #e5e7eb;
 }
-:global(.dark) .bl-form-group label {
+[data-bs-theme="dark"] .bl-form-group label {
     color: #9ca3af;
 }
-:global(.dark) .bl-input {
+[data-bs-theme="dark"] .bl-input {
     background: #151521;
     border-color: #2b2b40;
     color: #e5e7eb;
 }
-:global(.dark) .bl-icon-btn {
+[data-bs-theme="dark"] .bl-icon-btn {
     background: #2b2b40;
 }
-:global(.dark) .bl-icon-btn.active {
+[data-bs-theme="dark"] .bl-icon-btn.active {
     background: #1e1e2d;
     border-color: #5e6ad2;
 }
-:global(.dark) .btn-cancel-sm {
+[data-bs-theme="dark"] .btn-cancel-sm {
     background: #1e1e2d;
     border-color: #2b2b40;
     color: #9ca3af;
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.bl-page {
+    animation: fadeIn 0.3s ease;
+}
+.bl-header {
+    animation: fadeUp 0.35s ease;
+}
+.bl-section-label {
+    animation: fadeUp 0.4s ease;
+}
+
+.bl-card {
+    animation: fadeUp 0.4s ease both;
+}
+.bl-card:nth-child(1) {
+    animation-delay: 0.05s;
+}
+.bl-card:nth-child(2) {
+    animation-delay: 0.1s;
+}
+.bl-card:nth-child(3) {
+    animation-delay: 0.15s;
+}
+.bl-card:nth-child(4) {
+    animation-delay: 0.2s;
+}
+.bl-card:nth-child(5) {
+    animation-delay: 0.25s;
+}
+.bl-card:nth-child(6) {
+    animation-delay: 0.3s;
+}
+
+.bl-overlay {
+    animation: fadeIn 0.2s ease;
+}
+.bl-modal {
+    animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ─── CONTACTS PICKER ─── */
+.bl-selected-members {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.bl-member-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #eef0ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 20px;
+    padding: 3px 8px 3px 3px;
+    animation: scaleIn 0.15s ease;
+}
+.bl-chip-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.bl-chip-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.bl-chip-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #3730a3;
+}
+.bl-chip-remove {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: none;
+    background: #c7d2fe;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #4338ca;
+    transition: background 0.15s;
+}
+.bl-chip-remove:hover {
+    background: #a5b4fc;
+}
+
+.bl-contact-loading {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.bl-contact-list {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow-y: auto;
+    margin-top: 6px;
+    animation: slideDown 0.2s ease;
+    /* Tampilkan max 3 item, sisanya scroll */
+    max-height: 156px;
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+}
+.bl-contact-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: background 0.12s;
+}
+.bl-contact-item:not(:last-child) {
+    border-bottom: 1px solid #f3f4f6;
+}
+.bl-contact-item:hover {
+    background: #f9fafb;
+}
+.bl-contact-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+.bl-contact-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.bl-contact-info {
+    flex: 1;
+    min-width: 0;
+}
+.bl-contact-name {
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+.bl-contact-email {
+    font-size: 0.72rem;
+    color: #9ca3af;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.bl-contact-add-icon {
+    color: #5e6ad2;
+    flex-shrink: 0;
+}
+.bl-contact-empty {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin: 8px 0 0;
+    text-align: center;
+}
+
+/* ─── EXISTING MEMBERS (edit modal) ─── */
+.bl-existing-members {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+.bl-existing-member-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+    transition: background 0.12s;
+}
+.bl-existing-member-item:not(:last-child) {
+    border-bottom: 1px solid #f3f4f6;
+}
+.bl-existing-member-item.will-remove {
+    background: #fef2f2;
+    opacity: 0.6;
+    text-decoration: line-through;
+}
+.bl-member-role {
+    font-size: 0.68rem;
+    color: #5e6ad2;
+    font-weight: 600;
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.bl-member-toggle-btn {
+    margin-left: auto;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid #e5e7eb;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    transition: all 0.15s;
+    flex-shrink: 0;
+}
+.bl-member-toggle-btn:hover {
+    border-color: #ef4444;
+    color: #ef4444;
+    background: #fef2f2;
+}
+.bl-member-toggle-btn.is-removing {
+    border-color: #10b981;
+    color: #10b981;
+    background: #f0fdf4;
+}
+
+/* dark mode contacts */
+[data-bs-theme="dark"] .bl-member-chip {
+    background: #1e1e2d;
+    border-color: #2b2b40;
+}
+[data-bs-theme="dark"] .bl-chip-name {
+    color: #818cf8;
+}
+[data-bs-theme="dark"] .bl-chip-remove {
+    background: #2b2b40;
+    color: #818cf8;
+}
+[data-bs-theme="dark"] .bl-contact-list {
+    border-color: #2b2b40;
+}
+[data-bs-theme="dark"] .bl-contact-item:hover {
+    background: #16162a;
+}
+[data-bs-theme="dark"] .bl-contact-item {
+    border-bottom-color: #2b2b40;
+}
+[data-bs-theme="dark"] .bl-contact-name {
+    color: #e5e7eb;
+}
+[data-bs-theme="dark"] .bl-existing-members {
+    border-color: #2b2b40;
+}
+[data-bs-theme="dark"] .bl-existing-member-item {
+    border-bottom-color: #2b2b40;
+}
+[data-bs-theme="dark"] .bl-existing-member-item.will-remove {
+    background: #2d1515;
+}
+[data-bs-theme="dark"] .bl-member-toggle-btn {
+    background: #2b2b40;
+    border-color: #3b3b55;
+    color: #6b7280;
+}
+[data-bs-theme="dark"] .bl-member-toggle-btn:hover {
+    border-color: #ef4444;
+    color: #f87171;
+    background: #2d1515;
+}
+[data-bs-theme="dark"] .bl-member-toggle-btn.is-removing {
+    border-color: #10b981;
+    color: #34d399;
+    background: #052e16;
 }
 </style>

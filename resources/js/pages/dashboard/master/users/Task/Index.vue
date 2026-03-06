@@ -91,6 +91,7 @@ const showDetailModal = ref(false);
 const selectedTodo = ref<Todo | null>(null);
 const createInColumn = ref<"todo" | "in_progress" | "done">("todo");
 const isDragging = ref(false);
+const isMobile = ref(window.innerWidth < 768);
 
 // --- KOLOM CONFIG ---
 const columnConfig = [
@@ -437,6 +438,9 @@ const overdueTodos = computed(
                     :class="{ 'drag-over': isDragging }"
                     ghost-class="ghost-card"
                     drag-class="dragging-card"
+                    :delay="isMobile ? 300 : 0"
+                    :delay-on-touch-only="true"
+                    :touch-start-threshold="5"
                     @change="onDragChange($event, col.key as any)"
                     @start="isDragging = true"
                     @end="isDragging = false"
@@ -748,12 +752,12 @@ const overdueTodos = computed(
     color: #5e6ad2;
     background: #eef0ff;
 }
-:global(.dark) .btn-back {
+[data-bs-theme="dark"] .btn-back {
     background: #1e1e2d;
     border-color: #2b2b40;
     color: #9ca3af;
 }
-:global(.dark) .btn-back:hover {
+[data-bs-theme="dark"] .btn-back:hover {
     border-color: #5e6ad2;
     color: #818cf8;
     background: #16162a;
@@ -1088,7 +1092,6 @@ const overdueTodos = computed(
     transform: rotate(2deg) !important;
 }
 
-/* ===================== RESPONSIVE ===================== */
 @media (max-width: 1024px) {
     .kanban-board {
         grid-template-columns: repeat(2, 1fr);
@@ -1114,43 +1117,75 @@ const overdueTodos = computed(
     }
 }
 
-/* ===================== DARK MODE (DIPERBAIKI) ===================== */
-:global([data-bs-theme="dark"]) .kanban-page {
+[data-bs-theme="dark"] .kanban-page {
     background: #0f0f1a;
 }
-:global([data-bs-theme="dark"]) .kanban-column {
+[data-bs-theme="dark"] .kanban-column {
     background: #1e1e2d;
     border-color: #2b2b40;
 }
-:global([data-bs-theme="dark"]) .col-header {
+[data-bs-theme="dark"] .col-header {
     background: #1a1a2e;
 }
-:global([data-bs-theme="dark"]) .col-title,
-:global([data-bs-theme="dark"]) .header-title,
-:global([data-bs-theme="dark"]) .card-title {
+[data-bs-theme="dark"] .col-title,
+[data-bs-theme="dark"] .header-title,
+[data-bs-theme="dark"] .card-title {
     color: #e5e7eb;
 }
-:global([data-bs-theme="dark"]) .todo-card {
+[data-bs-theme="dark"] .todo-card {
     background: #1e1e2d;
     border-color: #2b2b40;
 }
-:global([data-bs-theme="dark"]) .todo-card:hover {
+[data-bs-theme="dark"] .todo-card:hover {
     border-color: #5e6ad2;
 }
-:global([data-bs-theme="dark"]) .search-field {
+[data-bs-theme="dark"] .search-field {
     background: #1e1e2d;
     border-color: #2b2b40;
     color: #e5e7eb;
 }
-:global([data-bs-theme="dark"]) .btn-icon {
+[data-bs-theme="dark"] .btn-icon {
     background: #1e1e2d;
     border-color: #2b2b40;
     color: #9ca3af;
 }
-:global([data-bs-theme="dark"]) .add-card-bottom {
+[data-bs-theme="dark"] .add-card-bottom {
     border-color: #2b2b40;
 }
-:global([data-bs-theme="dark"]) .add-card-bottom:hover {
+[data-bs-theme="dark"] .add-card-bottom:hover {
     background: #2b2b40;
+}
+[data-bs-theme="dark"] .add-card-bottom {
+    color: #6b7280;
+}
+[data-bs-theme="dark"] .add-card-bottom:hover {
+    color: #818cf8;
+}
+[data-bs-theme="dark"] .card-desc {
+    color: #6b7280;
+}
+[data-bs-theme="dark"] .header-sub {
+    color: #6b7280;
+}
+[data-bs-theme="dark"] .progress-track {
+    background: #2b2b40;
+}
+[data-bs-theme="dark"] .col-body.drag-over {
+    background: #16162a;
+}
+[data-bs-theme="dark"] .overdue-badge {
+    background: #2d1515;
+    color: #f87171;
+}
+[data-bs-theme="dark"] .avatar-mini {
+    border-color: #1e1e2d;
+}
+[data-bs-theme="dark"] .avatar-more {
+    background: #2b2b40;
+    color: #9ca3af;
+    border-color: #1e1e2d;
+}
+[data-bs-theme="dark"] .ghost-card {
+    background: #16162a;
 }
 </style>

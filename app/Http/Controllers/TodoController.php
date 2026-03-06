@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\TaskBoard;
 use App\Models\Todo;
 use App\Models\TodoAttachment;
 use App\Models\User;
@@ -24,7 +25,7 @@ class TodoController extends Controller
         }
 
         // Pastikan user adalah member atau owner board ini
-        $board = \App\Models\TaskBoard::findOrFail($boardId);
+        $board = TaskBoard::findOrFail($boardId);
         $isMember = $board->members()->where('users.id', $userId)->exists();
         if ($board->user_id !== $userId && !$isMember) {
             abort(403, 'Unauthorized');
@@ -61,7 +62,7 @@ class TodoController extends Controller
         ]);
 
         // Pastikan user adalah member board
-        $board = \App\Models\TaskBoard::findOrFail($validated['board_id']);
+        $board = TaskBoard::findOrFail($validated['board_id']);
         $isMember = $board->members()->where('users.id', Auth::id())->exists();
         if ($board->user_id !== Auth::id() && !$isMember) {
             abort(403, 'Unauthorized');

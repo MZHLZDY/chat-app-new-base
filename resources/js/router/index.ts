@@ -18,7 +18,16 @@ declare module "vue-router" {
 const routes: Array<RouteRecordRaw> = [
     {
         path: "/",
-        redirect: "/dashboard",
+        name: "landing",
+        component: () => import("@/pages/dashboard/Landing/Landing.vue"),
+        meta: {
+            pageTitle: "Welcome",
+            middleware: "guest",
+        },
+    },
+
+    {
+        path: "/dashboard",
         component: () => import("@/layouts/default-layout/DefaultLayout.vue"),
         meta: {
             middleware: "auth",
@@ -245,7 +254,7 @@ router.beforeEach(async (to, from, next) => {
         } else {
             next({ name: "sign-in" });
         }
-    } else if (to.meta.middleware == "guest" && authStore.isAuthenticated) {
+    } else if (to.meta.middleware == "guest" && authStore.isAuthenticated && to.name !== "landing") {
         next({ name: "dashboard" });
     } else {
         next();

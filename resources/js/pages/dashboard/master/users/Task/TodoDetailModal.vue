@@ -234,26 +234,34 @@ watch(
     { deep: true }
 );
 
-watch(contactSearch, async (q) => {
-    if (!q || q.length < 2) {
-        contacts.value = [];
-        return;
-    }
-    isLoadingContacts.value = true;
+// Muat semua kontak satu kali saat tab members dibuka
+const allContacts = ref<Assignee[]>([]);
+const isLoadingAllContacts = ref(false);
+
+const fetchAllContacts = async () => {
+    if (allContacts.value.length) return; // cache, jangan fetch ulang
+    isLoadingAllContacts.value = true;
     try {
-        const res = await axios.get("/chat/contacts", {
-            params: { search: q },
-        });
-        contacts.value = (res.data.data ?? res.data).filter(
-            (c: Assignee) =>
-                !localTodo.value.assignees?.find((a) => a.id === c.id)
-        );
+        const res = await axios.get("/chat/contacts");
+        allContacts.value = res.data.data ?? res.data;
     } catch {
-        contacts.value = [];
+        allContacts.value = [];
     } finally {
-        isLoadingContacts.value = false;
+        isLoadingAllContacts.value = false;
     }
-});
+};
+
+// Filter kontak berdasarkan search & belum jadi assignee
+const filteredContacts = computed(() =>
+    allContacts.value.filter(
+        (c) =>
+            !localTodo.value.assignees?.find((a) => a.id === c.id) &&
+            (!contactSearch.value ||
+                (c.name ?? "")
+                    .toLowerCase()
+                    .includes(contactSearch.value.toLowerCase()))
+    )
+);
 
 // --- COMPUTED ---
 const minDate = computed(
@@ -605,6 +613,7 @@ const deleteTodo = async () => {
                                 @click="
                                     activeTab = tab;
                                     tab === 'comments' && fetchComments();
+                                    tab === 'members' && fetchAllContacts();
                                 "
                             >
                                 <span v-if="tab === 'detail'">📋 Detail</span>
@@ -1001,7 +1010,7 @@ const deleteTodo = async () => {
                                         class="cs-dropdown"
                                     >
                                         <div
-                                            v-if="isLoadingContacts"
+                                            v-if="isLoadingAllContacts"
                                             class="cs-loading"
                                         >
                                             <span
@@ -1010,7 +1019,10 @@ const deleteTodo = async () => {
                                             Mencari...
                                         </div>
                                         <div
-                                            v-for="c in contacts"
+                                            v-for="c in filteredContacts.slice(
+                                                0,
+                                                8
+                                            )"
                                             :key="c.id"
                                             class="cs-item"
                                             @mousedown.prevent="addAssignee(c)"
@@ -1038,9 +1050,9 @@ const deleteTodo = async () => {
                                         </div>
                                         <div
                                             v-if="
-                                                !isLoadingContacts &&
-                                                !contacts.length &&
-                                                contactSearch.length >= 2
+                                                !isLoadingAllContacts &&
+                                                !filteredContacts.length &&
+                                                contactSearch.length >= 1
                                             "
                                             class="cs-empty"
                                         >
@@ -1989,71 +2001,71 @@ const deleteTodo = async () => {
 }
 
 /* Dark Mode */
-:global(.dark) .dmodal-card {
+[data-bs-theme="dark"] .dmodal-card {
     background: #1e1e2d;
 }
-:global(.dark) .dtitle {
+[data-bs-theme="dark"] .dtitle {
     color: #e5e7eb;
 }
-:global(.dark) .dtitle-input {
+[data-bs-theme="dark"] .dtitle-input {
     background: #1a1a2e;
     color: #e5e7eb;
     border-color: #5e6ad2;
 }
-:global(.dark) .dmodal-header,
-:global(.dark) .dmodal-tabs,
-:global(.dark) .dmodal-footer {
+[data-bs-theme="dark"] .dmodal-header,
+[data-bs-theme="dark"] .dmodal-tabs,
+[data-bs-theme="dark"] .dmodal-footer {
     border-color: #2b2b40;
 }
-:global(.dark) .desc-textarea {
+[data-bs-theme="dark"] .desc-textarea {
     background: #1a1a2e;
     border-color: #2b2b40;
     color: #e5e7eb;
 }
-:global(.dark) .sidebar-btn {
+[data-bs-theme="dark"] .sidebar-btn {
     border-color: #2b2b40;
     color: #9ca3af;
 }
-:global(.dark) .sidebar-btn:hover {
+[data-bs-theme="dark"] .sidebar-btn:hover {
     background: #2b2b40;
 }
-:global(.dark) .cs-input {
+[data-bs-theme="dark"] .cs-input {
     background: #1a1a2e;
     border-color: #2b2b40;
     color: #e5e7eb;
 }
-:global(.dark) .cs-dropdown {
+[data-bs-theme="dark"] .cs-dropdown {
     background: #1e1e2d;
     border-color: #2b2b40;
 }
-:global(.dark) .cs-item:hover {
+[data-bs-theme="dark"] .cs-item:hover {
     background: #2b2b40;
 }
-:global(.dark) .cs-name,
-:global(.dark) .member-name,
-:global(.dark) .attach-name {
+[data-bs-theme="dark"] .cs-name,
+[data-bs-theme="dark"] .member-name,
+[data-bs-theme="dark"] .attach-name {
     color: #e5e7eb;
 }
-:global(.dark) .attach-item,
-:global(.dark) .member-item {
+[data-bs-theme="dark"] .attach-item,
+[data-bs-theme="dark"] .member-item {
     background: #1a1a2e;
     border-color: #2b2b40;
 }
-:global(.dark) .btn-attach-action {
-    background: #1a1a2e;
-    border-color: #2b2b40;
-    color: #9ca3af;
-}
-:global(.dark) .btn-icon-sm {
+[data-bs-theme="dark"] .btn-attach-action {
     background: #1a1a2e;
     border-color: #2b2b40;
     color: #9ca3af;
 }
-:global(.dark) .link-form {
+[data-bs-theme="dark"] .btn-icon-sm {
+    background: #1a1a2e;
+    border-color: #2b2b40;
+    color: #9ca3af;
+}
+[data-bs-theme="dark"] .link-form {
     background: #1a1a2e;
     border-color: #2b2b40;
 }
-:global(.dark) .link-input {
+[data-bs-theme="dark"] .link-input {
     background: #151521;
     border-color: #2b2b40;
     color: #e5e7eb;
@@ -2153,25 +2165,25 @@ const deleteTodo = async () => {
 }
 
 /* dark mode komentar */
-:global(.dark) .comment-input-area {
+[data-bs-theme="dark"] .comment-input-area {
     background: #1a1a2e;
     border-color: #2b2b40;
 }
-:global(.dark) .comment-textarea {
+[data-bs-theme="dark"] .comment-textarea {
     background: #151521;
     border-color: #2b2b40;
     color: #e5e7eb;
 }
-:global(.dark) .comment-textarea:focus {
+[data-bs-theme="dark"] .comment-textarea:focus {
     border-color: #5e6ad2;
 }
-:global(.dark) .comment-body {
+[data-bs-theme="dark"] .comment-body {
     background: #252538;
 }
-:global(.dark) .comment-author {
+[data-bs-theme="dark"] .comment-author {
     color: #e5e7eb;
 }
-:global(.dark) .comment-content {
+[data-bs-theme="dark"] .comment-content {
     color: #d1d5db;
 }
 </style>

@@ -30,6 +30,7 @@ interface Contact {
     name: string;
     email: string;
     profile_photo_url?: string;
+    alias?: string;
 }
 
 // --- STATE ---
@@ -71,6 +72,7 @@ watch(
             showAdvanced.value = false;
             status.value = props.defaultStatus ?? "todo";
 
+            loadContacts(); // muat kontak dari daftar kontak tersimpan
             nextTick(() => {
                 setTimeout(() => inputRef.value?.focus(), 150);
             });
@@ -78,25 +80,34 @@ watch(
     }
 );
 
-watch(contactSearch, async (q) => {
-    if (!q || q.length < 2) {
-        contacts.value = [];
-        return;
-    }
-    isLoadingContacts.value = true;
+// Muat semua kontak saat form dibuka, filter client-side
+const allContacts = ref<Contact[]>([]);
+const isFetchingContacts = ref(false);
+
+const loadContacts = async () => {
+    if (allContacts.value.length) return;
+    isFetchingContacts.value = true;
     try {
-        const res = await axios.get("/chat/contacts", {
-            params: { search: q },
-        });
-        contacts.value = (res.data.data ?? res.data).filter(
-            (c: Contact) => !selectedAssignees.value.find((a) => a.id === c.id)
-        );
+        const res = await axios.get("/chat/contacts");
+        allContacts.value = res.data.data ?? res.data;
     } catch {
-        contacts.value = [];
+        allContacts.value = [];
     } finally {
-        isLoadingContacts.value = false;
+        isFetchingContacts.value = false;
     }
-});
+};
+
+// Computed: filter dari allContacts berdasarkan search & belum terpilih
+const filteredContacts = computed(() =>
+    allContacts.value.filter(
+        (c) =>
+            !selectedAssignees.value.find((a) => a.id === c.id) &&
+            (!contactSearch.value ||
+                (c.alias ?? c.name ?? "")
+                    .toLowerCase()
+                    .includes(contactSearch.value.toLowerCase()))
+    )
+);
 
 // --- COMPUTED ---
 const minDate = computed(
@@ -400,7 +411,7 @@ const statusConfig = [
                                         v-model="contactSearch"
                                         type="text"
                                         class="contact-search-input"
-                                        placeholder="Cari kontak..."
+                                        placeholder="Cari dari kontak tersimpan..."
                                         @focus="showContactDropdown = true"
                                         @blur="closeDropdownDelayed"
                                         :disabled="isLoading"
@@ -424,7 +435,10 @@ const statusConfig = [
                                             Mencari...
                                         </div>
                                         <div
-                                            v-for="c in contacts"
+                                            v-for="c in filteredContacts.slice(
+                                                0,
+                                                6
+                                            )"
                                             :key="c.id"
                                             class="contact-item"
                                             @mousedown.prevent="addAssignee(c)"
@@ -451,9 +465,9 @@ const statusConfig = [
                                         </div>
                                         <div
                                             v-if="
-                                                !isLoadingContacts &&
-                                                !contacts.length &&
-                                                contactSearch.length >= 2
+                                                !isFetchingContacts &&
+                                                !filteredContacts.length &&
+                                                contactSearch.length >= 1
                                             "
                                             class="contact-empty"
                                         >
@@ -949,45 +963,45 @@ const statusConfig = [
 }
 
 /* --- DARK MODE --- */
-:global(.dark) .modal-card {
+[data-bs-theme="dark"] .modal-card {
     background: #1e1e2d;
 }
-:global(.dark) .modal-title {
+[data-bs-theme="dark"] .modal-title {
     color: #e5e7eb;
 }
-:global(.dark) .field-group {
+[data-bs-theme="dark"] .field-group {
     background: #151521;
 }
-:global(.dark) .field-group:focus-within {
+[data-bs-theme="dark"] .field-group:focus-within {
     background: #1a1a2e;
 }
-:global(.dark) .field-input {
+[data-bs-theme="dark"] .field-input {
     color: #e5e7eb;
 }
-:global(.dark) .contact-search-input {
+[data-bs-theme="dark"] .contact-search-input {
     background: #151521;
     border-color: #2b2b40;
     color: #e5e7eb;
 }
-:global(.dark) .contact-dropdown {
+[data-bs-theme="dark"] .contact-dropdown {
     background: #1e1e2d;
     border-color: #2b2b40;
 }
-:global(.dark) .contact-item:hover {
+[data-bs-theme="dark"] .contact-item:hover {
     background: #2b2b40;
 }
-:global(.dark) .contact-name {
+[data-bs-theme="dark"] .contact-name {
     color: #e5e7eb;
 }
-:global(.dark) .btn-cancel {
+[data-bs-theme="dark"] .btn-cancel {
     border-color: #2b2b40;
     color: #9ca3af;
 }
-:global(.dark) .btn-cancel:hover {
+[data-bs-theme="dark"] .btn-cancel:hover {
     background: #2b2b40;
 }
-:global(.dark) .modal-header,
-:global(.dark) .modal-footer {
+[data-bs-theme="dark"] .modal-header,
+[data-bs-theme="dark"] .modal-footer {
     border-color: #2b2b40;
 }
 </style>

@@ -1,890 +1,963 @@
 <template>
-    <div class="welcome-page">
-        <!-- Background Animated -->
-        <div class="welcome-background">
-            <div class="gradient-overlay"></div>
-            <div class="animated-shapes">
-                <div class="shape shape-1"></div>
-                <div class="shape shape-2"></div>
-                <div class="shape shape-3"></div>
-                <div class="shape shape-4"></div>
+    <div class="landing-page">
+        <!-- Animated Background -->
+        <div class="bg-animated">
+            <div class="circle c1"></div>
+            <div class="circle c2"></div>
+            <div class="circle c3"></div>
+        </div>
+
+        <!-- Navbar -->
+        <nav class="landing-nav animate-fade-in">
+            <div class="nav-brand">
+                <img :src="logo" class="nav-logo" alt="Logo" />
+                <span class="nav-appname">{{ appName }}</span>
             </div>
-        </div>
+            <div class="nav-actions">
+                <router-link to="/sign-in" class="btn-nav-ghost">Masuk</router-link>
+                <router-link to="/sign-up" class="btn-nav-solid">Daftar Gratis</router-link>
+            </div>
+        </nav>
 
-        <!-- Main Content -->
-        <div class="welcome-content">
-            
-            <!-- Hero Section -->
-            <section class="hero-section">
-                <div class="container">
-                    
-                    <!-- Logo & Brand -->
-                    <div class="brand-header animate-fade-in">
-                        <img :src="logo" class="app-logo" alt="Logo" />
-                        <h1 class="app-name">ChatApp</h1>
-                    </div>
+        <!-- Hero -->
+        <section class="hero">
+            <div class="hero-inner">
+                <!-- Badge -->
+                <div class="hero-badge animate-slide-up">
+                    <span class="badge-dot"></span>
+                    Chat Real-time · Aman · Cepat
+                </div>
 
-                    <!-- Hero Title -->
-                    <div class="hero-text animate-slide-up" style="animation-delay: 0.2s">
-                        <h1 class="hero-title">
-                            Komunikasi Lebih Mudah,<br>
-                            <span class="gradient-text">Lebih Cepat, Lebih Aman</span>
-                        </h1>
-                        <p class="hero-subtitle">
-                            Terhubung dengan siapa saja, kapan saja, di mana saja dengan enkripsi end-to-end yang aman
-                        </p>
-                    </div>
+                <h1 class="hero-title animate-slide-up" style="animation-delay:.1s">
+                    Komunikasi Tanpa Batas,<br />
+                    <span class="hero-title-accent">Kapan Saja & Di Mana Saja</span>
+                </h1>
 
-                    <!-- CTA Buttons -->
-                    <div class="cta-buttons animate-slide-up" style="animation-delay: 0.4s">
-                        <router-link to="/sign-in" class="btn btn-primary">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
-                                <polyline points="10 17 15 12 10 7"></polyline>
-                                <line x1="15" y1="12" x2="3" y2="12"></line>
-                            </svg>
-                            Masuk Sekarang
-                        </router-link>
-                        <router-link to="/sign-up" class="btn btn-outline">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="8.5" cy="7" r="4"></circle>
-                                <line x1="20" y1="8" x2="20" y2="14"></line>
-                                <line x1="23" y1="11" x2="17" y2="11"></line>
-                            </svg>
-                            Daftar Gratis
-                        </router-link>
-                    </div>
+                <p class="hero-desc animate-slide-up" style="animation-delay:.2s">
+                    Platform chat modern dengan pesan pribadi, grup, AI assistant,
+                    dan manajemen tugas dalam satu aplikasi.
+                </p>
 
-                    <!-- Hero Image/Illustration -->
-                    <div class="hero-image animate-fade-in" style="animation-delay: 0.6s">
-                        <div class="chat-preview">
-                            <div class="chat-bubble bubble-1">
-                                <div class="bubble-avatar">
-                                    <div class="avatar-circle bg-purple"></div>
+                <div class="hero-cta animate-slide-up" style="animation-delay:.3s">
+                    <router-link to="/sign-up" class="btn-primary-lg">
+                        Mulai Sekarang
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </router-link>
+                    <router-link to="/sign-in" class="btn-ghost-lg">Sudah punya akun?</router-link>
+                </div>
+
+                <!-- Mock chat bubble UI -->
+                <div class="hero-mockup animate-slide-up" style="animation-delay:.4s">
+                    <div class="mockup-card">
+                        <!-- Header — sama dengan card-header di app -->
+                        <div class="mockup-header">
+                            <div class="mockup-avatar-wrap">
+                                <div class="mockup-avatar"></div>
+                                <span class="mockup-online-badge"></span>
+                            </div>
+                            <div class="mockup-contact-info">
+                                <div class="mockup-name">Grup Tim Proyek</div>
+                                <div class="mockup-status">Online</div>
+                            </div>
+                            <div class="mockup-header-actions">
+                                <div class="mockup-action-btn">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.14 1.2 2 2 0 012.11 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.91 7.09a16 16 0 006 6l.45-.45a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
                                 </div>
-                                <div class="bubble-content">
-                                    <div class="bubble-text">Halo! Selamat datang di ChatApp 👋</div>
-                                    <div class="bubble-time">10:30</div>
+                                <div class="mockup-action-btn">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
                                 </div>
                             </div>
-                            <div class="chat-bubble bubble-2">
-                                <div class="bubble-content">
-                                    <div class="bubble-text">Terima kasih! Aplikasi ini luar biasa! 🎉</div>
-                                    <div class="bubble-time">10:32</div>
-                                </div>
-                                <div class="bubble-avatar">
-                                    <div class="avatar-circle bg-blue"></div>
+                        </div>
+
+                        <!-- Chat Body — bg #f9f9f9 -->
+                        <div class="mockup-body">
+                            <!-- Receiver bubble — putih, rounded-bottom-start-0 -->
+                            <div class="bubble bubble-left">
+                                <div class="bubble-avatar-sm">A</div>
+                                <div class="bubble-recv">Hei, meeting jam berapa?</div>
+                            </div>
+                            <!-- Sender bubble — bg-primary, rounded-bottom-end-0 -->
+                            <div class="bubble bubble-right">
+                                <div class="bubble-send">Jam 2 siang ya! 📅</div>
+                            </div>
+                            <div class="bubble bubble-left">
+                                <div class="bubble-avatar-sm">B</div>
+                                <div class="bubble-recv">Oke siap, sudah kumasukkan ke todo list 👍</div>
+                            </div>
+                            <div class="bubble bubble-right">
+                                <div class="bubble-send">Mantap! See you 🚀</div>
+                            </div>
+                        </div>
+
+                        <!-- Footer — sama dengan card-footer -->
+                        <div class="mockup-footer">
+                            <div class="mockup-attach-btn">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+                            </div>
+                            <div class="mockup-input-field">
+                                <span class="mockup-typed">{{ typedText || '\u00A0' }}</span><span class="mockup-cursor" :class="{ 'cursor-hidden': !showCursor }">|</span>
+                            </div>
+                            <div class="mockup-send-btn">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="features-section">
+            <div class="features-wrap">
+
+                <!-- Section Header -->
+                <div class="features-header animate-slide-up" style="animation-delay:.5s">
+                    <div class="features-badge">✨ Fitur Unggulan</div>
+                    <h2 class="features-title">Semua yang kamu butuhkan,<br/>dalam satu tempat</h2>
+                    <p class="features-subtitle">Dirancang untuk produktivitas tim dan komunikasi yang lebih efektif</p>
+                </div>
+
+                <!-- Feature Cards Grid -->
+                <div class="feat-grid animate-slide-up" style="animation-delay:.6s">
+
+                    <!-- Real-time Chat -->
+                    <div class="feat-card feat-chat">
+                        <div class="feat-card-inner">
+                            <div class="feat-icon-wrap feat-icon-blue">
+                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+                            </div>
+                            <h3 class="feat-title">Real-time Chat</h3>
+                            <p class="feat-desc">Pesan terkirim instan dengan indikator "dibaca", balasan, dan berbagi file langsung di percakapan.</p>
+                            <div class="feat-tags">
+                                <span class="feat-tag">Pesan Pribadi</span>
+                                <span class="feat-tag">Grup Chat</span>
+                                <span class="feat-tag">Kirim File</span>
+                            </div>
+                            <!-- Mini illustration -->
+                            <div class="feat-illustration chat-illustration">
+                                <div class="fi-bubble fi-bubble-recv">Hei, gimana kabarnya? 👋</div>
+                                <div class="fi-bubble fi-bubble-send">Baik! Lagi sibuk nih 😅</div>
+                                <div class="fi-bubble fi-bubble-recv">Oke, chat nanti ya!</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Voice & Video Call -->
+                    <div class="feat-card feat-call">
+                        <div class="feat-card-inner">
+                            <div class="feat-icon-wrap feat-icon-green">
+                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                            </div>
+                            <h3 class="feat-title">Voice & Video Call</h3>
+                            <p class="feat-desc">Panggilan suara dan video HD langsung dari aplikasi, baik satu-satu maupun grup call.</p>
+                            <div class="feat-tags">
+                                <span class="feat-tag">Voice Call</span>
+                                <span class="feat-tag">Video Call</span>
+                                <span class="feat-tag">Group Call</span>
+                            </div>
+                            <!-- Mini illustration -->
+                            <div class="feat-illustration call-illustration">
+                                <div class="fi-call-card">
+                                    <div class="fi-call-avatar"></div>
+                                    <div class="fi-call-info">
+                                        <div class="fi-call-name">Reza</div>
+                                        <div class="fi-call-status">00:42 ●</div>
+                                    </div>
+                                    <div class="fi-call-btns">
+                                        <div class="fi-call-btn fi-btn-red">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z"/></svg>
+                                        </div>
+                                        <div class="fi-call-btn fi-btn-gray">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0119 12.55M5 5a10.94 10.94 0 0114.54 1.41M10.71 5.05A16 16 0 0122.56 9M1.42 9a15.91 15.91 0 014.7-2.88M8.53 16.11a6 6 0 016.95 0M12 20h.01"/></svg>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="chat-bubble bubble-3">
-                                <div class="bubble-avatar">
-                                    <div class="avatar-circle bg-green"></div>
+                        </div>
+                    </div>
+
+                    <!-- AI Assistant -->
+                    <div class="feat-card feat-ai">
+                        <div class="feat-card-inner">
+                            <div class="feat-icon-wrap feat-icon-purple">
+                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                            </div>
+                            <h3 class="feat-title">AI Assistant</h3>
+                            <p class="feat-desc">Tanya apa saja ke AI assistant yang cerdas — dari merangkum percakapan hingga membantu pekerjaan harian.</p>
+                            <div class="feat-tags">
+                                <span class="feat-tag">Tanya Jawab</span>
+                                <span class="feat-tag">Ringkasan</span>
+                                <span class="feat-tag">Produktivitas</span>
+                            </div>
+                            <!-- Mini illustration -->
+                            <div class="feat-illustration ai-illustration">
+                                <div class="fi-ai-row">
+                                    <div class="fi-ai-avatar">AI</div>
+                                    <div class="fi-ai-bubble">Halo! Ada yang bisa aku bantu? ✨</div>
                                 </div>
-                                <div class="bubble-content">
-                                    <div class="bubble-text">Komunikasi jadi lebih mudah! ✨</div>
-                                    <div class="bubble-time">10:35</div>
+                                <div class="fi-ai-row fi-ai-row-right">
+                                    <div class="fi-user-bubble">Buatkan ringkasan rapat tadi</div>
+                                </div>
+                                <div class="fi-ai-row">
+                                    <div class="fi-ai-avatar">AI</div>
+                                    <div class="fi-ai-bubble fi-ai-typing">
+                                        <span></span><span></span><span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Todo & Board -->
+                    <div class="feat-card feat-todo">
+                        <div class="feat-card-inner">
+                            <div class="feat-icon-wrap feat-icon-orange">
+                                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+                            </div>
+                            <h3 class="feat-title">Todo & Kanban Board</h3>
+                            <p class="feat-desc">Kelola tugas tim dengan kanban board, assign anggota, set deadline, dan pantau progres langsung dari chat.</p>
+                            <div class="feat-tags">
+                                <span class="feat-tag">Kanban Board</span>
+                                <span class="feat-tag">Assign Tugas</span>
+                                <span class="feat-tag">Deadline</span>
+                            </div>
+                            <!-- Mini illustration -->
+                            <div class="feat-illustration todo-illustration">
+                                <div class="fi-kanban">
+                                    <div class="fi-col">
+                                        <div class="fi-col-head fi-col-todo">To Do</div>
+                                        <div class="fi-task">Design mockup</div>
+                                        <div class="fi-task">Review API</div>
+                                    </div>
+                                    <div class="fi-col">
+                                        <div class="fi-col-head fi-col-progress">In Progress</div>
+                                        <div class="fi-task fi-task-active">Frontend dev</div>
+                                    </div>
+                                    <div class="fi-col">
+                                        <div class="fi-col-head fi-col-done">Done</div>
+                                        <div class="fi-task fi-task-done">✓ Setup DB</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                 </div>
-            </section>
+            </div>
+        </section>
 
-            <!-- Features Section -->
-            <section class="features-section">
-                <div class="container">
-                    
-                    <div class="section-header animate-fade-in">
-                        <h2 class="section-title">Fitur Unggulan</h2>
-                        <p class="section-subtitle">Semua yang Anda butuhkan untuk komunikasi yang efektif</p>
-                    </div>
-
-                    <div class="features-grid">
-                        <!-- Feature 1 -->
-                        <div class="feature-card animate-slide-up" style="animation-delay: 0.1s">
-                            <div class="feature-icon icon-purple">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                                </svg>
-                            </div>
-                            <h3 class="feature-title">Chat Real-Time</h3>
-                            <p class="feature-description">Kirim dan terima pesan secara instan tanpa delay</p>
-                        </div>
-
-                        <!-- Feature 2 -->
-                        <div class="feature-card animate-slide-up" style="animation-delay: 0.2s">
-                            <div class="feature-icon icon-blue">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                </svg>
-                            </div>
-                            <h3 class="feature-title">Enkripsi End-to-End</h3>
-                            <p class="feature-description">Keamanan tingkat tinggi untuk privasi Anda</p>
-                        </div>
-
-                        <!-- Feature 3 -->
-                        <div class="feature-card animate-slide-up" style="animation-delay: 0.3s">
-                            <div class="feature-icon icon-green">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                    <circle cx="9" cy="7" r="4"></circle>
-                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                                </svg>
-                            </div>
-                            <h3 class="feature-title">Chat Grup</h3>
-                            <p class="feature-description">Buat grup hingga 1000 anggota</p>
-                        </div>
-
-                        <!-- Feature 4 -->
-                        <div class="feature-card animate-slide-up" style="animation-delay: 0.4s">
-                            <div class="feature-icon icon-orange">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
-                                    <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
-                                    <line x1="6" y1="6" x2="6.01" y2="6"></line>
-                                    <line x1="6" y1="18" x2="6.01" y2="18"></line>
-                                </svg>
-                            </div>
-                            <h3 class="feature-title">Multi-Platform</h3>
-                            <p class="feature-description">Akses dari web, mobile, dan desktop</p>
-                        </div>
-
-                        <!-- Feature 5 -->
-                        <div class="feature-card animate-slide-up" style="animation-delay: 0.5s">
-                            <div class="feature-icon icon-pink">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-                                </svg>
-                            </div>
-                            <h3 class="feature-title">Voice & Video Call</h3>
-                            <p class="feature-description">Panggilan suara dan video berkualitas HD</p>
-                        </div>
-
-                        <!-- Feature 6 -->
-                        <div class="feature-card animate-slide-up" style="animation-delay: 0.6s">
-                            <div class="feature-icon icon-cyan">
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-                                    <polyline points="13 2 13 9 20 9"></polyline>
-                                </svg>
-                            </div>
-                            <h3 class="feature-title">Share Files</h3>
-                            <p class="feature-description">Kirim dokumen, foto, dan video dengan mudah</p>
-                        </div>
-                    </div>
-
-                </div>
-            </section>
-
-            <!-- Stats Section -->
-            <section class="stats-section">
-                <div class="container">
-                    <div class="stats-grid">
-                        <div class="stat-item animate-scale">
-                            <div class="stat-number">1M+</div>
-                            <div class="stat-label">Pengguna Aktif</div>
-                        </div>
-                        <div class="stat-item animate-scale" style="animation-delay: 0.1s">
-                            <div class="stat-number">5M+</div>
-                            <div class="stat-label">Pesan Terkirim</div>
-                        </div>
-                        <div class="stat-item animate-scale" style="animation-delay: 0.2s">
-                            <div class="stat-number">99.9%</div>
-                            <div class="stat-label">Uptime</div>
-                        </div>
-                        <div class="stat-item animate-scale" style="animation-delay: 0.3s">
-                            <div class="stat-number">24/7</div>
-                            <div class="stat-label">Support</div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- CTA Section -->
-            <section class="cta-section">
-                <div class="container">
-                    <div class="cta-card animate-fade-in">
-                        <h2 class="cta-title">Siap Memulai?</h2>
-                        <p class="cta-text">Bergabunglah dengan jutaan pengguna yang telah mempercayai ChatApp</p>
-                        <div class="cta-buttons">
-                            <router-link to="/sign-up" class="btn btn-white">
-                                Daftar Sekarang
-                            </router-link>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Footer -->
-            <footer class="welcome-footer">
-                <div class="container">
-                    <div class="footer-content">
-                        <div class="footer-left">
-                            <p>&copy; 2024 ChatApp. All rights reserved.</p>
-                        </div>
-                        <div class="footer-right">
-                            <a href="#" class="footer-link">Privacy</a>
-                            <a href="#" class="footer-link">Terms</a>
-                            <a href="#" class="footer-link">Support</a>
-                        </div>
-                    </div>
-                </div>
-            </footer>
-
-        </div>
+        <!-- Footer CTA -->
+        <footer class="landing-footer animate-fade-in" style="animation-delay:.6s">
+            <p>Sudah siap memulai?</p>
+            <router-link to="/sign-up" class="btn-primary-lg">
+                Buat Akun Gratis
+            </router-link>
+        </footer>
     </div>
 </template>
 
 <script lang="ts">
-import { defineComponent, ref } from "vue";
+import { defineComponent, ref, onMounted, onUnmounted } from "vue";
 import { getAssetPath } from "@/core/helpers/assets";
 
 export default defineComponent({
-    name: "WelcomePage",
+    name: "LandingPage",
     setup() {
         const logo = ref(getAssetPath("media/logos/default-dark.svg"));
+        const appName = ref("ChatApp");
 
-        return {
-            logo
+        // Typewriter
+        const typedText = ref("");
+        const showCursor = ref(true);
+        const phrases = [
+            "Halo, ada yang bisa dibantu? 😊",
+            "Meeting besok jam 9 ya!",
+            "Sudah cek file yang aku kirim?",
+            "Oke, nanti aku kabarin! 👍",
+            "Jangan lupa deadline hari ini!",
+        ];
+        let phraseIndex = 0;
+        let charIndex = 0;
+        let isDeleting = false;
+        let timer: ReturnType<typeof setTimeout> | null = null;
+
+        const type = () => {
+            const current = phrases[phraseIndex] ?? "";
+            if (!isDeleting) {
+                typedText.value = current.slice(0, charIndex + 1);
+                charIndex++;
+                if (charIndex === current.length) {
+                    // Pause setelah selesai ketik
+                    isDeleting = true;
+                    timer = setTimeout(type, 1800);
+                    return;
+                }
+                timer = setTimeout(type, 65);
+            } else {
+                typedText.value = current.slice(0, charIndex - 1);
+                charIndex--;
+                if (charIndex === 0) {
+                    isDeleting = false;
+                    phraseIndex = (phraseIndex + 1) % phrases.length;
+                    timer = setTimeout(type, 400);
+                    return;
+                }
+                timer = setTimeout(type, 30);
+            }
         };
+
+        // Cursor blink
+        let cursorTimer: ReturnType<typeof setInterval> | null = null;
+
+        onMounted(() => {
+            timer = setTimeout(type, 1200);
+            cursorTimer = setInterval(() => {
+                showCursor.value = !showCursor.value;
+            }, 530);
+        });
+
+        onUnmounted(() => {
+            if (timer) clearTimeout(timer);
+            if (cursorTimer) clearInterval(cursorTimer);
+        });
+
+        return { logo, appName, typedText, showCursor };
     },
 });
 </script>
 
-<style lang="scss" scoped>
-/* --- ANIMATIONS --- */
+<style scoped>
+/* ── Animations ─────────────────────────────────────────────────────────── */
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-    }
-    to {
-        opacity: 1;
-    }
+    from { opacity: 0; }
+    to   { opacity: 1; }
 }
-
 @keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(28px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes scaleIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95);
-    }
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
 @keyframes float {
-    0%, 100% {
-        transform: translate(0, 0) rotate(0deg);
-    }
-    33% {
-        transform: translate(30px, -30px) rotate(5deg);
-    }
-    66% {
-        transform: translate(-20px, 20px) rotate(-5deg);
-    }
+    0%, 100% { transform: translate(0, 0); }
+    33%       { transform: translate(30px, -30px); }
+    66%       { transform: translate(-20px, 20px); }
 }
+.animate-fade-in { animation: fadeIn 0.8s ease-out forwards; opacity: 0; }
+.animate-slide-up { animation: slideUp 0.8s ease-out forwards; opacity: 0; }
 
-@keyframes bubbleFloat {
-    0%, 100% {
-        transform: translateY(0);
-    }
-    50% {
-        transform: translateY(-10px);
-    }
-}
-
-.animate-fade-in {
-    animation: fadeIn 1s ease-out forwards;
-    opacity: 0;
-}
-
-.animate-slide-up {
-    animation: slideUp 0.8s ease-out forwards;
-    opacity: 0;
-}
-
-.animate-scale {
-    animation: scaleIn 0.6s ease-out forwards;
-    opacity: 0;
-}
-
-/* --- LAYOUT --- */
-.welcome-page {
-    position: relative;
+/* ── Page ───────────────────────────────────────────────────────────────── */
+.landing-page {
     min-height: 100vh;
-    overflow-x: hidden;
-}
-
-.welcome-background {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.gradient-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.1) 0%, transparent 60%);
-}
-
-.animated-shapes {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
     overflow: hidden;
+    font-family: inherit;
 }
 
-.shape {
+/* ── Background circles ─────────────────────────────────────────────────── */
+.bg-animated {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+.circle {
     position: absolute;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.07);
     animation: float 20s ease-in-out infinite;
 }
+.c1 { width: 380px; height: 380px; top: -120px; left: -120px; }
+.c2 { width: 500px; height: 500px; top: 40%; right: -180px; animation-delay: -6s; animation-duration: 26s; }
+.c3 { width: 280px; height: 280px; bottom: -80px; left: 38%; animation-delay: -12s; animation-duration: 32s; }
 
-.shape-1 {
-    width: 400px;
-    height: 400px;
-    top: -100px;
-    left: -100px;
-}
-
-.shape-2 {
-    width: 500px;
-    height: 500px;
-    top: 40%;
-    right: -150px;
-    animation-delay: -5s;
-    animation-duration: 25s;
-}
-
-.shape-3 {
-    width: 300px;
-    height: 300px;
-    bottom: 20%;
-    left: 10%;
-    animation-delay: -10s;
-    animation-duration: 30s;
-}
-
-.shape-4 {
-    width: 250px;
-    height: 250px;
-    top: 60%;
-    left: -80px;
-    animation-delay: -15s;
-    animation-duration: 22s;
-}
-
-.welcome-content {
+/* ── Navbar ─────────────────────────────────────────────────────────────── */
+.landing-nav {
     position: relative;
-    z-index: 1;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 2rem;
-}
-
-/* --- HERO SECTION --- */
-.hero-section {
-    min-height: 100vh;
+    z-index: 10;
     display: flex;
     align-items: center;
-    padding: 4rem 0;
-    text-align: center;
+    justify-content: space-between;
+    padding: 1.25rem 2.5rem;
+}
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.nav-logo {
+    height: 36px;
+    filter: brightness(0) invert(1);
+}
+.nav-appname {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: -0.01em;
+}
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.btn-nav-ghost {
+    padding: 8px 20px;
+    border-radius: 10px;
+    border: 1.5px solid rgba(255, 255, 255, 0.5);
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+    backdrop-filter: blur(6px);
+}
+.btn-nav-ghost:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: white;
+}
+.btn-nav-solid {
+    padding: 8px 20px;
+    border-radius: 10px;
+    background: white;
+    color: #667eea;
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+.btn-nav-solid:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
-.brand-header {
+/* ── Hero ───────────────────────────────────────────────────────────────── */
+.hero {
+    position: relative;
+    z-index: 1;
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1rem;
-    margin-bottom: 3rem;
+    padding: 2rem 2.5rem 3rem;
 }
-
-.app-logo {
-    height: 60px;
-    filter: brightness(0) invert(1);
+.hero-inner {
+    max-width: 700px;
+    width: 100%;
+    text-align: center;
 }
-
-.app-name {
-    font-size: 2rem;
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 0.82rem;
+    font-weight: 600;
+    padding: 6px 16px;
+    border-radius: 20px;
+    margin-bottom: 1.5rem;
+    backdrop-filter: blur(8px);
+    letter-spacing: 0.03em;
+}
+.badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4ade80;
+    box-shadow: 0 0 6px #4ade80;
+    flex-shrink: 0;
+}
+.hero-title {
+    font-size: clamp(1.9rem, 4vw, 3rem);
     font-weight: 800;
     color: white;
-    margin: 0;
-}
-
-.hero-text {
-    margin-bottom: 3rem;
-}
-
-.hero-title {
-    font-size: 3.5rem;
-    font-weight: 900;
-    color: white;
-    margin-bottom: 1.5rem;
     line-height: 1.2;
+    margin: 0 0 1.25rem;
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
 }
-
-.gradient-text {
-    background: linear-gradient(90deg, #ffd89b 0%, #19547b 100%);
+.hero-title-accent {
+    background: linear-gradient(90deg, #fff 0%, rgba(255,255,255,0.75) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
-
-.hero-subtitle {
-    font-size: 1.25rem;
-    color: rgba(255, 255, 255, 0.9);
-    max-width: 600px;
-    margin: 0 auto;
-    line-height: 1.6;
+.hero-desc {
+    font-size: 1.05rem;
+    color: rgba(255, 255, 255, 0.88);
+    line-height: 1.7;
+    margin: 0 auto 2rem;
+    max-width: 520px;
 }
-
-.cta-buttons {
+.hero-cta {
     display: flex;
-    gap: 1rem;
+    align-items: center;
     justify-content: center;
+    gap: 14px;
     flex-wrap: wrap;
-    margin-bottom: 4rem;
+    margin-bottom: 2.5rem;
 }
-
-.btn {
-    padding: 1rem 2rem;
-    border-radius: 12px;
-    font-size: 1rem;
-    font-weight: 700;
-    text-decoration: none;
+.btn-primary-lg {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.btn-primary {
+    gap: 8px;
     background: white;
     color: #667eea;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-
-    &:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
-    }
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 12px 28px;
+    border-radius: 12px;
+    text-decoration: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    transition: all 0.2s;
 }
-
-.btn-outline {
-    background: transparent;
-    color: white;
-    border: 2px solid white;
-
-    &:hover {
-        background: white;
-        color: #667eea;
-        transform: translateY(-3px);
-    }
+.btn-primary-lg:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+    color: #5a67d8;
 }
+.btn-ghost-lg {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color 0.2s;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+    padding-bottom: 2px;
+}
+.btn-ghost-lg:hover { color: white; border-bottom-color: white; }
 
-.btn-white {
+/* ── Mockup Chat Card — replica of real app ─────────────────────────────── */
+.hero-mockup { display: flex; justify-content: center; }
+.mockup-card {
     background: white;
-    color: #667eea;
-
-    &:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    }
+    border-radius: 16px;
+    width: 100%;
+    max-width: 360px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
+    overflow: hidden;
 }
 
-/* --- CHAT PREVIEW --- */
-.hero-image {
-    max-width: 600px;
-    margin: 0 auto;
-}
-
-.chat-preview {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
-    border-radius: 20px;
-    padding: 2rem;
+/* Header — matches card-header in app */
+.mockup-header {
     display: flex;
-    flex-direction: column;
-    gap: 1rem;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    background: #ffffff;
+    border-bottom: 1px solid #eff2f5;
+    min-height: 60px;
 }
-
-.chat-bubble {
-    display: flex;
-    gap: 0.75rem;
-    animation: bubbleFloat 3s ease-in-out infinite;
-
-    &.bubble-2 {
-        flex-direction: row-reverse;
-        animation-delay: -1s;
-    }
-
-    &.bubble-3 {
-        animation-delay: -2s;
-    }
-}
-
-.bubble-avatar {
+.mockup-avatar-wrap {
+    position: relative;
     flex-shrink: 0;
 }
-
-.avatar-circle {
+.mockup-avatar {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    
-    &.bg-purple {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    &.bg-blue {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    }
-    
-    &.bg-green {
-        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-    }
+    background: linear-gradient(135deg, #667eea, #764ba2);
 }
-
-.bubble-content {
-    background: white;
-    border-radius: 16px;
-    padding: 0.85rem 1.25rem;
-    max-width: 70%;
+.mockup-online-badge {
+    position: absolute;
+    bottom: 1px;
+    right: 1px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #50cd89;
+    border: 2px solid white;
 }
-
-.chat-bubble.bubble-2 .bubble-content {
-    background: #667eea;
-    color: white;
+.mockup-contact-info { flex: 1; min-width: 0; }
+.mockup-name {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #181c32;
+    line-height: 1.3;
 }
-
-.bubble-text {
-    font-size: 0.95rem;
-    margin-bottom: 0.25rem;
+.mockup-status {
+    font-size: 0.72rem;
+    color: #50cd89;
+    font-weight: 600;
 }
-
-.bubble-time {
-    font-size: 0.75rem;
-    opacity: 0.7;
-    text-align: right;
+.mockup-header-actions {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
 }
-
-/* --- FEATURES SECTION --- */
-.features-section {
-    padding: 6rem 0;
-    background: white;
-}
-
-.section-header {
-    text-align: center;
-    margin-bottom: 4rem;
-}
-
-.section-title {
-    font-size: 2.5rem;
-    font-weight: 800;
-    color: #1a202c;
-    margin-bottom: 1rem;
-}
-
-.section-subtitle {
-    font-size: 1.1rem;
-    color: #718096;
-}
-
-.features-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 2rem;
-}
-
-.feature-card {
-    background: white;
-    padding: 2rem;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-
-    &:hover {
-        transform: translateY(-8px);
-        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
-    }
-}
-
-.feature-icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
+.mockup-action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 1.5rem;
-    
-    &.icon-purple {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    &.icon-blue {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    }
-    
-    &.icon-green {
-        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
-    }
-    
-    &.icon-orange {
-        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-    }
-    
-    &.icon-pink {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    }
-    
-    &.icon-cyan {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    }
-
-    svg {
-        color: white;
-    }
+    color: #a1a5b7;
+    cursor: default;
 }
 
-.feature-title {
-    font-size: 1.25rem;
+/* Chat Body — matches chat-body-custom bg */
+.mockup-body {
+    padding: 14px 14px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: #f9f9f9;
+}
+
+/* Bubbles */
+.bubble { display: flex; align-items: flex-end; gap: 7px; }
+.bubble-right { flex-direction: row-reverse; }
+
+.bubble-avatar-sm {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    font-size: 0.65rem;
     font-weight: 700;
-    color: #1a202c;
-    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
-.feature-description {
-    font-size: 0.95rem;
-    color: #718096;
-    line-height: 1.6;
+/* Receiver — white, rounded-bottom-start-0, shadow-sm */
+.bubble-recv {
+    background: #ffffff;
+    color: #3f4254;
+    border-radius: 8px 8px 8px 0;
+    padding: 9px 12px;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    max-width: 200px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
 }
 
-/* --- STATS SECTION --- */
-.stats-section {
-    padding: 4rem 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 2rem;
-    text-align: center;
-}
-
-.stat-item {
+/* Sender — bg-primary (#667eea), rounded-bottom-end-0 */
+.bubble-send {
+    background: #667eea;
     color: white;
+    border-radius: 8px 8px 0 8px;
+    padding: 9px 12px;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    max-width: 200px;
+    box-shadow: 0 2px 8px rgba(102,126,234,0.35);
 }
 
-.stat-number {
-    font-size: 3rem;
-    font-weight: 900;
-    margin-bottom: 0.5rem;
+/* Footer — matches card-footer in app */
+.mockup-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #ffffff;
+    border-top: 1px solid #eff2f5;
 }
-
-.stat-label {
-    font-size: 1rem;
-    opacity: 0.9;
+.mockup-attach-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a1a5b7;
+    flex-shrink: 0;
+    cursor: default;
 }
-
-/* --- CTA SECTION --- */
-.cta-section {
-    padding: 6rem 0;
-    background: white;
+.mockup-input-field {
+    flex: 1;
+    background: #f5f8fa;
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
 }
-
-.cta-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 24px;
-    padding: 4rem 2rem;
-    text-align: center;
+.mockup-typed {
+    font-size: 0.78rem;
+    color: #3f4254;
+}
+.mockup-cursor {
+    font-size: 0.85rem;
+    color: #667eea;
+    font-weight: 300;
+    margin-left: 1px;
+    transition: opacity 0.1s;
+}
+.mockup-cursor.cursor-hidden {
+    opacity: 0;
+}
+.mockup-send-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: #667eea;
     color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 3px 10px rgba(102,126,234,0.4);
 }
 
-.cta-title {
-    font-size: 2.5rem;
+/* ── Features Section ───────────────────────────────────────────────────── */
+.features-section {
+    position: relative;
+    z-index: 1;
+    padding: 0 2rem 4rem;
+}
+.features-wrap {
+    max-width: 960px;
+    margin: 0 auto;
+}
+.features-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+}
+.features-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 20px;
+    margin-bottom: 1rem;
+    backdrop-filter: blur(8px);
+}
+.features-title {
+    font-size: clamp(1.5rem, 3vw, 2.1rem);
     font-weight: 800;
+    color: white;
+    margin: 0 0 0.75rem;
+    line-height: 1.25;
+}
+.features-subtitle {
+    color: rgba(255,255,255,0.75);
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+/* Cards grid — 2x2 */
+.feat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+.feat-card {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.18);
+    border-radius: 20px;
+    backdrop-filter: blur(12px);
+    overflow: hidden;
+    transition: transform 0.25s, background 0.25s;
+    cursor: default;
+}
+.feat-card:hover {
+    transform: translateY(-4px);
+    background: rgba(255,255,255,0.16);
+}
+.feat-card-inner {
+    padding: 24px 22px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.feat-icon-wrap {
+    width: 50px;
+    height: 50px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+    margin-bottom: 2px;
+}
+.feat-icon-blue   { background: rgba(102,126,234,0.5); }
+.feat-icon-green  { background: rgba(80,205,137,0.4); }
+.feat-icon-purple { background: rgba(163,105,234,0.45); }
+.feat-icon-orange { background: rgba(255,159,67,0.45); }
+
+.feat-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: white;
+    margin: 0;
+}
+.feat-desc {
+    font-size: 0.82rem;
+    color: rgba(255,255,255,0.78);
+    line-height: 1.6;
+    margin: 0;
+}
+.feat-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.feat-tag {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 3px 10px;
+    border-radius: 20px;
+}
+
+/* ── Feature Illustrations ──────────────────────────────────────────────── */
+.feat-illustration {
+    margin-top: 6px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.15);
+    padding: 12px;
+    backdrop-filter: blur(6px);
+}
+
+/* Chat illustration */
+.chat-illustration { display: flex; flex-direction: column; gap: 6px; }
+.fi-bubble { font-size: 0.72rem; padding: 7px 10px; border-radius: 10px; max-width: 80%; line-height: 1.4; }
+.fi-bubble-recv { background: rgba(255,255,255,0.9); color: #3f4254; border-radius: 10px 10px 10px 2px; align-self: flex-start; }
+.fi-bubble-send { background: #667eea; color: white; border-radius: 10px 10px 2px 10px; align-self: flex-end; }
+
+/* Call illustration */
+/* .call-illustration */
+.fi-call-card {
+    background: rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.fi-call-avatar {
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #50cd89, #1bc5bd);
+    flex-shrink: 0;
+}
+.fi-call-info { flex: 1; }
+.fi-call-name { font-size: 0.78rem; font-weight: 700; color: white; }
+.fi-call-status { font-size: 0.68rem; color: #50cd89; font-weight: 600; }
+.fi-call-btns { display: flex; gap: 6px; }
+.fi-call-btn {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: white;
+}
+.fi-btn-red { background: #f64e60; }
+.fi-btn-gray { background: rgba(255,255,255,0.2); }
+
+/* AI illustration */
+.ai-illustration { display: flex; flex-direction: column; gap: 7px; }
+.fi-ai-row { display: flex; align-items: flex-end; gap: 6px; }
+.fi-ai-row-right { flex-direction: row-reverse; }
+.fi-ai-avatar {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #a369ea, #667eea);
+    color: white; font-size: 0.55rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.fi-ai-bubble {
+    background: rgba(255,255,255,0.9);
+    color: #3f4254;
+    font-size: 0.7rem;
+    padding: 6px 9px;
+    border-radius: 8px 8px 8px 2px;
+    line-height: 1.4;
+    max-width: 85%;
+}
+.fi-user-bubble {
+    background: #667eea;
+    color: white;
+    font-size: 0.7rem;
+    padding: 6px 9px;
+    border-radius: 8px 8px 2px 8px;
+    max-width: 85%;
+}
+/* AI typing dots */
+.fi-ai-typing {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 9px 12px;
+}
+.fi-ai-typing span {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: #667eea;
+    animation: aiDot 1.2s ease-in-out infinite;
+}
+.fi-ai-typing span:nth-child(2) { animation-delay: 0.2s; }
+.fi-ai-typing span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes aiDot {
+    0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+    40%            { transform: scale(1);   opacity: 1; }
+}
+
+/* Kanban illustration */
+/* .todo-illustration */
+.fi-kanban {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+.fi-col { display: flex; flex-direction: column; gap: 4px; }
+.fi-col-head {
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: 6px;
+    text-align: center;
+    margin-bottom: 2px;
+}
+.fi-col-todo     { background: rgba(255,255,255,0.15); color: white; }
+.fi-col-progress { background: rgba(102,126,234,0.4);  color: white; }
+.fi-col-done     { background: rgba(80,205,137,0.3);   color: #d1fae5; }
+.fi-task {
+    background: rgba(255,255,255,0.9);
+    color: #3f4254;
+    font-size: 0.62rem;
+    padding: 5px 7px;
+    border-radius: 6px;
+    line-height: 1.3;
+}
+.fi-task-active { background: rgba(102,126,234,0.85); color: white; }
+.fi-task-done   { background: rgba(80,205,137,0.25); color: #d1fae5; }
+
+/* ── Footer ─────────────────────────────────────────────────────────────── */
+.landing-footer {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 1.5rem 2.5rem 2.5rem;
+}
+.landing-footer p {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.95rem;
     margin-bottom: 1rem;
 }
 
-.cta-text {
-    font-size: 1.1rem;
-    opacity: 0.95;
-    margin-bottom: 2rem;
-}
-
-/* --- FOOTER --- */
-.welcome-footer {
-    padding: 2rem 0;
-    background: white;
-    border-top: 1px solid #e2e8f0;
-}
-
-.footer-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    color: #718096;
-    font-size: 0.9rem;
-}
-
-.footer-right {
-    display: flex;
-    gap: 2rem;
-}
-
-.footer-link {
-    color: #718096;
-    text-decoration: none;
-    transition: color 0.2s;
-
-    &:hover {
-        color: #667eea;
-    }
-}
-
-/* --- RESPONSIVE --- */
-@media (max-width: 992px) {
-    .hero-title {
-        font-size: 2.5rem;
-    }
-
-    .hero-subtitle {
-        font-size: 1.1rem;
-    }
-
-    .section-title {
-        font-size: 2rem;
-    }
-
-    .features-grid {
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
+/* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
-    .container {
-        padding: 0 1.5rem;
-    }
-
-    .hero-title {
-        font-size: 2rem;
-    }
-
-    .hero-subtitle {
-        font-size: 1rem;
-    }
-
-    .cta-buttons {
-        flex-direction: column;
-    }
-
-    .btn {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .chat-preview {
-        padding: 1.5rem;
-    }
-
-    .features-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .stats-grid {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
-
-    .stat-number {
-        font-size: 2.5rem;
-    }
-
-    .cta-card {
-        padding: 3rem 1.5rem;
-    }
-
-    .cta-title {
-        font-size: 2rem;
-    }
-
-    .footer-content {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-    }
-
-    .footer-right {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
+    .landing-nav { padding: 1rem 1.25rem; }
+    .nav-appname { font-size: 1rem; }
+    .hero { padding: 1.5rem 1.25rem 2rem; }
+    .features-section { padding: 0 1.25rem 2.5rem; }
+    .feat-grid { grid-template-columns: 1fr; }
+    .landing-footer { padding: 1rem 1.25rem 2rem; }
 }
-
-@media (max-width: 576px) {
-    .brand-header {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .app-logo {
-        height: 50px;
-    }
-
-    .app-name {
-        font-size: 1.5rem;
-    }
-
-    .hero-title {
-        font-size: 1.75rem;
-    }
-
-    .section-title {
-        font-size: 1.75rem;
-    }
-
-    .shape-1,
-    .shape-2,
-    .shape-3,
-    .shape-4 {
-        width: 200px;
-        height: 200px;
-    }
+@media (max-width: 480px) {
+    .hero-cta { flex-direction: column; }
+    .btn-nav-ghost { display: none; }
 }
 </style>
