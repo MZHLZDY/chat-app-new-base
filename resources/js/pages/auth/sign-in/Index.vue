@@ -13,39 +13,73 @@
                 <div class="logo-wrapper animate-fade-in">
                     <img :src="setting?.logo" class="logo" alt="Logo" />
                 </div>
-                
+
                 <h1 class="brand-title animate-slide-up">
                     Selamat Datang Kembali
                 </h1>
 
-                <p class="brand-subtitle animate-slide-up" style="animation-delay: 0.1s">
-                    Masuk ke akun Anda dan mulai berkomunikasi dengan lebih efektif
+                <p
+                    class="brand-subtitle animate-slide-up"
+                    style="animation-delay: 0.1s"
+                >
+                    Masuk ke akun Anda dan mulai berkomunikasi dengan lebih
+                    efektif
                 </p>
 
-                <div class="feature-list animate-slide-up" style="animation-delay: 0.2s">
+                <div
+                    class="feature-list animate-slide-up"
+                    style="animation-delay: 0.2s"
+                >
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
                                 <path d="M9 11l3 3L22 4"></path>
-                                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                                <path
+                                    d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"
+                                ></path>
                             </svg>
                         </div>
                         <span>Chat real-time yang aman</span>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
                                 <path d="M9 11l3 3L22 4"></path>
-                                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                                <path
+                                    d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"
+                                ></path>
                             </svg>
                         </div>
                         <span>Enkripsi end-to-end</span>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
                                 <path d="M9 11l3 3L22 4"></path>
-                                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                                <path
+                                    d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"
+                                ></path>
                             </svg>
                         </div>
                         <span>Akses multi-platform</span>
@@ -56,24 +90,55 @@
 
         <!-- Right Side - Login Form -->
         <div class="login-right">
-            <div class="form-container animate-fade-in" style="animation-delay: 0.3s">
-                
+            <div
+                class="form-container animate-fade-in"
+                style="animation-delay: 0.3s"
+            >
                 <!-- Card Login -->
                 <div class="login-card">
-                    <div class="card-header">
-                        <h2 class="card-title">Masuk</h2>
-                        <p class="card-subtitle">Silakan masukkan kredensial Anda</p>
+                    <!-- Mobile Branding: hanya tampil di mobile -->
+                    <div class="mobile-branding">
+                        <img
+                            :src="setting?.logo"
+                            class="mobile-logo"
+                            alt="Logo"
+                        />
+                        <h2 class="mobile-title">Selamat Datang Kembali</h2>
+                        <p class="mobile-subtitle">
+                            Masuk ke akun dan mulai berkomunikasi
+                        </p>
                     </div>
 
-                    <Form @submit="onSubmitLogin" :validation-schema="loginSchema" class="login-form">
-                        
+                    <div class="card-header">
+                        <h2 class="card-title">Masuk</h2>
+                        <p class="card-subtitle">
+                            Silakan masukkan kredensial Anda
+                        </p>
+                    </div>
+
+                    <Form
+                        @submit="onSubmitLogin"
+                        :validation-schema="loginSchema"
+                        class="login-form"
+                    >
                         <!-- Identifier Field (Email/Name/Phone) -->
                         <div class="form-group">
-                            <label for="identifier" class="form-label">Email, Nama, atau No. Telepon</label>
+                            <label for="identifier" class="form-label"
+                                >Email, Nama, atau No. Telepon</label
+                            >
                             <div class="input-wrapper">
                                 <div class="input-icon">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                    <svg
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                    >
+                                        <path
+                                            d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"
+                                        ></path>
                                         <circle cx="12" cy="7" r="4"></circle>
                                     </svg>
                                 </div>
@@ -87,17 +152,36 @@
                                 />
                             </div>
                             <div class="error-container">
-                                <ErrorMessage name="identifier" class="error-message" />
+                                <ErrorMessage
+                                    name="identifier"
+                                    class="error-message"
+                                />
                             </div>
                         </div>
 
                         <!-- Password Field -->
                         <div class="form-group">
-                            <label for="password" class="form-label">Password</label>
+                            <label for="password" class="form-label"
+                                >Password</label
+                            >
                             <div class="input-wrapper">
                                 <div class="input-icon">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <svg
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                    >
+                                        <rect
+                                            x="3"
+                                            y="11"
+                                            width="18"
+                                            height="11"
+                                            rx="2"
+                                            ry="2"
+                                        ></rect>
                                         <path d="M7 11V7a5 5 0 0110 0v4"></path>
                                     </svg>
                                 </div>
@@ -115,32 +199,63 @@
                                     @click="showPassword = !showPassword"
                                     tabindex="-1"
                                 >
-                                    <svg v-if="!showPassword" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <svg
+                                        v-if="!showPassword"
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                    >
+                                        <path
+                                            d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                                        ></path>
                                         <circle cx="12" cy="12" r="3"></circle>
                                     </svg>
-                                    <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"></path>
-                                        <line x1="1" y1="1" x2="23" y2="23"></line>
+                                    <svg
+                                        v-else
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                    >
+                                        <path
+                                            d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"
+                                        ></path>
+                                        <line
+                                            x1="1"
+                                            y1="1"
+                                            x2="23"
+                                            y2="23"
+                                        ></line>
                                     </svg>
                                 </button>
                             </div>
                             <div class="error-container">
-                                <ErrorMessage name="password" class="error-message" />
+                                <ErrorMessage
+                                    name="password"
+                                    class="error-message"
+                                />
                             </div>
                         </div>
 
                         <!-- Forgot Password Link -->
                         <div class="form-options">
                             <div></div>
-                            <router-link to="/password-reset" class="forgot-link">
+                            <router-link
+                                to="/password-reset"
+                                class="forgot-link"
+                            >
                                 Lupa password?
                             </router-link>
                         </div>
 
                         <!-- Submit Button -->
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             ref="submitButton"
                             class="btn-submit"
                         >
@@ -150,7 +265,6 @@
                                 Harap Tunggu...
                             </span>
                         </button>
-
                     </Form>
 
                     <!-- Sign Up Link -->
@@ -161,7 +275,6 @@
                         </router-link>
                     </div>
                 </div>
-
             </div>
         </div>
     </div>
@@ -190,7 +303,7 @@ export default defineComponent({
 
         const setting = ref({
             logo: getAssetPath("media/logos/default-dark.svg"),
-            app: "ChatApp"
+            app: "ChatApp",
         });
 
         const showPassword = ref(false);
@@ -223,18 +336,18 @@ export default defineComponent({
 
                 // Success notification
                 toast.success("Login berhasil!");
-                
+
                 // Redirect ke dashboard
                 setTimeout(() => {
                     router.push({ name: "dashboard" });
                 }, 100);
-
             } catch (error: any) {
                 console.log(error);
-                
+
                 // Error notification - menampilkan pesan error
-                toast.error("Email / Nama / No. Telepon atau Password tidak ditemukan!");
-                
+                toast.error(
+                    "Email / Nama / No. Telepon atau Password tidak ditemukan!"
+                );
             } finally {
                 if (submitButton.value) {
                     // Remove loading indicator
@@ -250,7 +363,7 @@ export default defineComponent({
             showPassword,
             loginSchema,
             onSubmitLogin,
-            submitButton
+            submitButton,
         };
     },
 });
@@ -279,7 +392,8 @@ export default defineComponent({
 }
 
 @keyframes float {
-    0%, 100% {
+    0%,
+    100% {
         transform: translate(0, 0);
     }
     33% {
@@ -610,13 +724,18 @@ export default defineComponent({
     overflow: hidden;
 
     &::before {
-        content: '';
+        content: "";
         position: absolute;
         top: 0;
         left: -100%;
         width: 100%;
         height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.2),
+            transparent
+        );
         transition: left 0.5s;
     }
 
@@ -651,7 +770,7 @@ export default defineComponent({
     .indicator-label {
         display: none;
     }
-    
+
     .indicator-progress {
         display: flex;
     }
@@ -693,42 +812,67 @@ export default defineComponent({
 }
 
 /* --- RESPONSIVE --- */
+/* ── Mobile Branding (dalam card, hanya mobile) ─────────────────────────── */
+.mobile-branding {
+    display: none;
+    text-align: center;
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+.mobile-logo {
+    height: 36px;
+    margin-bottom: 0.75rem;
+}
+.mobile-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #1a202c;
+    margin: 0 0 0.4rem;
+}
+.mobile-subtitle {
+    font-size: 0.83rem;
+    color: #718096;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 992px) {
-    .login-container {
-        flex-direction: column;
+    /* Panel kiri disembunyikan mulai tablet */
+    .login-left {
+        display: none !important;
     }
 
-    .login-left {
-        padding: 2.5rem 2rem;
-        min-height: auto;
+    /* Tampilkan branding di dalam card */
+    .mobile-branding {
+        display: block;
+    }
+
+    .login-container {
+        justify-content: center;
+        align-items: center;
     }
 
     .login-right {
-        padding: 2rem;
-        background: white;
+        flex: unset;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem 1rem;
+        background: transparent;
         backdrop-filter: none;
     }
 
-    .brand-title {
-        font-size: 2rem;
-    }
-
-    .brand-subtitle {
-        font-size: 1rem;
-        margin-bottom: 2rem;
-    }
-
-    .feature-list {
-        gap: 1rem;
-    }
-
-    .feature-item {
-        font-size: 0.95rem;
+    .form-container {
+        max-width: 480px;
+        width: 100%;
     }
 
     .login-card {
         padding: 2rem 1.75rem;
-        box-shadow: none;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
     }
 
     .card-title {
@@ -737,24 +881,8 @@ export default defineComponent({
 }
 
 @media (max-width: 768px) {
-    .login-left {
-        padding: 2rem 1.5rem;
-    }
-
     .login-right {
-        padding: 1.5rem;
-    }
-
-    .brand-title {
-        font-size: 1.75rem;
-    }
-
-    .brand-subtitle {
-        font-size: 0.95rem;
-    }
-
-    .feature-list {
-        display: none;
+        padding: 1rem 0.75rem;
     }
 
     .login-card {
@@ -764,7 +892,6 @@ export default defineComponent({
     .card-title {
         font-size: 1.5rem;
     }
-
     .card-subtitle {
         font-size: 0.9rem;
     }
@@ -772,43 +899,22 @@ export default defineComponent({
     .form-label {
         font-size: 0.85rem;
     }
-
     .form-input {
         font-size: 0.9rem;
         padding: 0.8rem 0.85rem 0.8rem 0;
     }
-
     .input-icon {
         padding: 0 0.85rem;
     }
 }
 
 @media (max-width: 576px) {
-    .login-left {
-        padding: 1.5rem 1rem;
-        min-height: 200px;
-    }
-
     .login-right {
-        padding: 1rem;
+        padding: 0.75rem 0.5rem;
     }
 
-    .logo {
-        height: 40px;
-    }
-
-    .logo-wrapper {
-        margin-bottom: 1.5rem;
-    }
-
-    .brand-title {
-        font-size: 1.5rem;
-        margin-bottom: 0.75rem;
-    }
-
-    .brand-subtitle {
-        font-size: 0.9rem;
-        margin-bottom: 1rem;
+    .mobile-title {
+        font-size: 1.15rem;
     }
 
     .login-card {
@@ -819,11 +925,9 @@ export default defineComponent({
     .card-title {
         font-size: 1.35rem;
     }
-
     .form-group {
         gap: 0;
     }
-
     .login-form {
         gap: 1rem;
     }
@@ -852,7 +956,6 @@ export default defineComponent({
 
     .input-icon {
         padding: 0 0.75rem;
-
         svg {
             width: 18px;
             height: 18px;
@@ -861,7 +964,6 @@ export default defineComponent({
 
     .toggle-password {
         padding: 0 0.75rem;
-
         svg {
             width: 18px;
             height: 18px;
@@ -875,22 +977,8 @@ export default defineComponent({
 
 /* Landscape Mobile */
 @media (max-width: 992px) and (orientation: landscape) {
-    .login-left {
-        min-height: auto;
-        padding: 1.5rem 2rem;
-    }
-
-    .brand-title {
-        font-size: 1.5rem;
-    }
-
-    .brand-subtitle {
-        font-size: 0.9rem;
-        margin-bottom: 1rem;
-    }
-
-    .feature-list {
-        display: none;
+    .login-right {
+        padding: 1.5rem;
     }
 }
 </style>

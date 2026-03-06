@@ -13,39 +13,73 @@
                 <div class="logo-wrapper animate-fade-in">
                     <img :src="setting?.logo_depan" class="logo" alt="Logo" />
                 </div>
-                
+
                 <h1 class="brand-title animate-slide-up">
                     Bergabunglah Bersama Kami
                 </h1>
 
-                <p class="brand-subtitle animate-slide-up" style="animation-delay: 0.1s">
-                    Buat akun Anda dan mulai berkomunikasi dengan lebih efektif dan aman
+                <p
+                    class="brand-subtitle animate-slide-up"
+                    style="animation-delay: 0.1s"
+                >
+                    Buat akun Anda dan mulai berkomunikasi dengan lebih efektif
+                    dan aman
                 </p>
 
-                <div class="feature-list animate-slide-up" style="animation-delay: 0.2s">
+                <div
+                    class="feature-list animate-slide-up"
+                    style="animation-delay: 0.2s"
+                >
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
                                 <path d="M9 11l3 3L22 4"></path>
-                                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                                <path
+                                    d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"
+                                ></path>
                             </svg>
                         </div>
                         <span>Registrasi cepat & mudah</span>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
                                 <path d="M9 11l3 3L22 4"></path>
-                                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                                <path
+                                    d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"
+                                ></path>
                             </svg>
                         </div>
                         <span>Keamanan data terjamin</span>
                     </div>
                     <div class="feature-item">
                         <div class="feature-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
                                 <path d="M9 11l3 3L22 4"></path>
-                                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"></path>
+                                <path
+                                    d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"
+                                ></path>
                             </svg>
                         </div>
                         <span>Verifikasi email otomatis</span>
@@ -56,22 +90,55 @@
 
         <!-- Right Side - Register Form -->
         <div class="login-right">
-            <div class="form-container animate-fade-in" style="animation-delay: 0.3s">
-                
+            <div
+                class="form-container animate-fade-in"
+                style="animation-delay: 0.3s"
+            >
                 <!-- Card Register -->
                 <div class="login-card">
-                    
+                    <!-- Mobile Branding: hanya tampil di mobile -->
+                    <div class="mobile-branding">
+                        <img
+                            :src="setting?.logo_depan"
+                            class="mobile-logo"
+                            alt="Logo"
+                        />
+                        <h2 class="mobile-title">Bergabunglah Bersama Kami</h2>
+                        <p class="mobile-subtitle">
+                            Buat akun dan mulai berkomunikasi dengan lebih
+                            efektif
+                        </p>
+                    </div>
+
                     <!-- Success Alert -->
-                    <div v-if="showEmailVerificationAlert" class="alert-success">
+                    <div
+                        v-if="showEmailVerificationAlert"
+                        class="alert-success"
+                    >
                         <div class="alert-icon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            <svg
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <path
+                                    d="M22 11.08V12a10 10 0 1 1-5.93-9.14"
+                                ></path>
+                                <polyline
+                                    points="22 4 12 14.01 9 11.01"
+                                ></polyline>
                             </svg>
                         </div>
                         <div class="alert-content">
                             <h4 class="alert-title">Registrasi Berhasil!</h4>
-                            <p class="alert-text">Email verifikasi telah dikirim ke <strong>{{ formData.email }}</strong>. Silakan cek inbox/spam Anda.</p>
+                            <p class="alert-text">
+                                Email verifikasi telah dikirim ke
+                                <strong>{{ formData.email }}</strong
+                                >. Silakan cek inbox/spam Anda.
+                            </p>
                         </div>
                     </div>
 
@@ -79,27 +146,59 @@
                     <div v-if="!showEmailVerificationAlert">
                         <div class="card-header">
                             <h2 class="card-title">Daftar Akun</h2>
-                            <p class="card-subtitle">Lengkapi informasi di bawah ini</p>
+                            <p class="card-subtitle">
+                                Lengkapi informasi di bawah ini
+                            </p>
                         </div>
 
                         <!-- Stepper Progress -->
                         <div class="stepper-progress">
-                            <div class="step-item" :class="{ active: currentStepIndex === 0, completed: currentStepIndex > 0 }">
+                            <div
+                                class="step-item"
+                                :class="{
+                                    active: currentStepIndex === 0,
+                                    completed: currentStepIndex > 0,
+                                }"
+                            >
                                 <div class="step-circle">
-                                    <span class="step-number" v-if="currentStepIndex === 0">1</span>
-                                    <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
-                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    <span
+                                        class="step-number"
+                                        v-if="currentStepIndex === 0"
+                                        >1</span
+                                    >
+                                    <svg
+                                        v-else
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="3"
+                                    >
+                                        <polyline
+                                            points="20 6 9 17 4 12"
+                                        ></polyline>
                                     </svg>
                                 </div>
                                 <div class="step-label">
-                                    <div class="step-title">Informasi Dasar</div>
-                                    <div class="step-desc">Nama, Email & Telepon</div>
+                                    <div class="step-title">
+                                        Informasi Dasar
+                                    </div>
+                                    <div class="step-desc">
+                                        Nama, Email & Telepon
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="step-line" :class="{ completed: currentStepIndex > 0 }"></div>
+                            <div
+                                class="step-line"
+                                :class="{ completed: currentStepIndex > 0 }"
+                            ></div>
 
-                            <div class="step-item" :class="{ active: currentStepIndex === 1 }">
+                            <div
+                                class="step-item"
+                                :class="{ active: currentStepIndex === 1 }"
+                            >
                                 <div class="step-circle">
                                     <span class="step-number">2</span>
                                 </div>
@@ -135,9 +234,23 @@
                                     class="btn-back"
                                     @click="previousStep"
                                 >
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <line x1="19" y1="12" x2="5" y2="12"></line>
-                                        <polyline points="12 19 5 12 12 5"></polyline>
+                                    <svg
+                                        width="20"
+                                        height="20"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                    >
+                                        <line
+                                            x1="19"
+                                            y1="12"
+                                            x2="5"
+                                            y2="12"
+                                        ></line>
+                                        <polyline
+                                            points="12 19 5 12 12 5"
+                                        ></polyline>
                                     </svg>
                                     Kembali
                                 </button>
@@ -148,9 +261,13 @@
                                     id="submit-form"
                                     ref="submitButton"
                                     class="btn-submit"
-                                    :class="{ 'full-width': currentStepIndex === 0 }"
+                                    :class="{
+                                        'full-width': currentStepIndex === 0,
+                                    }"
                                 >
-                                    <span class="indicator-label">Daftar Sekarang</span>
+                                    <span class="indicator-label"
+                                        >Daftar Sekarang</span
+                                    >
                                     <span class="indicator-progress">
                                         <span class="spinner"></span>
                                         Memproses...
@@ -165,9 +282,24 @@
                                 >
                                     <span class="indicator-label">
                                         Selanjutnya
-                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 0.5rem;">
-                                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                                            <polyline points="12 5 19 12 12 19"></polyline>
+                                        <svg
+                                            width="20"
+                                            height="20"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                            style="margin-left: 0.5rem"
+                                        >
+                                            <line
+                                                x1="5"
+                                                y1="12"
+                                                x2="19"
+                                                y2="12"
+                                            ></line>
+                                            <polyline
+                                                points="12 5 19 12 12 19"
+                                            ></polyline>
                                         </svg>
                                     </span>
                                     <span class="indicator-progress">
@@ -192,9 +324,7 @@
                             Kembali ke Login
                         </router-link>
                     </div>
-
                 </div>
-
             </div>
         </div>
     </div>
@@ -257,8 +387,13 @@ export default defineComponent({
 
         const createAccountSchema = [
             Yup.object({
-                nama: Yup.string().required("Nama tidak boleh kosong").label("Nama"),
-                email: Yup.string().email().required("Email tidak boleh kosong").label("Email"),
+                nama: Yup.string()
+                    .required("Nama tidak boleh kosong")
+                    .label("Nama"),
+                email: Yup.string()
+                    .email()
+                    .required("Email tidak boleh kosong")
+                    .label("Email"),
                 phone: Yup.string()
                     .matches(/^08[0-9]\d{8,11}$/, "No. Telepon tidak valid")
                     .required("No. Telepon tidak boleh kosong")
@@ -270,7 +405,10 @@ export default defineComponent({
                     .required("Password tidak boleh kosong")
                     .label("Password"),
                 password_confirmation: Yup.string()
-                    .oneOf([Yup.ref("password")], "Konfirmasi Password tidak sesuai")
+                    .oneOf(
+                        [Yup.ref("password")],
+                        "Konfirmasi Password tidak sesuai"
+                    )
                     .required("Konfirmasi Password tidak boleh kosong")
                     .label("Konfirmasi Password"),
             }),
@@ -323,10 +461,12 @@ export default defineComponent({
                 .then((res) => {
                     toast.success(res.data.message);
                     showEmailVerificationAlert.value = true;
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: "smooth" });
                 })
                 .catch((err) => {
-                    toast.error(err.response?.data?.message || "Terjadi kesalahan");
+                    toast.error(
+                        err.response?.data?.message || "Terjadi kesalahan"
+                    );
                 })
                 .finally(() => {
                     if (submitButton.value) {
@@ -377,7 +517,8 @@ export default defineComponent({
 }
 
 @keyframes float {
-    0%, 100% {
+    0%,
+    100% {
         transform: translate(0, 0);
     }
     33% {
@@ -828,13 +969,18 @@ export default defineComponent({
     }
 
     &::before {
-        content: '';
+        content: "";
         position: absolute;
         top: 0;
         left: -100%;
         width: 100%;
         height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.2),
+            transparent
+        );
         transition: left 0.5s;
     }
 
@@ -871,7 +1017,7 @@ export default defineComponent({
     .indicator-label {
         display: none;
     }
-    
+
     .indicator-progress {
         display: flex;
     }
@@ -999,56 +1145,87 @@ export default defineComponent({
     }
 }
 
+/* ── Mobile Branding (dalam card, hanya mobile) ─────────────────────────── */
+.mobile-branding {
+    display: none;
+    text-align: center;
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+.mobile-logo {
+    height: 36px;
+    margin-bottom: 0.75rem;
+}
+.mobile-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #1a202c;
+    margin: 0 0 0.4rem;
+}
+.mobile-subtitle {
+    font-size: 0.83rem;
+    color: #718096;
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
+    /* Sembunyikan panel branding kiri */
     .login-left {
-        padding: 2rem 1.5rem;
+        display: none !important;
+    }
+
+    /* Tampilkan branding di dalam card */
+    .mobile-branding {
+        display: block;
+    }
+
+    /* Container jadi kolom tunggal terpusat */
+    .login-container {
+        justify-content: center;
+        align-items: center;
+        padding: 1.5rem 1rem;
     }
 
     .login-right {
-        padding: 1.5rem;
+        flex: unset;
+        width: 100%;
+        max-width: 480px;
+        padding: 0;
+        background: transparent;
+        backdrop-filter: none;
     }
 
-    .brand-title {
-        font-size: 1.75rem;
-    }
-
-    .brand-subtitle {
-        font-size: 0.95rem;
-    }
-
-    .feature-list {
-        display: none;
+    .form-container {
+        width: 100%;
     }
 
     .login-card {
         padding: 1.75rem 1.5rem;
+        border-radius: 20px;
     }
 
     .card-title {
         font-size: 1.5rem;
     }
-
     .card-subtitle {
         font-size: 0.9rem;
     }
-
     .stepper-progress {
         margin-bottom: 1.25rem;
     }
-
     .step-circle {
         width: 38px;
         height: 38px;
     }
-
     .step-title {
         font-size: 0.75rem;
     }
-
     .step-desc {
         font-size: 0.65rem;
     }
-
     .step-line {
         width: 30px;
         margin: 0 0.5rem;
@@ -1056,36 +1233,17 @@ export default defineComponent({
 }
 
 @media (max-width: 576px) {
-    .login-left {
-        padding: 1.5rem 1rem;
-        min-height: 200px;
-    }
-
-    .login-right {
+    .login-container {
         padding: 1rem;
-    }
-
-    .logo {
-        height: 40px;
-    }
-
-    .logo-wrapper {
-        margin-bottom: 1.5rem;
-    }
-
-    .brand-title {
-        font-size: 1.5rem;
-        margin-bottom: 0.75rem;
-    }
-
-    .brand-subtitle {
-        font-size: 0.9rem;
-        margin-bottom: 1rem;
     }
 
     .login-card {
         padding: 1.5rem 1.25rem;
         border-radius: 16px;
+    }
+
+    .mobile-title {
+        font-size: 1.15rem;
     }
 
     .card-title {
@@ -1099,12 +1257,12 @@ export default defineComponent({
     .step-label {
         display: none;
     }
-
     .step-line {
         width: 50px;
     }
 
-    .btn-submit, .btn-back {
+    .btn-submit,
+    .btn-back {
         padding: 0.9rem;
         font-size: 0.95rem;
     }
@@ -1125,12 +1283,10 @@ export default defineComponent({
     .login-card {
         padding: 1.25rem 1rem;
     }
-
     .step-circle {
         width: 36px;
         height: 36px;
     }
-
     .step-number {
         font-size: 0.95rem;
     }
@@ -1139,21 +1295,14 @@ export default defineComponent({
 /* Landscape Mobile */
 @media (max-width: 992px) and (orientation: landscape) {
     .login-left {
-        min-height: auto;
-        padding: 1.5rem 2rem;
+        display: none !important;
     }
-
-    .brand-title {
-        font-size: 1.5rem;
+    .mobile-branding {
+        display: block;
     }
-
-    .brand-subtitle {
-        font-size: 0.9rem;
-        margin-bottom: 1rem;
-    }
-
-    .feature-list {
-        display: none;
+    .login-right {
+        background: transparent;
+        backdrop-filter: none;
     }
 }
 </style>
