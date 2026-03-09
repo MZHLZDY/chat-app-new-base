@@ -53,11 +53,11 @@ const currentThemeMode = computed(() => themeMode.value);
       <div class="info-section w-full flex flex-col items-center">  
         <h1 class="group-name">{{ props.groupName }}</h1>
         
-        <p class="inviter-text">invited by <span class="font-bold">{{ props.inviterName }}</span></p>
-        <p class="status-text">{{ props.callStatus }}</p>
-        
-        <h4 class="call-timeout">Ditutup dalam {{ store.timerCount }} detik</h4>
-
+        <center>
+          <p class="status-text">{{ props.callStatus }}</p>
+          <p class="inviter-text">Invited by <span class="font-bold">{{ props.inviterName }}</span></p>
+           <!-- <h4 class="call-timeout">Ditutup dalam {{ store.timerCount }} detik</h4> -->
+        </center>
         <div class="mt-6 w-full max-w-md transform scale-90">
              <ParticipantUsers :participants="props.participants" />
         </div>
@@ -119,7 +119,7 @@ const currentThemeMode = computed(() => themeMode.value);
 }
   
 .dark-mode .glass-card {
-  background: rgba(105, 104, 104, 0.5);
+  background: rgba(41, 40, 40, 0.5);
 }
 
 .group-name {

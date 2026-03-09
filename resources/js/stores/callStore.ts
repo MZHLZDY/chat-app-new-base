@@ -25,6 +25,8 @@ export const useCallStore = defineStore('call', () => {
     const backendGroupCall = ref<GroupCall | null>(null);
     const groupParticipants = ref<GroupParticipant[]>([]);
     const remoteVideoStates = ref<Record<number, boolean>>({}); // Simpan status video remote
+    const activeGroupName = ref<string>('');
+    const activeGroupAvatar = ref<string>('');
 
     // Actions
     const setCurrentCall = (call: Call) => {
@@ -227,6 +229,8 @@ export const useCallStore = defineStore('call', () => {
         backendGroupCall,
         groupParticipants,
         remoteVideoStates,
+        activeGroupName,
+        activeGroupAvatar,
         // Actions
         setCurrentCall,
         clearCurrentCall,

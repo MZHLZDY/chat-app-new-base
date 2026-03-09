@@ -134,7 +134,7 @@ const statusText = computed(() => {
 }
 
 .dark-mode .glass-card {
-  background: rgba(105, 104, 104, 0.5);
+  background: rgba(41, 40, 40, 0.5);
 }
 
 .group-name {

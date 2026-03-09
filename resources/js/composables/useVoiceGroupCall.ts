@@ -1,4 +1,6 @@
 import { ref } from 'vue';
+import { database } from '@/libs/firebase';
+import { ref as dbRef, set } from 'firebase/database';
 import { useCallStore } from '@/stores/callStore';
 import { useAuthStore } from '@/stores/auth'; // Sesuaikan path jika berbeda
 import { useAgora } from '@/composables/useAgora';
@@ -77,7 +79,23 @@ export function useVoiceGroupCall() {
 
             // Join Agora (Urutan parameter sudah disesuaikan)
             await joinChannel(data.channel_name, data.token, authStore.user?.id as number);
-
+            participantIds.forEach((participantId) => {
+            if (participantId !== authStore.user?.id) {
+                // 1. Path harus sama dengan listener (calls/{id}/incoming)
+                const incomingRef = dbRef(database, `calls/${participantId}/incoming`);
+                
+                set(incomingRef, {
+                    call_id: data.call.id,
+                    call_type: 'group_voice', // 2. HARUS SAMA dengan if condition di listener
+                    channel_name: data.channel_name,
+                    caller: authStore.user,   // 3. Listener mu butuh 'caller'
+                    group: data.call.group || { id: groupId, name: callStore.activeGroupName || 'Group Call', photo: callStore.activeGroupAvatar || '' },
+                    participants: data.call.participants || participantIds,
+                    token: data.token || '', 
+                    timestamp: Date.now()
+                });
+            }
+        });
             toast.success("Memulai panggilan grup...");
         } catch (error: any) {
             console.error('❌ Gagal memulai panggilan grup:', error);
@@ -158,25 +176,29 @@ export function useVoiceGroupCall() {
     // 2. FIREBASE EVENT HANDLERS (Dipanggil dari Global Listener)
     // ======================================================
 
-    const handleGroupIncomingCall = (data: any) => {
-        console.log("📥 Handle Incoming Group Call via Firebase:", data);
+    const handleGroupIncomingCall = (payload: any) => {
+        console.log('📡 [Firebase] Incoming Group Call:', payload);
 
-        // Ambil string 'voice' atau 'video' dari 'group_voice' / 'group_video'
-        const actualType = data.call_type.replace('group_', ''); 
-
-        const incomingCall = {
-            id: data.call_id,
+        // Set state incoming call ke store
+        callStore.incomingCall = {
+            id: payload.call_id || payload.id,
+            type: 'voice', // Wajib ada di interface Call
+            status: 'incoming', // Wajib ada
             isGroup: true,
-            type: actualType, // Akan menjadi 'voice' atau 'video'
-            caller: data.caller,
-            receiver: authStore.user as User,
-            status: 'ringing',
-            channelName: data.channel_name,
-            group: data.group
-        };
+            caller: payload.host || payload.caller,
+            receiver: authStore.user, // Wajib ada
+            token: payload.token || '', // Wajib ada
+            channel: payload.channel_name || '', // Wajib ada
+            
+            // --- Custom properties ---
+            channelName: payload.channel_name,
+            groupName: payload.group?.name || payload.group_name || 'Group Call',
+            groupAvatar: payload.group?.photo || payload.group?.avatar || '',
+            participants: payload.participants || [],
+        } as any;
 
-        callStore.isGroupCall = true;
-        callStore.setIncomingCall(incomingCall as any);
+        // Opsional: Mainkan nada dering panggilan masuk di sini
+        // playIncomingRingtone();
     };
 
     const handleGroupVoiceCallAnswered = (payload: any) => {

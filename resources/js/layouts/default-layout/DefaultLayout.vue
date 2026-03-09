@@ -745,7 +745,7 @@ watch(
             />
 
             <VoiceCallingModal
-                v-if="showCallingModal"
+                v-if="!callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'calling' && !callStore.isMinimized"
                 :callee-name="callingModalProps.calleeName"
                 :callee-photo="callingModalProps.calleePhoto"
                 :call-status="callingModalProps.callStatus"
@@ -753,7 +753,7 @@ watch(
             />
 
             <VoiceCallModal
-                v-if="showOngoingModal"
+                v-if="!callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'ongoing' && !callStore.isMinimized"
                 :remote-name="ongoingCallProps.remoteName"
                 :remote-photo="ongoingCallProps.remotePhoto"
                 :is-muted="!isAudioEnabled"
@@ -784,8 +784,8 @@ watch(
 
         <VoiceGroupCallingModal
             v-if="callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'calling' && !callStore.isMinimized"
-            :groupName="activeGroup?.name || 'Group Call'"
-            :groupPhoto="activeGroup?.photo || activeGroup?.avatar || ''"
+            :groupName="callStore.backendGroupCall?.group?.name || 'Group Call'"
+            :groupPhoto="callStore.backendGroupCall?.group?.photo || ''"
             :participants="formattedGroupParticipants"
             :callStatus="callStore.callStatus"
             @cancel="leaveGroupVoiceCall(callStore.currentCall.id)" 
