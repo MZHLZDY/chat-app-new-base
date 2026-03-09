@@ -351,6 +351,19 @@ watch(() => localVideoTrack.value, (track) => {
 watch(() => remoteVideoTracks.value.size, (size) => {
     console.log('📹 Remote video tracks count:', size);
 });
+watch(() => isVideoCallActive.value, (newVal) => {
+    if (newVal) {
+        document.body.style.overflow = "hidden";
+    } else {
+        document.body.style.overflow = "";
+    }
+}, { immediate: true });
+
+
+onUnmounted(() => {
+    document.body.style.overflow = "";
+});
+
 </script>
 
 <template>
@@ -494,7 +507,9 @@ watch(() => remoteVideoTracks.value.size, (size) => {
     top: 0;
     left: 0;
     width: 100vw;
-    height: 100vh;
+    height: 100dvh;
+    overscroll-behavior: none;
+    touch-action: none;
     background-color: transparent !important;
     z-index: 9998;
 }
@@ -607,6 +622,7 @@ watch(() => remoteVideoTracks.value.size, (size) => {
     object-fit: cover !important; /* KUNCI: Penuhin kotak! */
     position: static !important;
     border-radius: 12px !important; /* Ikut wrapper */
+    transform: rotateY(180deg) !important; /* Paksa Mirror Kamera Sendiri */
 }
 
 /* Avatar local video */
@@ -654,13 +670,13 @@ watch(() => remoteVideoTracks.value.size, (size) => {
 
 @media (max-width: 768px) {
     .local-video-wrapper.landscape {
-        width: clamp(140px, 20vw, 180px);
+        width: clamp(160px, 25vw, 200px);
         top: 15px;
         right: 15px;
     }
     
     .local-video-wrapper.portrait {
-        width: clamp(100px, 15vw, 130px);
+        width: clamp(120px, 20vw, 150px);
         top: 15px;
         right: 15px;
     }
@@ -673,13 +689,13 @@ watch(() => remoteVideoTracks.value.size, (size) => {
 /* Responsive - Mobile */
 @media (max-width: 480px) {
     .local-video-wrapper.landscape {
-        width: clamp(100px, 25vw, 140px);
+        width: clamp(130px, 30vw, 170px); /* Digeedein dikit dari sebelumnya (100-140) */
         top: 10px;
         right: 10px;
     }
     
     .local-video-wrapper.portrait {
-        width: clamp(80px, 20vw, 110px);
+        width: clamp(110px, 25vw, 140px); /* Digedein dikit dari sebelumnya (80-110) */
         top: 10px;
         right: 10px;
     }

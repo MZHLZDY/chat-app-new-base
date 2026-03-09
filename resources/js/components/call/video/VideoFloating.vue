@@ -287,6 +287,7 @@ const stopDrag = () => {
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
+    transform: rotateY(180deg) !important; /* Fix Mirror local */
 }
 
 .fallback {
@@ -312,6 +313,7 @@ const stopDrag = () => {
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
+    transform: rotateY(180deg) !important; /* Fix Mirror local */
 }
 
 .local-pip.landscape { width: 70px; aspect-ratio: 16 / 9; }

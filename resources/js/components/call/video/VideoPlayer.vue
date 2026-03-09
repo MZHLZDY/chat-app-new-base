@@ -84,7 +84,7 @@ onUnmounted(() => {
          <div
             ref="videoContainer"
             class="video-feed"
-            :class="{ 'mirror-mode': isLocal }"
+             
             key="video-state"
             ></div>
 
@@ -93,9 +93,9 @@ onUnmounted(() => {
                 <CallAvatar
                     :photo-url="avatarUrl"
                     :display-name="userName"
-                    size="100%"
+                    size="clamp(75px, 15vmin, 150px)"
                     :is-calling="false"
-                    class="fluid-avatar"
+                    class="responsive-avatar"
                 />
             </div>
         </Transition>
@@ -137,10 +137,6 @@ onUnmounted(() => {
     transition: opacity 0.3s ease-out 0s;
 }
 
-/* Efek mirror untuk video sendiri */
-.mirror-mode {
-    transform: scaleX(-1);
-}
 
 /* State untuk avatar */
 .avatar-state {
@@ -158,14 +154,13 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
 }
-.fluid-avatar {
-    position: relative;
-    width: clamp(70px, 20vmin, 130px) !important;
-    height: clamp(70px, 20vmin, 130px) !important;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+.avatar-circle img {
+    width: 90px;
+    height: 90px; /* Ukuran dasar */
     border-radius: 50%;
-    transition: all 0.3s ease;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.2);
+    box-shadow: 0 0 30px rgba(255,255,255,0.1);
 }
 .status-text {
     margin-top: 10px;
