@@ -26,7 +26,7 @@ const authStore = useAuthStore();
 // BUKA FILE: src/components/call/shared/CallAvatar.vue
 
 const resolvedPhotoUrl = computed(() => {
-  const photo = props.photoUrl;
+  let photo = props.photoUrl;
   const name = props.displayName || 'Unknown';
 
   // --- DEBUGGING LOG ---
@@ -45,27 +45,13 @@ const resolvedPhotoUrl = computed(() => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&color=7F9CF5&background=EBF4FF`;
   }
 
-  // 2. Helper untuk mengambil Base URL backend
-  const apiBase = import.meta.env.VITE_APP_API_URL || 'http://localhost:8000/api';
-  const backendBase = apiBase.replace('/api', '');
-
-  // 3. Jika photo memuat '/storage/' (SOLUSI BUG PUBLIC IP)
-  if (photo.includes('/storage/')) {
-    const pathOnly = photo.substring(photo.indexOf('/storage/')); // Ambil bagian /storage/... dst
-    const result = `${backendBase}${pathOnly}`;
-    console.log('🚀 GENERATED URL:', result);
-    return result;
+  // 2. Jika path dari backend relatif (tidak ada http)
+  if (!photo.startsWith('http') && !photo.startsWith('data:')) {
+    // Sesuaikan prefix jika folder penyimpananmu bukan /storage/
+    photo = photo.startsWith('/') ? photo : `/storage/${photo}`;
   }
 
-  // 4. Jika photo sudah Full URL dari eksternal (misal Google/FB)
-  if (photo.startsWith('http')) {
-    return photo;
-  }
-
-  // 5. Fallback sisa path biasa
-  const resultFallback = `${backendBase}/${photo.replace(/^\//, '')}`;
-  console.log('🚀 GENERATED URL FALLBACK:', resultFallback);
-  return resultFallback;
+  return photo;
 });
 
 </script>

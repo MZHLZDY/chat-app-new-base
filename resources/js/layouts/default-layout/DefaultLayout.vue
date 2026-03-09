@@ -737,7 +737,7 @@ watch(
      <!-- Global Call Modals -->
     <Teleport to="body">
             <VoiceIncomingModal
-                v-if="showIncomingModal"
+                v-if="callStore.incomingCall && callStore.incomingCall.type === 'voice' && !callStore.incomingCall.isGroup"
                 :caller-name="incomingCallProps.callerName"
                 :caller-photo="incomingCallProps.callerPhoto"
                 @accept="handleAcceptCall"
@@ -753,7 +753,7 @@ watch(
             />
 
             <VoiceCallModal
-                v-if="!callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'ongoing' && !callStore.isMinimized"
+                v-if="callStore.currentCall && callStore.currentCall.type === 'voice' && callStore.callStatus === 'ongoing' && !callStore.isGroupCall && !callStore.isMinimized"
                 :remote-name="ongoingCallProps.remoteName"
                 :remote-photo="ongoingCallProps.remotePhoto"
                 :is-muted="!isAudioEnabled"
@@ -763,7 +763,7 @@ watch(
             />
 
             <VoiceFloating
-                v-if="showFloatingModal"
+                v-if="callStore.currentCall && callStore.currentCall.type === 'voice' && callStore.callStatus === 'ongoing' && !callStore.isGroupCall && callStore.isMinimized"
                 :remote-name="ongoingCallProps.remoteName"
                 :remote-photo="ongoingCallProps.remotePhoto"
                 :is-muted="false"
@@ -774,9 +774,11 @@ watch(
             <!-- Video call modals tetap sama -->
             <VideoCallingModal v-if="showVideoCallingModal" />
             <VideoIncomingModal v-if="showVideoIncomingModal" />
-            <VideoCallModal v-if="showVideoCallModal" @minimize="callStore.toggleMinimize" />
+            <VideoCallModal v-if="callStore.currentCall && callStore.currentCall.type === 'video' && callStore.callStatus === 'ongoing' && !callStore.isGroupCall && !callStore.isMinimized" 
+              @minimize="callStore.toggleMinimize" 
+            />
             <VideoFloating
-                v-if="showVideoFloatingModal"
+                v-if="callStore.currentCall && callStore.currentCall.type === 'video' && callStore.callStatus === 'ongoing' && !callStore.isGroupCall && callStore.isMinimized"
                 @maximize="callStore.toggleMinimize"
                 @end-call="handleEndVoiceCall"
             />
@@ -784,8 +786,8 @@ watch(
 
         <VoiceGroupCallingModal
             v-if="callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'calling' && !callStore.isMinimized"
-            :groupName="callStore.backendGroupCall?.group?.name || 'Group Call'"
-            :groupPhoto="callStore.backendGroupCall?.group?.photo || ''"
+            :groupName="callStore.backendGroupCall?.group?.name || callStore.activeGroupName || 'Group Call'"
+            :groupPhoto="callStore.backendGroupCall?.group?.photo || callStore.backendGroupCall?.group?.avatar || callStore.activeGroupAvatar || ''"
             :participants="formattedGroupParticipants"
             :callStatus="callStore.callStatus"
             @cancel="leaveGroupVoiceCall(callStore.currentCall.id)" 
