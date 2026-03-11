@@ -168,8 +168,11 @@ const {
     rejectGroupVoiceCall, 
     leaveGroupVoiceCall,
     handleGroupIncomingCall,
+    handleGroupVoiceCallAnswered,
     handleGroupCallCancelled,
     handleGroupCallEnded,
+    handleGroupParticipantLeft,
+    handleGroupParticipantRecalled,
 } = useVoiceGroupCall();    
 
 const isMinimized = ref(false); // State untuk mode minimize
@@ -572,6 +575,7 @@ onMounted(() => {
                             })();
                         } else if (data.call_type === "group_voice" || data.call_type === "group_video"){
                             console.log('✅ Panggilan grup diterima');
+                            handleGroupVoiceCallAnswered(data);
                             callStore.clearIncomingCall();
                         } else {
                             handleCallAccepted(data);
@@ -784,14 +788,14 @@ watch(
             />
             <VoiceGroupFloating />
 
-        <VoiceGroupCallingModal
-            v-if="callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'calling' && !callStore.isMinimized"
-            :groupName="callStore.backendGroupCall?.group?.name || callStore.activeGroupName || 'Group Call'"
-            :groupPhoto="callStore.backendGroupCall?.group?.photo || callStore.backendGroupCall?.group?.avatar || callStore.activeGroupAvatar || ''"
-            :participants="formattedGroupParticipants"
-            :callStatus="callStore.callStatus"
-            @cancel="leaveGroupVoiceCall(callStore.currentCall.id)" 
-        />
+            <VoiceGroupCallingModal
+                v-if="callStore.isGroupCall && (callStore.currentCall || callStore.backendGroupCall) && callStore.callStatus === 'calling' && !callStore.isMinimized"
+                :groupName="callStore.backendGroupCall?.group?.name || callStore.activeGroupName || 'Group Call'"
+                :groupPhoto="callStore.backendGroupCall?.group?.photo || callStore.backendGroupCall?.group?.avatar || callStore.activeGroupAvatar || ''"
+                :participants="formattedGroupParticipants"
+                :callStatus="callStore.callStatus"
+                @cancel="leaveGroupVoiceCall(callStore.currentCall?.id || callStore.backendGroupCall?.id || 0)" 
+            />
 
         <VoiceGroupIncomingModal
             v-if="callStore.incomingCall && callStore.incomingCall.isGroup"
@@ -804,7 +808,7 @@ watch(
         />
 
         <VoiceGroupCallModal
-            v-if="callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'ongoing' && !callStore.isMinimized"
+            v-if="callStore.isGroupCall && (callStore.currentCall || callStore.backendGroupCall) && callStore.callStatus === 'ongoing' && !callStore.isMinimized"
         />
 
     </Teleport>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import CallAvatar from '../shared/CallAvatar.vue';
-import { MicOff, PhoneCall } from 'lucide-vue-next'; // Tambah PhoneCall
+import { MicOff, PhoneCall } from 'lucide-vue-next'; 
 
 interface Participant {
   id: number;
@@ -9,20 +9,19 @@ interface Participant {
   avatar?: string;
   isSpeaking: boolean;
   isMuted: boolean;
-  status: 'joined' | 'ringing' | 'declined' | 'left' | 'missed'; // Pastikan ada missed
+  status: 'joined' | 'ringing' | 'declined' | 'left' | 'missed'; 
 }
 
 const props = defineProps<{
   participants: Participant[];
 }>();
 
-// Emit event 'recall' ke parent dengan membawa user.id
 const emit = defineEmits(['recall']);
 
-// Tampilkan peserta yang bergabung, keluar, atau menolak.
-// (Yang berstatus 'ringing' saat awal dipanggil mungkin disembunyikan atau ditampilkan, sesuaikan kebutuhan)
+// Tampilkan peserta yang bergabung, keluar, menolak, DAN yang sedang ditelepon (ringing)
 const displayParticipants = computed(() => {
-    return props.participants.filter(p => ['joined', 'left', 'declined', 'missed'].includes(p.status));
+    // Tambahkan 'ringing' ke dalam filter ini
+    return props.participants.filter(p => ['joined', 'ringing', 'left', 'declined', 'missed'].includes(p.status));
 });
 </script>
 
