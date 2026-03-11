@@ -126,10 +126,7 @@ const callStore = useCallStore();
 const isCallActive = computed(() => !!callStore.currentCall);
 
 // Pastikan destructuring ini sekarang sudah cocok dengan export useVoiceCall.ts di atas
-const {
-    startVoiceCall,
-    processing: voiceProcessing,
-} = useVoiceCall();
+const { startVoiceCall, processing: voiceProcessing } = useVoiceCall();
 
 const isMinimized = ref(false); // State untuk mode minimize
 const isSpeakerOn = ref(false); // State untuk speaker (UI only)
@@ -244,18 +241,20 @@ const showVideoIncomingModal = computed(
     () => callStore.incomingCall?.type === "video" && !callStore.isInCall
 );
 
-const showVideoCallModal = computed(() =>
-    isCallActive.value &&
-    callStore.currentCall?.type === "video" &&
-    callStore.callStatus === "ongoing" &&
-    !callStore.isMinimized
+const showVideoCallModal = computed(
+    () =>
+        isCallActive.value &&
+        callStore.currentCall?.type === "video" &&
+        callStore.callStatus === "ongoing" &&
+        !callStore.isMinimized
 );
 
-const showVideoFloatingModal = computed(() => 
-    isCallActive.value &&
-    callStore.callStatus === 'ongoing' &&
-    callStore.currentCall?.type === 'video' &&
-    callStore.isMinimized
+const showVideoFloatingModal = computed(
+    () =>
+        isCallActive.value &&
+        callStore.callStatus === "ongoing" &&
+        callStore.currentCall?.type === "video" &&
+        callStore.isMinimized
 );
 
 // --- PRIVATE CHAT LOGIC ---
@@ -360,13 +359,16 @@ const listenToOnlineStatus = () => {
 
 const filteredContacts = computed(() => {
     if (!searchQuery.value) return contacts.value;
-    
+
     const lower = searchQuery.value.toLowerCase();
-    
+
     return contacts.value.filter((c: any) => {
         const name = c.friend?.alias || c.alias?.name || c.alias || "";
         const email = c.friend?.email || c.user?.email || c.email || "";
-        return name.toLowerCase().includes(lower) || email.toLowerCase().includes(lower);
+        return (
+            name.toLowerCase().includes(lower) ||
+            email.toLowerCase().includes(lower)
+        );
     });
 });
 
@@ -412,7 +414,7 @@ const selectContact = async (contact: any) => {
     if (contactIndex !== -1) {
         contacts.value[contactIndex].unread_count = 0;
     }
-    await nextTick(); 
+    await nextTick();
     if (messageInputRef.value) {
         messageInputRef.value.focus();
     }
@@ -1060,7 +1062,6 @@ onMounted(async () => {
 
         // Listener untuk panggilan masuk
         const incomingCallRef = dbRef(database, `calls/${userId}/incoming`);
-        
     }
 });
 
@@ -1931,262 +1932,263 @@ onUnmounted(() => {
                             </div>
                         </div>
                     </div>
-                    <div
-                        v-if="replyingTo"
-                        class="px-4 py-2 bg-light border-top d-flex justify-content-between align-items-center"
-                    >
-                        <div
-                            class="d-flex flex-column border-start border-4 border-primary ps-2"
-                        >
-                            <span class="text-primary fw-bold small">
-                                {{
-                                    replyingTo.sender_id === currentUser?.id
-                                        ? "Anda"
-                                        : activeContact.name
-                                }}
-                            </span>
-
-                            <span
-                                class="text-muted small text-truncate"
-                                style="max-width: 300px"
+                    <!-- Reply Preview Bar -->
+                    <transition name="reply-slide">
+                        <div v-if="replyingTo" class="reply-bar">
+                            <div class="reply-bar-accent"></div>
+                            <div class="reply-bar-content">
+                                <div class="reply-bar-icon">
+                                    <i class="fas fa-reply"></i>
+                                </div>
+                                <div class="reply-bar-text">
+                                    <span class="reply-bar-name">
+                                        {{
+                                            replyingTo.sender_id ===
+                                            currentUser?.id
+                                                ? "Anda"
+                                                : activeContact.name
+                                        }}
+                                    </span>
+                                    <span class="reply-bar-preview">
+                                        <i
+                                            v-if="replyingTo.type === 'image'"
+                                            class="fas fa-camera me-1"
+                                        ></i>
+                                        <i
+                                            v-else-if="
+                                                replyingTo.type === 'video'
+                                            "
+                                            class="fas fa-video me-1"
+                                        ></i>
+                                        <i
+                                            v-else-if="
+                                                replyingTo.type === 'file'
+                                            "
+                                            class="fas fa-file me-1"
+                                        ></i>
+                                        {{
+                                            replyingTo.message ||
+                                            (replyingTo.type === "image"
+                                                ? "Foto"
+                                                : "File")
+                                        }}
+                                    </span>
+                                </div>
+                            </div>
+                            <button
+                                @click="cancelReply"
+                                class="reply-bar-close"
                             >
-                                <i
-                                    v-if="replyingTo.type === 'image'"
-                                    class="fas fa-camera me-1"
-                                ></i>
-                                <i
-                                    v-else-if="replyingTo.type === 'video'"
-                                    class="fas fa-video me-1"
-                                ></i>
-                                <i
-                                    v-else-if="replyingTo.type === 'file'"
-                                    class="fas fa-file me-1"
-                                ></i>
-                                {{
-                                    replyingTo.message ||
-                                    (replyingTo.type === "image"
-                                        ? "Foto"
-                                        : "File")
-                                }}
-                            </span>
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
+                    </transition>
 
-                        <button
-                            @click="cancelReply"
-                            class="btn btn-sm btn-icon btn-light-danger"
-                        >
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <transition name="fade">
+                    <!-- Scroll to Bottom Button -->
+                    <transition name="scroll-btn">
                         <button
                             v-if="showScrollButton"
                             @click="scrollToBottom"
-                            class="btn btn-primary btn-icon shadow-sm rounded-circle position-absolute"
-                            style="
-                                bottom: 100px;
-                                right: 30px;
-                                z-index: 10;
-                                width: 30px;
-                                height: 30px;
-                            "
+                            class="scroll-down-btn"
                         >
-                            <i class="fas fa-arrow-down fs-4"></i>
+                            <i class="fas fa-arrow-down"></i>
                         </button>
                     </transition>
-                    <div class="card-footer pt-4 pb-4" style="min-height: 80px">
-                        <div class="d-flex align-items-center">
-                            <button
-                                class="btn btn-sm btn-icon btn-active-light-primary me-2"
-                                @click="triggerFileUpload"
-                            >
-                                <KTIcon
-                                    icon-name="paper-clip"
-                                    icon-class="fs-3"
-                                />
-                            </button>
-                            <input
-                                type="file"
-                                ref="fileInput"
-                                class="d-none"
-                                @change="sendMessage"
-                                accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
-                            />
-                            <input
-                                v-model="newMessage"
-                                @keyup.enter="sendMessage"
-                                type="text"
-                                @input="
-                                    (e) => {
-                                        handleTyping();
-                                        if (activeContact)
-                                            messageDrafts[activeContact.id] =
-                                                newMessage;
-                                    }
-                                "
-                                class="form-control form-control-solid me-3"
-                                placeholder="Ketik pesan..."
-                                ref="messageInputRef"
-                            />
-                            <button
-                                class="btn btn-primary btn-icon"
-                                @click="sendMessage"
-                            >
-                                <KTIcon icon-name="send" icon-class="fs-2" />
-                            </button>
-                        </div>
+
+                    <!-- Footer Input -->
+                    <div class="chat-footer">
+                        <input
+                            type="file"
+                            ref="fileInput"
+                            class="d-none"
+                            @change="sendMessage"
+                            accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                        />
+                        <button
+                            class="footer-attach-btn"
+                            @click="triggerFileUpload"
+                            title="Lampirkan file"
+                        >
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <input
+                            v-model="newMessage"
+                            @keyup.enter="sendMessage"
+                            type="text"
+                            @input="
+                                (e) => {
+                                    handleTyping();
+                                    if (activeContact)
+                                        messageDrafts[activeContact.id] =
+                                            newMessage;
+                                }
+                            "
+                            class="footer-input"
+                            placeholder="Ketik pesan..."
+                            ref="messageInputRef"
+                        />
+                        <button
+                            class="footer-send-btn"
+                            @click="sendMessage"
+                            :class="{ active: newMessage.trim() }"
+                        >
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal State -->
-    <div v-if="isAddContactOpen" class="modal-overlay">
+    <!-- ═══ MODAL: Tambah Kontak ═══ -->
+    <transition name="modal-pop">
         <div
-            class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden"
-            style="max-width: 500px; width: 100%"
+            v-if="isAddContactOpen"
+            class="modal-backdrop"
+            @click.self="isAddContactOpen = false"
         >
-            <ContactForm
-                @close="isAddContactOpen = false"
-                @refresh="fetchContacts"
-            />
+            <div class="modal-card" style="max-width: 480px">
+                <ContactForm
+                    @close="isAddContactOpen = false"
+                    @refresh="fetchContacts"
+                />
+            </div>
         </div>
-    </div>
-    <div v-if="isEditContactOpen" class="modal-overlay">
+    </transition>
+
+    <!-- ═══ MODAL: Edit / Simpan Kontak ═══ -->
+    <transition name="modal-pop">
         <div
-            class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden"
-            style="max-width: 500px; width: 100%"
+            v-if="isEditContactOpen"
+            class="modal-backdrop"
+            @click.self="isEditContactOpen = false"
         >
-            <EditForm
-                v-if="isEditContactOpen"
-                :contactId="contactIdToEdit"
-                :title="editModalTitle"
-                @close="isEditContactOpen = false"
-                @updated="handleContactUpdated"
-                @refresh="fetchContacts"
-            />
+            <div class="modal-card" style="max-width: 480px">
+                <EditForm
+                    v-if="isEditContactOpen"
+                    :contactId="contactIdToEdit"
+                    :title="editModalTitle"
+                    @close="isEditContactOpen = false"
+                    @updated="handleContactUpdated"
+                    @refresh="fetchContacts"
+                />
+            </div>
         </div>
-    </div>
-    <div
-        v-if="isLightboxOpen"
-        class="lightbox-overlay"
-        @click.self="closeLightbox"
-    >
-        <div class="lightbox-content position-relative text-center">
-            <button
-                @click="closeLightbox"
-                class="btn btn-icon btn-sm btn-dark position-absolute top-0 end-0 m-3 shadow z-index-10"
-            >
-                <i class="fas fa-times fs-2"></i>
+    </transition>
+
+    <!-- ═══ LIGHTBOX ═══ -->
+    <transition name="lightbox-fade">
+        <div
+            v-if="isLightboxOpen"
+            class="lightbox-backdrop"
+            @click.self="closeLightbox"
+        >
+            <button class="lightbox-close-btn" @click="closeLightbox">
+                <i class="fas fa-times"></i>
             </button>
-            <img
-                :src="activeLightboxUrl"
-                class="img-fluid rounded shadow-lg"
-                style="max-height: 85vh; max-width: 90vw"
-            />
-        </div>
-    </div>
-    <div v-if="isDeleteModalOpen" class="modal-overlay">
-        <div
-            class="modal-content bg-white rounded shadow p-5 text-center"
-            style="width: 350px"
-        >
-            <div class="bg-light-danger mb-4">
-                <i class="fas fa-trash fs-2 text-danger p-3"></i>
-            </div>
-            <h3 class="fw-bold text-gray-800 mb-1">Hapus Pesan?</h3>
-            <p class="text-muted fs-7 mb-4">
-                Pesan yang dihapus tidak dapat dikembalikan.
-            </p>
-            <div class="d-grid gap-2">
-                <button
-                    @click="confirmDelete('me')"
-                    class="btn btn-light-primary"
-                >
-                    Hapus untuk saya
-                </button>
-                <button
-                    v-if="messageToDelete?.sender_id === currentUser?.id"
-                    @click="confirmDelete('everyone')"
-                    class="btn btn-light-danger"
-                >
-                    Hapus untuk semua orang
-                </button>
-                <button
-                    @click="closeDeleteModal"
-                    class="btn btn-link text-muted btn-sm"
-                >
-                    Batal
-                </button>
+            <div class="lightbox-img-wrap">
+                <img :src="activeLightboxUrl" class="lightbox-img" />
             </div>
         </div>
-    </div>
-    <div
-        v-if="isInfoModalOpen"
-        class="modal-overlay"
-        @click.self="isInfoModalOpen = false"
-    >
+    </transition>
+
+    <!-- ═══ MODAL: Hapus Pesan ═══ -->
+    <transition name="modal-pop">
         <div
-            class="modal-content bg-white rounded shadow p-0 overflow-hidden"
-            style="max-width: 400px; width: 100%"
+            v-if="isDeleteModalOpen"
+            class="modal-backdrop"
+            @click.self="closeDeleteModal"
         >
-            <div
-                class="modal-header p-4 border-bottom d-flex justify-content-between align-items-center"
-            >
-                <h3 class="fw-bold m-0">Info Kontak</h3>
-                <div
-                    class="btn btn-icon btn-sm btn-active-light-primary ms-2"
-                    @click="isInfoModalOpen = false"
-                >
-                    <i class="fas fa-times fs-2"></i>
+            <div class="modal-card confirm-card" style="max-width: 360px">
+                <div class="confirm-icon-wrap danger">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <h4 class="confirm-title">Hapus Pesan?</h4>
+                <p class="confirm-desc">
+                    Pesan yang dihapus tidak dapat dikembalikan.
+                </p>
+                <div class="confirm-actions">
+                    <button
+                        @click="confirmDelete('me')"
+                        class="confirm-btn secondary"
+                    >
+                        <i class="fas fa-user me-2"></i>Hapus untuk saya
+                    </button>
+                    <button
+                        v-if="messageToDelete?.sender_id === currentUser?.id"
+                        @click="confirmDelete('everyone')"
+                        class="confirm-btn danger"
+                    >
+                        <i class="fas fa-users me-2"></i>Hapus untuk semua
+                    </button>
+                    <button @click="closeDeleteModal" class="confirm-btn ghost">
+                        Batal
+                    </button>
                 </div>
             </div>
-            <div class="modal-body p-5 text-center">
-                <div class="symbol symbol-100px symbol-circle mb-4">
-                    <img
-                        :src="
-                            activeContact?.photo
-                                ? `/storage/${activeContact.photo}`
-                                : '/media/avatars/blank.png'
-                        "
-                        alt="image"
-                        style="object-fit: cover"
-                    />
-                </div>
+        </div>
+    </transition>
 
-                <h4 class="fw-bold text-gray-800">
-                    {{ activeContact?.alias || activeContact?.name }}
-                </h4>
-                <div v-if="activeContact?.alias" class="text-muted fs-7">
-                    ~ {{ activeContact?.name }}
+    <!-- ═══ MODAL: Info Kontak ═══ -->
+    <transition name="modal-pop">
+        <div
+            v-if="isInfoModalOpen"
+            class="modal-backdrop"
+            @click.self="isInfoModalOpen = false"
+        >
+            <div class="modal-card info-card" style="max-width: 400px">
+                <!-- Header gradient -->
+                <div class="info-header">
+                    <button
+                        class="info-close-btn"
+                        @click="isInfoModalOpen = false"
+                    >
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div class="info-avatar-wrap">
+                        <img
+                            :src="
+                                activeContact?.photo
+                                    ? `/storage/${activeContact.photo}`
+                                    : '/media/avatars/blank.png'
+                            "
+                            class="info-avatar"
+                        />
+                        <span
+                            class="info-avatar-online"
+                            v-if="activeContact?.is_online"
+                        ></span>
+                    </div>
+                    <h4 class="info-name">
+                        {{ activeContact?.alias || activeContact?.name }}
+                    </h4>
+                    <p v-if="activeContact?.alias" class="info-username">
+                        ~ {{ activeContact?.name }}
+                    </p>
+                    <p v-if="activeContact?.bio" class="info-bio">
+                        "{{ activeContact.bio }}"
+                    </p>
                 </div>
-                <div
-                    v-if="activeContact?.bio"
-                    class="text-gray-600 fs-7 mt-2 px-4 text-break"
-                >
-                    "{{ activeContact.bio }}"
-                </div>
-
-                <div class="text-start bg-light rounded p-4 mt-4">
-                    <div class="d-flex mb-3">
-                        <i
-                            class="fas fa-phone text-gray-500 fs-4 me-3 mt-1"
-                        ></i>
+                <!-- Detail rows -->
+                <div class="info-body">
+                    <div class="info-row">
+                        <div class="info-row-icon">
+                            <i class="fas fa-phone-alt"></i>
+                        </div>
                         <div>
-                            <div class="fs-7 text-muted">Nomor Telepon</div>
-                            <div class="fw-bold text-gray-800">
+                            <div class="info-row-label">Nomor Telepon</div>
+                            <div class="info-row-value">
                                 {{ activeContact?.phone }}
                             </div>
                         </div>
                     </div>
-                    <div class="d-flex mb-3">
-                        <i
-                            class="fas fa-envelope text-gray-500 fs-4 me-3 mt-1"
-                        ></i>
+                    <div class="info-row">
+                        <div class="info-row-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
                         <div>
-                            <div class="fs-7 text-muted">Email</div>
-                            <div class="fw-bold text-gray-800">
+                            <div class="info-row-label">Email</div>
+                            <div class="info-row-value">
                                 {{ activeContact?.email || "-" }}
                             </div>
                         </div>
@@ -2194,157 +2196,44 @@ onUnmounted(() => {
                 </div>
             </div>
         </div>
-    </div>
-    <div v-if="isClearChatModalOpen" class="modal-overlay">
+    </transition>
+
+    <!-- ═══ MODAL: Bersihkan Chat ═══ -->
+    <transition name="modal-pop">
         <div
-            class="modal-content bg-white rounded shadow p-5 text-center"
-            style="width: 350px"
+            v-if="isClearChatModalOpen"
+            class="modal-backdrop"
+            @click.self="isClearChatModalOpen = false"
         >
-            <div class="bg-light-danger mb-4">
-                <i class="fas fa-eraser fs-2 text-danger p-3"></i>
-            </div>
-            <h3 class="fw-bold text-gray-800 mb-1">Bersihkan Chat?</h3>
-            <p class="text-muted fs-7 mb-4">
-                Apakah Anda yakin ingin menghapus
-                <b>semua riwayat pesan</b> dengan kontak ini? Tindakan ini tidak
-                dapat dibatalkan.
-            </p>
-            <div class="d-grid gap-2">
-                <button @click="handleClearChat" class="btn btn-danger">
-                    Ya, Bersihkan
-                </button>
-                <button
-                    @click="isClearChatModalOpen = false"
-                    class="btn btn-link text-muted btn-sm"
-                >
-                    Batal
-                </button>
+            <div class="modal-card confirm-card" style="max-width: 360px">
+                <div class="confirm-icon-wrap warning">
+                    <i class="fas fa-eraser"></i>
+                </div>
+                <h4 class="confirm-title">Bersihkan Chat?</h4>
+                <p class="confirm-desc">
+                    Semua <strong>riwayat pesan</strong> dengan kontak ini akan
+                    dihapus permanen.
+                </p>
+                <div class="confirm-actions">
+                    <button @click="handleClearChat" class="confirm-btn danger">
+                        <i class="fas fa-eraser me-2"></i>Ya, Bersihkan
+                    </button>
+                    <button
+                        @click="isClearChatModalOpen = false"
+                        class="confirm-btn ghost"
+                    >
+                        Batal
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
+    </transition>
 </template>
 
 <style scoped>
-.scroll-y {
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #d1d5db transparent;
-}
-
-.fade-enter-active,
-.fade-leave-active {
-    transition: opacity 0.3s ease;
-}
-
-.fade-enter-from,
-.fade-leave-to {
-    opacity: 0;
-}
-
-/* Warna Centang Read */
-.tick-read {
-    color: #69f0ae !important;
-    animation: fadeIn 0.3s ease;
-}
-
-.fa-check,
-.fa-check-double {
-    transition: all 0.2s ease;
-}
-
-/* Hover Effects */
-.hover-effect {
-    transition: background-color 0.2s ease;
-}
-
-.hover-effect:hover {
-    background-color: #b6c3f0;
-}
-
-/* Animasi Typing Indicator */
-.typing-indicator {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 10px;
-}
-
-.typing-indicator span {
-    display: block;
-    width: 6px;
-    height: 6px;
-    background-color: #888;
-    border-radius: 50%;
-    margin: 0 2px;
-    animation: typing 1.4s infinite ease-in-out both;
-}
-
-.typing-indicator span:nth-child(1) {
-    animation-delay: -0.32s;
-}
-
-.typing-indicator span:nth-child(2) {
-    animation-delay: -0.16s;
-}
-
-@keyframes typing {
-    0%,
-    80%,
-    100% {
-        transform: scale(0);
-    }
-    40% {
-        transform: scale(1);
-    }
-}
-
-/* CSS Animasi Loading */
-.spin-animation {
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* Modal & Lightbox Overlays */
-.modal-overlay,
-.lightbox-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    backdrop-filter: blur(2px);
-    animation: fadeIn 0.2s ease-out;
-}
-
-.lightbox-overlay {
-    background-color: rgba(0, 0, 0, 0.9);
-    z-index: 10000;
-}
-
-/* Delete Button Visibility */
-.delete-btn-wrapper {
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}
-
-.group-hover:hover .delete-btn-wrapper {
-    opacity: 1;
-}
-
-/* Animations */
+/* ═══════════════════════════════════════════════════════════════════════════
+   KEYFRAMES
+═══════════════════════════════════════════════════════════════════════════ */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -2353,129 +2242,910 @@ onUnmounted(() => {
         opacity: 1;
     }
 }
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes modalPop {
+    from {
+        opacity: 0;
+        transform: scale(0.88) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+@keyframes popIn {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    70% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+@keyframes typing {
+    0%,
+    80%,
+    100% {
+        transform: scale(0.5);
+        opacity: 0.3;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+@keyframes replySlide {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes scrollBtnIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.7);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+    }
+}
+@keyframes pulseGlow {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(102, 126, 234, 0);
+    }
+}
 
-/* Chat Body Layout */
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════════════════════════════════════════ */
+.scroll-y,
+.chat-body-custom {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(102, 126, 234, 0.2) transparent;
+}
+.scroll-y::-webkit-scrollbar,
+.chat-body-custom::-webkit-scrollbar {
+    width: 4px;
+}
+.scroll-y::-webkit-scrollbar-thumb,
+.chat-body-custom::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.25);
+    border-radius: 10px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CONTACT SIDEBAR LIST
+═══════════════════════════════════════════════════════════════════════════ */
+.contact-item {
+    transition: background 0.2s ease, transform 0.18s ease, box-shadow 0.2s ease;
+    animation: slideInLeft 0.28s ease both;
+    border-radius: 10px !important;
+    border-left: 3px solid transparent;
+}
+.contact-item:hover {
+    background: rgba(102, 126, 234, 0.07) !important;
+    transform: translateX(3px);
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.09);
+}
+.contact-item.bg-light-primary {
+    background: rgba(102, 126, 234, 0.11) !important;
+    border-left-color: #667eea !important;
+}
+
+/* unread badge */
+.badge-circle.badge-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+    animation: popIn 0.3s ease;
+}
+.badge-light-primary {
+    background: rgba(102, 126, 234, 0.1) !important;
+    color: #667eea !important;
+    border-color: rgba(102, 126, 234, 0.22) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ADD CONTACT BUTTON
+═══════════════════════════════════════════════════════════════════════════ */
+.btn-light-primary {
+    background: rgba(102, 126, 234, 0.1) !important;
+    color: #667eea !important;
+    border: none;
+    transition: background 0.2s, transform 0.15s;
+}
+.btn-light-primary:hover {
+    background: rgba(102, 126, 234, 0.18) !important;
+    color: #667eea !important;
+    transform: translateY(-1px);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHAT BODY
+═══════════════════════════════════════════════════════════════════════════ */
 .chat-body-custom {
     height: calc(100vh - 265px);
     overflow-y: auto;
-    background-color: #f9f9f9; /* Default Light Mode */
+    background-color: #f9f9f9;
     scroll-behavior: smooth;
+    position: relative;
 }
-
-/* Message Bubble Colors */
 .receiver-bubble {
-    background-color: #ffffff;
-    color: #3f4254; /* Text Dark */
+    background: #fff;
+    color: #3f4254;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
-/* toast color */
-:root {
-    --toastify-text-color-light: #000000 !important;
-    --toastify-color-light: #ffffff;
+/* Bubble entry animations */
+.justify-content-end > .d-flex {
+    animation: slideInRight 0.22s ease both;
+}
+.justify-content-start > .d-flex {
+    animation: slideInLeft 0.22s ease both;
 }
 
-.Toastify__toast-theme--light {
-    color: #333333 !important;
-    background-color: #ffffff !important;
+/* tick read */
+.tick-read {
+    color: #69f0ae !important;
+    animation: fadeIn 0.3s ease;
+}
+.fa-check,
+.fa-check-double {
+    transition: all 0.2s ease;
 }
 
-.Toastify__close-button--light {
-    color: #333333 !important;
-    opacity: 0.7;
+/* hover effect (reply preview) */
+.hover-effect {
+    transition: background 0.2s;
+}
+.hover-effect:hover {
+    background: rgba(102, 126, 234, 0.1);
 }
 
-/* Dark Mode Styles */
-[data-bs-theme="dark"] .chat-body-custom {
-    background-color: #151521 !important; /* Background Gelap */
+.border-primary {
+    border-color: #667eea !important;
+}
+.text-primary {
+    color: #667eea !important;
 }
 
-[data-bs-theme="dark"] .card-header,
-[data-bs-theme="dark"] .card-footer {
-    background-color: #1e1e2d !important;
-    border-bottom: 1px solid #2b2b40 !important;
-    border-top: 1px solid #2b2b40 !important;
+/* ═══════════════════════════════════════════════════════════════════════════
+   TYPING INDICATOR
+═══════════════════════════════════════════════════════════════════════════ */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 10px;
+}
+.typing-indicator span {
+    display: block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    animation: typing 1.4s infinite ease-in-out both;
+}
+.typing-indicator span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+.typing-indicator span:nth-child(2) {
+    animation-delay: -0.16s;
 }
 
-[data-bs-theme="dark"] .receiver-bubble {
-    background-color: #2b2b40 !important;
-    color: #ffffff !important;
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPIN
+═══════════════════════════════════════════════════════════════════════════ */
+.spin-animation {
+    animation: spin 1s linear infinite;
 }
 
-[data-bs-theme="dark"] .form-control-solid {
-    background-color: #1b1b29 !important;
-    border-color: #2b2b40 !important;
-    color: #ffffff !important;
+/* ═══════════════════════════════════════════════════════════════════════════
+   DELETE BUTTON ON HOVER
+═══════════════════════════════════════════════════════════════════════════ */
+.delete-btn-wrapper {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.group-hover:hover .delete-btn-wrapper {
+    opacity: 1;
 }
 
-[data-bs-theme="dark"] .bg-white {
-    background-color: #1e1e2d !important;
-    color: #fff !important;
+/* ═══════════════════════════════════════════════════════════════════════════
+   REPLY BAR
+═══════════════════════════════════════════════════════════════════════════ */
+.reply-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: #fff;
+    border-top: 1px solid #f0f0f0;
+    animation: replySlide 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+.reply-bar-accent {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #667eea, #764ba2);
+    border-radius: 0 2px 2px 0;
+}
+.reply-bar-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(102, 126, 234, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #667eea;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+.reply-bar-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    padding-left: 4px;
+}
+.reply-bar-name {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #667eea;
+}
+.reply-bar-preview {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+}
+.reply-bar-close {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.15s;
+}
+.reply-bar-close:hover {
+    background: rgba(239, 68, 68, 0.2);
+    transform: rotate(90deg);
 }
 
-[data-bs-theme="dark"] .text-gray-900 {
-    color: #fff !important;
+/* ═══════════════════════════════════════════════════════════════════════════
+   SCROLL TO BOTTOM BUTTON
+═══════════════════════════════════════════════════════════════════════════ */
+.scroll-down-btn {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    font-size: 0.8rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.45);
+    transition: transform 0.2s ease, box-shadow 0.2s;
+    animation: scrollBtnIn 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.scroll-down-btn:hover {
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 6px 18px rgba(102, 126, 234, 0.55);
 }
 
-[data-bs-theme="dark"] .text-muted {
-    color: #7e8299 !important;
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHAT FOOTER INPUT
+═══════════════════════════════════════════════════════════════════════════ */
+.chat-footer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #fff;
+    border-top: 1px solid #f0f2f5;
+    min-height: 68px;
+}
+.footer-attach-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.15s;
+}
+.footer-attach-btn:hover {
+    background: rgba(102, 126, 234, 0.2);
+    transform: rotate(-15deg) scale(1.08);
+}
+.footer-input {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1.5px solid #edf0f7;
+    border-radius: 22px;
+    background: #f5f8fa;
+    font-size: 0.88rem;
+    color: #1a202c;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.footer-input:focus {
+    border-color: #667eea;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+.footer-send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: #e8ecf8;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.25s, color 0.25s, transform 0.15s, box-shadow 0.2s;
+}
+.footer-send-btn.active,
+.footer-send-btn:not(:disabled):hover {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
-/* fix button video / voice call agar transparan */
+/* ═══════════════════════════════════════════════════════════════════════════
+   CALL BUTTONS (HEADER)
+═══════════════════════════════════════════════════════════════════════════ */
 .card-header .d-flex button {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
     padding: 8px 10px !important;
-    border-radius: 8px !important;
-    transition: all 0.2s ease !important;
+    border-radius: 10px !important;
+    transition: background 0.2s, transform 0.15s !important;
     cursor: pointer;
 }
-
 .card-header .d-flex button:hover {
-    background: rgba(0, 0, 0, 0.05) !important;
-    transform: scale(1.1);
+    background: rgba(102, 126, 234, 0.1) !important;
+    transform: scale(1.12);
 }
-
 .card-header .d-flex button:active {
-    transform: scale(0.95);
+    transform: scale(0.94);
 }
-
-/* Icon color */
 .card-header .d-flex button svg {
     width: 20px !important;
     height: 20px !important;
     color: #7e8299 !important;
-    transition: color 0.2s ease !important;
+    transition: color 0.2s !important;
 }
-
-/* Video icon hover - hijau */
-.card-header .d-flex button:first-child:hover svg {
+.card-header .d-flex button:nth-last-child(3):hover svg {
     color: #10b981 !important;
 }
-
-/* Phone icon hover - biru */
-.card-header .d-flex button:last-child:hover svg {
-    color: #3b82f6 !important;
+.card-header .d-flex button:nth-last-child(2):hover svg {
+    color: #667eea !important;
 }
 
-/* Dark mode */
-[data-bs-theme="dark"] .card-header .d-flex button {
-    background: transparent !important;
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODAL BACKDROP
+═══════════════════════════════════════════════════════════════════════════ */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(15, 15, 30, 0.55);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: fadeIn 0.2s ease;
+}
+.modal-card {
+    background: #fff;
+    border-radius: 18px;
+    overflow: hidden;
+    width: 100%;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18),
+        0 0 0 1px rgba(255, 255, 255, 0.06);
+    animation: modalPop 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) both;
 }
 
+/* ── Confirm Card ── */
+.confirm-card {
+    padding: 36px 28px 28px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+}
+.confirm-icon-wrap {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 16px;
+    animation: popIn 0.35s ease;
+}
+.confirm-icon-wrap.danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+.confirm-icon-wrap.warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+}
+
+.confirm-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1a202c;
+    margin: 0 0 8px;
+}
+.confirm-desc {
+    font-size: 0.84rem;
+    color: #64748b;
+    line-height: 1.6;
+    margin: 0 0 20px;
+}
+.confirm-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+.confirm-btn {
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.confirm-btn:hover:not(:disabled) {
+    opacity: 0.88;
+    transform: translateY(-1px);
+}
+.confirm-btn.secondary {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+.confirm-btn.secondary:hover {
+    background: rgba(102, 126, 234, 0.18);
+}
+.confirm-btn.danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    box-shadow: 0 3px 10px rgba(239, 68, 68, 0.3);
+}
+.confirm-btn.ghost {
+    background: transparent;
+    color: #94a3b8;
+    font-weight: 500;
+}
+.confirm-btn.ghost:hover {
+    background: #f8fafc;
+    color: #64748b;
+}
+
+/* ── Info Modal ── */
+.info-card {
+    overflow: hidden;
+}
+.info-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 32px 24px 24px;
+    text-align: center;
+    position: relative;
+}
+.info-close-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: background 0.2s, transform 0.15s;
+}
+.info-close-btn:hover {
+    background: rgba(255, 255, 255, 0.32);
+    transform: rotate(90deg);
+}
+.info-avatar-wrap {
+    position: relative;
+    display: inline-block;
+    margin-bottom: 12px;
+}
+.info-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    animation: popIn 0.35s ease;
+}
+.info-avatar-online {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 14px;
+    height: 14px;
+    background: #50cd89;
+    border: 2px solid white;
+    border-radius: 50%;
+    animation: pulseGlow 2s infinite;
+}
+.info-name {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: white;
+    margin: 0 0 2px;
+}
+.info-username {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.75);
+    margin: 0 0 6px;
+}
+.info-bio {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-style: italic;
+    margin: 0;
+}
+
+.info-body {
+    padding: 20px;
+}
+.info-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f1f5f9;
+}
+.info-row:last-child {
+    border-bottom: none;
+}
+.info-row-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    flex-shrink: 0;
+}
+.info-row-label {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-bottom: 2px;
+}
+.info-row-value {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: #1a202c;
+}
+
+/* ── Lightbox ── */
+.lightbox-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+.lightbox-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    z-index: 1;
+    transition: background 0.2s, transform 0.15s;
+}
+.lightbox-close-btn:hover {
+    background: rgba(255, 255, 255, 0.22);
+    transform: rotate(90deg);
+}
+.lightbox-img-wrap {
+    animation: modalPop 0.28s ease;
+}
+.lightbox-img {
+    max-height: 85vh;
+    max-width: 90vw;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   VUE TRANSITIONS
+═══════════════════════════════════════════════════════════════════════════ */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.25s;
+}
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+
+.modal-pop-enter-active {
+    animation: modalPop 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+.modal-pop-leave-active {
+    animation: modalPop 0.2s ease reverse both;
+}
+
+.lightbox-fade-enter-active {
+    animation: fadeIn 0.2s ease;
+}
+.lightbox-fade-leave-active {
+    animation: fadeIn 0.18s ease reverse;
+}
+
+.reply-slide-enter-active {
+    animation: replySlide 0.2s ease;
+}
+.reply-slide-leave-active {
+    animation: replySlide 0.15s ease reverse;
+}
+
+.scroll-btn-enter-active {
+    animation: scrollBtnIn 0.25s ease;
+}
+.scroll-btn-leave-active {
+    animation: scrollBtnIn 0.18s ease reverse;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOAST
+═══════════════════════════════════════════════════════════════════════════ */
+:root {
+    --toastify-text-color-light: #000 !important;
+    --toastify-color-light: #fff;
+}
+.Toastify__toast-theme--light {
+    color: #333 !important;
+    background: #fff !important;
+}
+.Toastify__close-button--light {
+    color: #333 !important;
+    opacity: 0.7;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DARK MODE
+═══════════════════════════════════════════════════════════════════════════ */
+[data-bs-theme="dark"] .chat-body-custom {
+    background: #151521 !important;
+}
+[data-bs-theme="dark"] .card-header,
+[data-bs-theme="dark"] .card-footer {
+    background: #1e1e2d !important;
+    border-color: #2b2b40 !important;
+}
+[data-bs-theme="dark"] .receiver-bubble {
+    background: #2b2b40 !important;
+    color: #fff !important;
+}
+[data-bs-theme="dark"] .form-control-solid {
+    background: #1b1b29 !important;
+    border-color: #2b2b40 !important;
+    color: #fff !important;
+}
+[data-bs-theme="dark"] .bg-white {
+    background: #1e1e2d !important;
+    color: #fff !important;
+}
+[data-bs-theme="dark"] .text-gray-900 {
+    color: #fff !important;
+}
+[data-bs-theme="dark"] .text-muted {
+    color: #7e8299 !important;
+}
+
+/* dark contact */
+[data-bs-theme="dark"] .contact-item:hover {
+    background: rgba(102, 126, 234, 0.12) !important;
+}
+[data-bs-theme="dark"] .contact-item.bg-light-primary {
+    background: rgba(102, 126, 234, 0.18) !important;
+}
+[data-bs-theme="dark"] .badge-light-primary {
+    background: rgba(102, 126, 234, 0.2) !important;
+    color: #a5b4fc !important;
+}
+
+/* dark footer */
+[data-bs-theme="dark"] .chat-footer {
+    background: #1e1e2d;
+    border-color: #2b2b40;
+}
+[data-bs-theme="dark"] .footer-input {
+    background: #1b1b29;
+    border-color: #2b2b40;
+    color: #e1e1e1;
+}
+[data-bs-theme="dark"] .footer-input:focus {
+    background: #22223a;
+    border-color: #667eea;
+}
+[data-bs-theme="dark"] .footer-attach-btn {
+    background: rgba(102, 126, 234, 0.15);
+    color: #a5b4fc;
+}
+[data-bs-theme="dark"] .footer-send-btn {
+    background: #2b2b40;
+    color: #6b7280;
+}
+
+/* dark reply bar */
+[data-bs-theme="dark"] .reply-bar {
+    background: #1e1e2d;
+    border-color: #2b2b40;
+}
+[data-bs-theme="dark"] .reply-bar-preview {
+    color: #6b7280;
+}
+
+/* dark modal */
+[data-bs-theme="dark"] .modal-card {
+    background: #1e1e2d;
+}
+[data-bs-theme="dark"] .confirm-title {
+    color: #e1e1e1;
+}
+[data-bs-theme="dark"] .confirm-desc {
+    color: #7e8299;
+}
+[data-bs-theme="dark"] .confirm-btn.ghost {
+    color: #6b7280;
+}
+[data-bs-theme="dark"] .confirm-btn.ghost:hover {
+    background: #2b2b40;
+}
+[data-bs-theme="dark"] .info-body {
+    background: #1e1e2d;
+}
+[data-bs-theme="dark"] .info-row {
+    border-color: #2b2b40;
+}
+[data-bs-theme="dark"] .info-row-value {
+    color: #e1e1e1;
+}
+
+/* dark call buttons */
 [data-bs-theme="dark"] .card-header .d-flex button:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
+    background: rgba(102, 126, 234, 0.15) !important;
 }
-
 [data-bs-theme="dark"] .card-header .d-flex button svg {
     color: #a1a5b7 !important;
 }
-
-[data-bs-theme="dark"] .card-header .d-flex button:first-child:hover svg {
+[data-bs-theme="dark"] .card-header .d-flex button:nth-last-child(3):hover svg {
     color: #34d399 !important;
 }
-
-[data-bs-theme="dark"] .card-header .d-flex button:last-child:hover svg {
-    color: #60a5fa !important;
+[data-bs-theme="dark"] .card-header .d-flex button:nth-last-child(2):hover svg {
+    color: #a5b4fc !important;
 }
 </style>

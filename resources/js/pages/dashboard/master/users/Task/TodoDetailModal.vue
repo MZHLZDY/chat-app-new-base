@@ -319,7 +319,7 @@ const priorityConfig: Record<
 };
 
 const statusConfig = [
-    { key: "todo", label: "To Do", color: "#5e6ad2" },
+    { key: "todo", label: "To Do", color: "#667eea" },
     { key: "in_progress", label: "In Progress", color: "#f59e0b" },
     { key: "done", label: "Done", color: "#10b981" },
 ];
@@ -1347,7 +1347,7 @@ const deleteTodo = async () => {
 }
 .dtitle-input {
     width: 100%;
-    border: 2px solid #5e6ad2;
+    border: 2px solid #667eea;
     border-radius: 10px;
     padding: 8px 12px;
     font-size: 1.05rem;
@@ -1360,7 +1360,7 @@ const deleteTodo = async () => {
     align-items: center;
     gap: 4px;
     padding: 5px 12px;
-    background: #5e6ad2;
+    background: #667eea;
     color: white;
     border: none;
     border-radius: 8px;
@@ -1414,11 +1414,11 @@ const deleteTodo = async () => {
     gap: 6px;
 }
 .dtab.active {
-    color: #5e6ad2;
-    border-bottom-color: #5e6ad2;
+    color: #667eea;
+    border-bottom-color: #667eea;
 }
 .tab-badge {
-    background: #5e6ad2;
+    background: #667eea;
     color: white;
     font-size: 0.68rem;
     padding: 1px 6px;
@@ -1476,12 +1476,12 @@ const deleteTodo = async () => {
     transition: border-color 0.2s;
 }
 .desc-textarea:focus {
-    border-color: #5e6ad2;
+    border-color: #667eea;
 }
 .btn-save-desc {
     margin-top: 8px;
     padding: 7px 18px;
-    background: #5e6ad2;
+    background: #667eea;
     color: white;
     border: none;
     border-radius: 10px;
@@ -1531,7 +1531,7 @@ const deleteTodo = async () => {
 }
 .sidebar-btn:hover {
     border-color: #9ca3af;
-    background: #f8f9fc;
+    background: #f9f9f9;
 }
 .sidebar-btn.active {
     font-weight: 700;
@@ -1575,11 +1575,11 @@ const deleteTodo = async () => {
     width: 100%;
 }
 .btn-add-deadline:hover {
-    border-color: #5e6ad2;
-    color: #5e6ad2;
+    border-color: #667eea;
+    color: #667eea;
 }
 .deadline-picker {
-    background: #f8f9fc;
+    background: #f9f9f9;
     border: 1.5px solid #e5e7eb;
     border-radius: 12px;
     padding: 12px;
@@ -1601,7 +1601,7 @@ const deleteTodo = async () => {
     flex: 1;
 }
 .dp-input:focus {
-    border-color: #5e6ad2;
+    border-color: #667eea;
 }
 .dp-actions {
     display: flex;
@@ -1610,7 +1610,7 @@ const deleteTodo = async () => {
 }
 .dp-save {
     padding: 6px 14px;
-    background: #5e6ad2;
+    background: #667eea;
     color: white;
     border: none;
     border-radius: 8px;
@@ -1659,9 +1659,9 @@ const deleteTodo = async () => {
     transition: all 0.2s;
 }
 .btn-attach-action:hover {
-    border-color: #5e6ad2;
-    color: #5e6ad2;
-    background: #eef0ff;
+    border-color: #667eea;
+    color: #667eea;
+    background: #eff1ff;
 }
 .btn-attach-action:disabled {
     opacity: 0.5;
@@ -1669,7 +1669,7 @@ const deleteTodo = async () => {
 }
 
 .link-form {
-    background: #f8f9fc;
+    background: #f9f9f9;
     border: 1.5px solid #e5e7eb;
     border-radius: 12px;
     padding: 14px;
@@ -1686,7 +1686,7 @@ const deleteTodo = async () => {
     width: 100%;
 }
 .link-input:focus {
-    border-color: #5e6ad2;
+    border-color: #667eea;
 }
 
 .attach-list {
@@ -1699,7 +1699,7 @@ const deleteTodo = async () => {
     align-items: center;
     gap: 12px;
     padding: 10px 14px;
-    background: #f8f9fc;
+    background: #f9f9f9;
     border: 1.5px solid #f1f5f9;
     border-radius: 12px;
     transition: border-color 0.2s;
@@ -1747,8 +1747,8 @@ const deleteTodo = async () => {
     text-decoration: none;
 }
 .btn-icon-sm:hover {
-    border-color: #5e6ad2;
-    color: #5e6ad2;
+    border-color: #667eea;
+    color: #667eea;
 }
 .btn-icon-sm.danger:hover {
     border-color: #ef4444;
@@ -1780,7 +1780,7 @@ const deleteTodo = async () => {
     transition: border-color 0.2s;
 }
 .cs-input:focus {
-    border-color: #5e6ad2;
+    border-color: #667eea;
 }
 .cs-dropdown {
     position: absolute;
@@ -1812,13 +1812,13 @@ const deleteTodo = async () => {
     transition: background 0.15s;
 }
 .cs-item:hover {
-    background: #f8f9fc;
+    background: #f9f9f9;
 }
 .cs-avatar {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     font-size: 0.8rem;
     font-weight: 700;
@@ -1850,8 +1850,8 @@ const deleteTodo = async () => {
     align-items: center;
     gap: 4px;
     padding: 5px 10px;
-    background: #eef0ff;
-    color: #5e6ad2;
+    background: #eff1ff;
+    color: #667eea;
     border: none;
     border-radius: 8px;
     font-size: 0.8rem;
@@ -1876,14 +1876,14 @@ const deleteTodo = async () => {
     align-items: center;
     gap: 12px;
     padding: 10px;
-    background: #f8f9fc;
+    background: #f9f9f9;
     border-radius: 12px;
 }
 .member-avatar {
     width: 38px;
     height: 38px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     font-size: 0.85rem;
     font-weight: 700;
@@ -2010,7 +2010,7 @@ const deleteTodo = async () => {
 [data-bs-theme="dark"] .dtitle-input {
     background: #1a1a2e;
     color: #e5e7eb;
-    border-color: #5e6ad2;
+    border-color: #667eea;
 }
 [data-bs-theme="dark"] .dmodal-header,
 [data-bs-theme="dark"] .dmodal-tabs,
@@ -2098,7 +2098,7 @@ const deleteTodo = async () => {
     line-height: 1.5;
 }
 .comment-textarea:focus {
-    border-color: #5e6ad2;
+    border-color: #667eea;
 }
 .comment-hint {
     font-size: 0.7rem;
@@ -2121,7 +2121,7 @@ const deleteTodo = async () => {
     height: 32px;
     border-radius: 50%;
     flex-shrink: 0;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -2175,7 +2175,7 @@ const deleteTodo = async () => {
     color: #e5e7eb;
 }
 [data-bs-theme="dark"] .comment-textarea:focus {
-    border-color: #5e6ad2;
+    border-color: #667eea;
 }
 [data-bs-theme="dark"] .comment-body {
     background: #252538;

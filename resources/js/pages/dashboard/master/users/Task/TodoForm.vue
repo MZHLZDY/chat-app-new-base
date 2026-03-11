@@ -200,7 +200,7 @@ const priorityConfig: Record<
 };
 
 const statusConfig = [
-    { key: "todo", label: "To Do", color: "#5e6ad2" },
+    { key: "todo", label: "To Do", color: "#667eea" },
     { key: "in_progress", label: "In Progress", color: "#f59e0b" },
     { key: "done", label: "Done", color: "#10b981" },
 ];
@@ -554,7 +554,7 @@ const statusConfig = [
 .modal-icon {
     width: 44px;
     height: 44px;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -597,7 +597,7 @@ const statusConfig = [
 
 /* --- FIELDS --- */
 .field-group {
-    background: #f8f9fc;
+    background: #f9f9f9;
     border: 2px solid transparent;
     border-radius: 14px;
     padding: 10px 14px;
@@ -605,8 +605,8 @@ const statusConfig = [
 }
 .field-group:focus-within {
     background: #fff;
-    border-color: #5e6ad2;
-    box-shadow: 0 0 0 4px rgba(94, 106, 210, 0.1);
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 .field-group.error {
     border-color: #ef4444;
@@ -732,7 +732,7 @@ const statusConfig = [
     display: flex;
     align-items: center;
     gap: 5px;
-    background: #eef0ff;
+    background: #eff1ff;
     border: 1px solid #c7d2fe;
     border-radius: 20px;
     padding: 3px 8px 3px 4px;
@@ -741,7 +741,7 @@ const statusConfig = [
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     font-size: 0.65rem;
     font-weight: 700;
@@ -758,7 +758,7 @@ const statusConfig = [
 .chip-name {
     font-size: 0.8rem;
     font-weight: 600;
-    color: #5e6ad2;
+    color: #667eea;
 }
 .chip-remove {
     background: none;
@@ -798,7 +798,7 @@ const statusConfig = [
     transition: border-color 0.2s;
 }
 .contact-search-input:focus {
-    border-color: #5e6ad2;
+    border-color: #667eea;
 }
 .contact-dropdown {
     position: absolute;
@@ -830,13 +830,13 @@ const statusConfig = [
     transition: background 0.15s;
 }
 .contact-item:hover {
-    background: #f8f9fc;
+    background: #f9f9f9;
 }
 .contact-avatar {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     font-size: 0.75rem;
     font-weight: 700;
@@ -893,7 +893,7 @@ const statusConfig = [
 }
 .btn-submit {
     padding: 10px 24px;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     border: none;
     border-radius: 12px;
@@ -901,13 +901,13 @@ const statusConfig = [
     font-weight: 700;
     cursor: pointer;
     transition: all 0.2s;
-    box-shadow: 0 4px 12px rgba(94, 106, 210, 0.35);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
     display: flex;
     align-items: center;
 }
 .btn-submit:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(94, 106, 210, 0.45);
+    box-shadow: 0 6px 18px rgba(102, 126, 234, 0.45);
 }
 .btn-submit:disabled {
     opacity: 0.7;

@@ -70,7 +70,7 @@ const props = withDefaults(
             id: 0,
             user_id: 0,
             name: "Board Tugas",
-            color: "#5e6ad2",
+            color: "#667eea",
             icon: "📋",
         }),
     }
@@ -98,9 +98,9 @@ const columnConfig = [
     {
         key: "todo",
         label: "To Do",
-        color: "#5e6ad2",
-        lightColor: "#eef0ff",
-        dotColor: "#5e6ad2",
+        color: "#667eea",
+        lightColor: "#eff1ff",
+        dotColor: "#667eea",
         emptyIcon: "📋",
         emptyText: "Belum ada tugas",
     },
@@ -591,7 +591,7 @@ const overdueTodos = computed(
 .kanban-page {
     padding: 24px;
     min-height: 100vh;
-    background: #f8f9fc;
+    background: #f9f9f9;
     display: flex;
     flex-direction: column;
 }
@@ -615,13 +615,13 @@ const overdueTodos = computed(
 .header-icon {
     width: 48px;
     height: 48px;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    box-shadow: 0 4px 14px rgba(94, 106, 210, 0.4);
+    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.4);
 }
 
 .icon-svg {
@@ -672,7 +672,7 @@ const overdueTodos = computed(
 .progress-label {
     font-size: 0.85rem;
     font-weight: 700;
-    color: #5e6ad2;
+    color: #667eea;
     min-width: 36px;
 }
 
@@ -686,7 +686,7 @@ const overdueTodos = computed(
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #5e6ad2, #10b981);
+    background: linear-gradient(90deg, #667eea, #10b981);
     border-radius: 10px;
     transition: width 0.5s ease;
 }
@@ -717,7 +717,7 @@ const overdueTodos = computed(
 }
 
 .search-field:focus {
-    border-color: #5e6ad2;
+    border-color: #667eea;
 }
 
 .search-clear {
@@ -748,9 +748,9 @@ const overdueTodos = computed(
     flex-shrink: 0;
 }
 .btn-back:hover {
-    border-color: #5e6ad2;
-    color: #5e6ad2;
-    background: #eef0ff;
+    border-color: #667eea;
+    color: #667eea;
+    background: #eff1ff;
 }
 [data-bs-theme="dark"] .btn-back {
     background: #1e1e2d;
@@ -758,7 +758,7 @@ const overdueTodos = computed(
     color: #9ca3af;
 }
 [data-bs-theme="dark"] .btn-back:hover {
-    border-color: #5e6ad2;
+    border-color: #667eea;
     color: #818cf8;
     background: #16162a;
 }
@@ -778,8 +778,8 @@ const overdueTodos = computed(
 }
 
 .btn-icon:hover {
-    border-color: #5e6ad2;
-    color: #5e6ad2;
+    border-color: #667eea;
+    color: #667eea;
 }
 
 .btn-icon.spinning svg {
@@ -796,7 +796,7 @@ const overdueTodos = computed(
     display: flex;
     align-items: center;
     gap: 6px;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     border: none;
     border-radius: 10px;
@@ -805,12 +805,12 @@ const overdueTodos = computed(
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
-    box-shadow: 0 4px 12px rgba(94, 106, 210, 0.35);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
 }
 
 .btn-add-main:hover {
     transform: translateY(-1px);
-    box-shadow: 0 6px 16px rgba(94, 106, 210, 0.45);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.45);
 }
 
 /* ===================== LOADING ===================== */
@@ -921,8 +921,8 @@ const overdueTodos = computed(
 }
 
 .todo-card:hover {
-    border-color: #5e6ad2;
-    box-shadow: 0 4px 16px rgba(94, 106, 210, 0.12);
+    border-color: #667eea;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.12);
     transform: translateY(-2px);
 }
 
@@ -996,7 +996,7 @@ const overdueTodos = computed(
     width: 24px;
     height: 24px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     font-size: 0.65rem;
     font-weight: 700;
@@ -1077,18 +1077,18 @@ const overdueTodos = computed(
 
 .add-card-bottom:hover {
     background: #f8faff;
-    color: #5e6ad2;
+    color: #667eea;
 }
 
 /* ===================== DRAG GHOST ===================== */
 .ghost-card {
     opacity: 0.4;
-    background: #eef0ff;
-    border: 2px dashed #5e6ad2 !important;
+    background: #eff1ff;
+    border: 2px dashed #667eea !important;
 }
 
 .dragging-card {
-    box-shadow: 0 10px 30px rgba(94, 106, 210, 0.25) !important;
+    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.25) !important;
     transform: rotate(2deg) !important;
 }
 
@@ -1137,7 +1137,7 @@ const overdueTodos = computed(
     border-color: #2b2b40;
 }
 [data-bs-theme="dark"] .todo-card:hover {
-    border-color: #5e6ad2;
+    border-color: #667eea;
 }
 [data-bs-theme="dark"] .search-field {
     background: #1e1e2d;

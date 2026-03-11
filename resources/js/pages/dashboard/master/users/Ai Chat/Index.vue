@@ -118,51 +118,45 @@ watch(
 </script>
 
 <template>
-    <div class="d-flex justify-content-center w-100 h-100">
-        <div
-            class="card card-chat shadow-lg border-0 w-100"
-            style="max-width: 900px; height: 85vh"
-        >
+    <div class="ai-chat-wrapper">
+        <div class="card ai-chat-card">
+            <!-- ── Header — sama dengan private chat ── -->
             <div
-                class="card-header bg-white border-bottom-0 shadow-sm d-flex align-items-center py-3"
-                style="z-index: 10"
+                class="card-header d-flex align-items-center p-3 border-bottom"
+                style="min-height: 70px"
             >
-                <button
-                    @click="router.go(-1)"
-                    class="btn btn-icon btn-sm btn-light-primary me-3"
-                >
-                    <i class="fas fa-arrow-left fs-4"></i>
-                </button>
-
-                <div class="symbol symbol-45px me-3 position-relative">
-                    <img
-                        :src="botProfile.avatar"
-                        alt="Bot"
-                        class="bg-light-info p-1 rounded-circle"
-                    />
-                    <span
-                        class="position-absolute bottom-0 end-0 p-1 bg-success border border-white rounded-circle"
-                    ></span>
-                </div>
-
-                <div class="d-flex flex-column">
-                    <h5 class="fw-bold mb-0 text-dark">
-                        {{ botProfile.name }}
-                    </h5>
-                    <span
-                        class="text-muted fs-7 fw-semibold d-flex align-items-center"
+                <div class="d-flex align-items-center flex-grow-1">
+                    <button
+                        @click="router.go(-1)"
+                        class="btn btn-icon btn-sm text-gray-500 me-2 d-lg-none"
                     >
-                        <span class="pulse-dot bg-success me-2"></span>
-                        {{ botProfile.status }}
-                    </span>
+                        <i class="fas fa-arrow-left fs-5"></i>
+                    </button>
+                    <div
+                        class="symbol symbol-40px symbol-circle me-3 position-relative"
+                    >
+                        <img :src="botProfile.avatar" alt="AI" />
+                        <span
+                            class="position-absolute bottom-0 end-0 bg-success border border-white rounded-circle"
+                            style="width: 10px; height: 10px"
+                        ></span>
+                    </div>
+                    <div class="d-flex flex-column">
+                        <span class="fw-bold text-gray-800 fs-6">{{
+                            botProfile.name
+                        }}</span>
+                        <span class="fs-8 text-success fw-bold">Online</span>
+                    </div>
                 </div>
             </div>
 
+            <!-- ── Chat Body — bg #f9f9f9 sama persis ── -->
             <div
                 ref="chatBodyRef"
                 @scroll="handleScroll"
-                class="card-body chat-background overflow-auto p-4 position-relative"
+                class="card-body chat-body-custom p-4 overflow-auto position-relative"
             >
+                <!-- Loading -->
                 <div
                     v-if="isLoading"
                     class="d-flex justify-content-center align-items-center h-100"
@@ -173,14 +167,30 @@ watch(
                     ></div>
                 </div>
 
+                <!-- Empty -->
                 <div
                     v-else-if="messages.length === 0"
-                    class="d-flex flex-column justify-content-center align-items-center h-100 text-muted opacity-50"
+                    class="d-flex flex-column justify-content-center align-items-center h-100 text-center"
                 >
-                    <i class="fas fa-robot fs-1 mb-3"></i>
-                    <p class="fs-5 fw-bold">Mulai percakapan sekarang!</p>
+                    <div class="ai-empty-icon mb-3">
+                        <i
+                            class="fas fa-robot"
+                            style="
+                                font-size: 2.5rem;
+                                color: #667eea;
+                                opacity: 0.4;
+                            "
+                        ></i>
+                    </div>
+                    <p class="fw-bold text-gray-500 mb-1">
+                        Mulai percakapan dengan AI!
+                    </p>
+                    <p class="text-muted fs-7">
+                        Tanya apa saja, aku siap membantu 🤖
+                    </p>
                 </div>
 
+                <!-- Messages -->
                 <div v-else class="d-flex flex-column gap-3">
                     <TransitionGroup name="message-fade">
                         <div
@@ -193,9 +203,10 @@ watch(
                                     : 'justify-content-start'
                             "
                         >
+                            <!-- Bot avatar -->
                             <div
                                 v-if="msg.sender_type === 'bot'"
-                                class="symbol symbol-35px me-3 align-self-end mb-1"
+                                class="symbol symbol-30px symbol-circle me-2 align-self-end mb-1 flex-shrink-0"
                             >
                                 <img
                                     :src="botProfile.avatar"
@@ -203,22 +214,28 @@ watch(
                                 />
                             </div>
 
+                            <!-- Bubble -->
                             <div
-                                class="message-bubble p-3 shadow-sm"
+                                class="p-3 rounded shadow-sm position-relative"
                                 :class="
                                     msg.sender_type === 'user'
-                                        ? 'user-bubble'
-                                        : 'bot-bubble'
+                                        ? 'bg-primary text-white rounded-bottom-end-0'
+                                        : 'receiver-bubble rounded-bottom-start-0'
                                 "
+                                style="max-width: 320px; min-width: 80px"
                             >
                                 <div
-                                    class="message-text"
-                                    style="white-space: pre-wrap"
+                                    style="
+                                        white-space: pre-wrap;
+                                        font-size: 0.9rem;
+                                        line-height: 1.5;
+                                    "
                                 >
                                     {{ msg.message }}
                                 </div>
                                 <div
-                                    class="message-time d-flex align-items-center justify-content-end mt-1"
+                                    class="d-flex align-items-center justify-content-end mt-1"
+                                    style="font-size: 0.7rem; opacity: 0.75"
                                 >
                                     <span class="me-1">{{
                                         new Date(
@@ -237,12 +254,18 @@ watch(
                         </div>
                     </TransitionGroup>
 
-                    <div
-                        v-if="isSending"
-                        class="d-flex align-items-center ms-5 mt-2"
-                    >
+                    <!-- Typing indicator -->
+                    <div v-if="isSending" class="d-flex align-items-center">
                         <div
-                            class="typing-indicator bg-white shadow-sm px-3 py-2 rounded-4"
+                            class="symbol symbol-30px symbol-circle me-2 flex-shrink-0"
+                        >
+                            <img
+                                :src="botProfile.avatar"
+                                class="rounded-circle"
+                            />
+                        </div>
+                        <div
+                            class="typing-indicator receiver-bubble rounded p-3 shadow-sm"
                         >
                             <span></span><span></span><span></span>
                         </div>
@@ -251,105 +274,101 @@ watch(
                     <div ref="bottomRef" style="height: 1px"></div>
                 </div>
 
+                <!-- Scroll to bottom button -->
                 <Transition name="fade">
                     <button
                         v-if="showScrollButton"
                         @click="scrollToBottom('smooth')"
-                        class="btn btn-primary btn-icon rounded-circle shadow position-sticky start-50 translate-middle-x"
+                        class="btn btn-primary btn-icon shadow position-sticky start-50 translate-middle-x rounded-circle"
                         style="
-                            bottom: 20px;
+                            bottom: 16px;
                             z-index: 5;
                             margin-top: -50px;
-                            left: 50%;
+                            width: 36px;
+                            height: 36px;
                         "
                     >
-                        <i class="fas fa-arrow-down"></i>
+                        <i class="fas fa-arrow-down fs-7"></i>
                     </button>
                 </Transition>
             </div>
 
-            <div class="card-footer bg-white border-top-0 py-3 px-4 shadow-top">
-                <form
-                    @submit.prevent="sendMessage"
-                    class="d-flex align-items-center position-relative"
-                >
+            <!-- ── Footer — sama dengan private chat ── -->
+            <div class="card-footer pt-4 pb-4" style="min-height: 80px">
+                <div class="d-flex align-items-center">
                     <input
                         v-model="newMessage"
+                        @keyup.enter="sendMessage"
                         type="text"
-                        class="form-control form-control-solid rounded-pill ps-5 py-3 pe-5 bg-light"
-                        placeholder="Ketik pesan Anda di sini..."
+                        class="form-control form-control-solid me-3"
+                        placeholder="Ketik pesan..."
                         :disabled="isSending"
-                        style="padding-right: 60px"
                     />
                     <button
-                        type="submit"
-                        class="btn btn-icon btn-primary rounded-circle position-absolute end-0 me-2 shadow-sm send-btn"
-                        :disabled="!newMessage || isSending"
+                        class="btn btn-primary btn-icon"
+                        @click="sendMessage"
+                        :disabled="!newMessage.trim() || isSending"
                     >
                         <i
                             v-if="!isSending"
-                            class="fas fa-paper-plane fs-4"
+                            class="fas fa-paper-plane fs-5"
                         ></i>
                         <span
                             v-else
                             class="spinner-border spinner-border-sm"
                         ></span>
                     </button>
-                </form>
+                </div>
             </div>
         </div>
     </div>
 </template>
 
 <style scoped>
-/* --- Layout & Background --- */
-.card-chat {
-    border-radius: 1.5rem;
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.ai-chat-wrapper {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+.ai-chat-card {
+    width: 100%;
+    max-width: 900px;
+    height: 85vh;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
 
-.chat-background {
-    background-color: #f4f6f9;
-    background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
-    background-size: 20px 20px;
+/* ── Chat Body — persis seperti private chat ─────────────────────────────── */
+.chat-body-custom {
+    flex: 1;
+    overflow-y: auto;
+    background-color: #f9f9f9;
+    scroll-behavior: smooth;
 }
 
-/* --- Message Bubbles --- */
-.message-bubble {
-    max-width: 75%;
-    min-width: 80px;
-    font-size: 0.95rem;
-    line-height: 1.5;
-    position: relative;
+/* ── Receiver bubble ─────────────────────────────────────────────────────── */
+.receiver-bubble {
+    background-color: #ffffff;
+    color: #3f4254;
 }
 
-.user-bubble {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    color: #fff;
-    border-radius: 18px 18px 4px 18px;
+/* ── Typing Indicator ────────────────────────────────────────────────────── */
+.typing-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 52px;
 }
-
-.bot-bubble {
-    background: #ffffff;
-    color: #333;
-    border-radius: 18px 18px 18px 4px;
-    border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.message-time {
-    font-size: 0.7rem;
-    opacity: 0.8;
-}
-
-/* --- Typing Indicator --- */
 .typing-indicator span {
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    background-color: #aaa;
+    width: 7px;
+    height: 7px;
+    background-color: #a1a5b7;
     border-radius: 50%;
     animation: typing 1.4s infinite ease-in-out both;
-    margin: 0 2px;
 }
 .typing-indicator span:nth-child(1) {
     animation-delay: -0.32s;
@@ -362,85 +381,73 @@ watch(
     0%,
     80%,
     100% {
-        transform: scale(0);
+        transform: scale(0.6);
+        opacity: 0.4;
     }
     40% {
         transform: scale(1);
+        opacity: 1;
     }
 }
 
-/* --- Transitions --- */
+/* ── Transitions ─────────────────────────────────────────────────────────── */
 .message-fade-enter-active,
 .message-fade-leave-active {
-    transition: all 0.3s ease;
+    transition: all 0.25s ease;
 }
 .message-fade-enter-from,
 .message-fade-leave-to {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
 }
 
 .fade-enter-active,
 .fade-leave-active {
-    transition: opacity 0.3s;
+    transition: opacity 0.25s;
 }
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
 }
 
-/* --- Scrollbar --- */
-.card-body::-webkit-scrollbar {
-    width: 6px;
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+.chat-body-custom::-webkit-scrollbar {
+    width: 5px;
 }
-.card-body::-webkit-scrollbar-track {
+.chat-body-custom::-webkit-scrollbar-track {
     background: transparent;
 }
-.card-body::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.1);
+.chat-body-custom::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
     border-radius: 10px;
 }
-.card-body::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(0, 0, 0, 0.2);
+.chat-body-custom::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.18);
 }
 
-/* --- Misc --- */
-.pulse-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
+/* ── Dark Mode — persis seperti private chat ─────────────────────────────── */
+[data-bs-theme="dark"] .chat-body-custom {
+    background-color: #151521 !important;
 }
-.shadow-top {
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.02);
-}
-.send-btn {
-    transition: transform 0.2s;
-    width: 40px;
-    height: 40px;
-}
-.send-btn:hover:not(:disabled) {
-    transform: scale(1.1);
-}
-
-/* Dark Mode Overrides */
-[data-bs-theme="dark"] .chat-background {
-    background-color: #151521;
-    background-image: radial-gradient(#2b2b40 1px, transparent 1px);
-}
-[data-bs-theme="dark"] .bot-bubble {
-    background: #1e1e2d;
-    color: #fff;
-    border-color: #333;
-}
-[data-bs-theme="dark"] .bg-white {
+[data-bs-theme="dark"] .card-header,
+[data-bs-theme="dark"] .card-footer {
     background-color: #1e1e2d !important;
+    border-bottom: 1px solid #2b2b40 !important;
+    border-top: 1px solid #2b2b40 !important;
 }
-[data-bs-theme="dark"] .text-dark {
-    color: #fff !important;
-}
-[data-bs-theme="dark"] input.form-control {
+[data-bs-theme="dark"] .receiver-bubble {
     background-color: #2b2b40 !important;
-    color: #fff;
+    color: #ffffff !important;
+}
+[data-bs-theme="dark"] .form-control-solid {
+    background-color: #1b1b29 !important;
+    border-color: #2b2b40 !important;
+    color: #ffffff !important;
+}
+[data-bs-theme="dark"] .text-gray-800 {
+    color: #ffffff !important;
+}
+[data-bs-theme="dark"] .text-gray-500 {
+    color: #7e8299 !important;
 }
 </style>

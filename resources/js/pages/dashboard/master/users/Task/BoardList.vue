@@ -45,7 +45,7 @@ const showCreateModal = ref(false);
 const isCreating = ref(false);
 const newBoardName = ref("");
 const newBoardDesc = ref("");
-const newBoardColor = ref("#5e6ad2");
+const newBoardColor = ref("#667eea");
 const newBoardIcon = ref("📋");
 
 // Contacts untuk invite di board baru
@@ -131,8 +131,8 @@ const editFilteredContacts = computed(() =>
 const deletingBoardId = ref<number | null>(null);
 
 const colorOptions = [
-    "#5e6ad2",
-    "#8b5cf6",
+    "#667eea",
+    "#764ba2",
     "#ec4899",
     "#ef4444",
     "#f97316",
@@ -221,7 +221,7 @@ const createBoard = async () => {
         showCreateModal.value = false;
         newBoardName.value = "";
         newBoardDesc.value = "";
-        newBoardColor.value = "#5e6ad2";
+        newBoardColor.value = "#667eea";
         newBoardIcon.value = "📋";
         newBoardMembers.value = [];
         toast.success("Board berhasil dibuat!");
@@ -992,7 +992,7 @@ const deleteBoard = async (board: Board, e: Event) => {
 .bl-page {
     padding: 24px;
     min-height: 100vh;
-    background: #f8f9fc;
+    background: #f9f9f9;
 }
 
 /* ─── HEADER ─── */
@@ -1011,7 +1011,7 @@ const deleteBoard = async (board: Board, e: Event) => {
     width: 48px;
     height: 48px;
     border-radius: 14px;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1162,7 +1162,7 @@ const deleteBoard = async (board: Board, e: Event) => {
     width: 26px;
     height: 26px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     font-size: 0.65rem;
     font-weight: 700;
@@ -1218,7 +1218,7 @@ const deleteBoard = async (board: Board, e: Event) => {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     border: none;
     border-radius: 10px;
@@ -1254,7 +1254,7 @@ const deleteBoard = async (board: Board, e: Event) => {
 }
 .btn-save-main {
     padding: 8px 20px;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     border: none;
     border-radius: 8px;
@@ -1354,7 +1354,7 @@ const deleteBoard = async (board: Board, e: Event) => {
     color: #111827;
 }
 .bl-input:focus {
-    border-color: #5e6ad2;
+    border-color: #667eea;
 }
 .bl-textarea {
     resize: none;
@@ -1380,8 +1380,8 @@ const deleteBoard = async (board: Board, e: Event) => {
     transition: all 0.15s;
 }
 .bl-icon-btn.active {
-    border-color: #5e6ad2;
-    background: #eef0ff;
+    border-color: #667eea;
+    background: #eff1ff;
 }
 .bl-color-picker {
     display: flex;
@@ -1465,7 +1465,7 @@ const deleteBoard = async (board: Board, e: Event) => {
 }
 [data-bs-theme="dark"] .bl-icon-btn.active {
     background: #1e1e2d;
-    border-color: #5e6ad2;
+    border-color: #667eea;
 }
 [data-bs-theme="dark"] .btn-cancel-sm {
     background: #1e1e2d;
@@ -1563,7 +1563,7 @@ const deleteBoard = async (board: Board, e: Event) => {
     display: flex;
     align-items: center;
     gap: 6px;
-    background: #eef0ff;
+    background: #eff1ff;
     border: 1px solid #c7d2fe;
     border-radius: 20px;
     padding: 3px 8px 3px 3px;
@@ -1573,7 +1573,7 @@ const deleteBoard = async (board: Board, e: Event) => {
     width: 22px;
     height: 22px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     font-size: 0.6rem;
     font-weight: 700;
@@ -1647,7 +1647,7 @@ const deleteBoard = async (board: Board, e: Event) => {
     height: 32px;
     border-radius: 50%;
     flex-shrink: 0;
-    background: linear-gradient(135deg, #5e6ad2, #8b5cf6);
+    background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
     font-size: 0.75rem;
     font-weight: 700;
@@ -1680,7 +1680,7 @@ const deleteBoard = async (board: Board, e: Event) => {
     text-overflow: ellipsis;
 }
 .bl-contact-add-icon {
-    color: #5e6ad2;
+    color: #667eea;
     flex-shrink: 0;
 }
 .bl-contact-empty {
@@ -1713,7 +1713,7 @@ const deleteBoard = async (board: Board, e: Event) => {
 }
 .bl-member-role {
     font-size: 0.68rem;
-    color: #5e6ad2;
+    color: #667eea;
     font-weight: 600;
     margin: 0;
     text-transform: uppercase;
