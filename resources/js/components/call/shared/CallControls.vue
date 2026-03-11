@@ -8,7 +8,9 @@ import {
   VolumeOff, 
   Camera,      
   CameraOff,
-  PhoneOff     // Import Icon baru untuk End Call For All
+  SwitchCamera,
+  PhoneOff,     // Import Icon baru untuk End Call For All
+  SwitchCameraIcon
 } from 'lucide-vue-next';
 import { themeMode } from "@/layouts/default-layout/config/helper"; 
 
@@ -16,6 +18,7 @@ interface Props {
   isMuted: boolean;
   isSpeakerOn: boolean;
   isCameraOn?: boolean;
+  hasMultipleCameras?: boolean; // Penanda jika perangkat memiliki lebih dari 1 kamera
   callType: 'voice' | 'video';
   isGroupCall?: boolean; // Penanda group call
   isHost?: boolean;      // Penanda jika user ini adalah host
@@ -26,7 +29,8 @@ const currentThemeMode = computed(() => themeMode.value);
 const props = withDefaults(defineProps<Props>(), {
   isMuted: false,
   isSpeakerOn: false,
-  isCameraOn: false, 
+  isCameraOn: false,
+  hasMultipleCameras: false,
   callType: 'voice',
   isGroupCall: false,
   isHost: false,
@@ -37,6 +41,7 @@ const emit = defineEmits([
   'toggleMute', 
   'toggleSpeaker', 
   'toggleCamera',
+  'toggleSwitchCamera', // Emit baru untuk switch camera
   'endCall', 
   'endCallForAll' // Emit baru untuk bubarkan panggilan
 ]);
@@ -62,6 +67,15 @@ const emit = defineEmits([
       title="Toggle Camera"
     >
       <component :is="props.isCameraOn ? Camera : CameraOff" :size="24" />
+    </button>
+
+    <button
+      v-if="props.callType === 'video' && props.isCameraOn && props.hasMultipleCameras"
+      @click="emit('toggleSwitchCamera')"
+      class="control-btn"
+      title="Switch Camera"
+    >
+      <SwitchCamera :size="24"/>
     </button>
 
     <button 

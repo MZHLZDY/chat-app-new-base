@@ -45,10 +45,26 @@ const resolvedPhotoUrl = computed(() => {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&color=7F9CF5&background=EBF4FF`;
   }
 
-  // 2. Jika path dari backend relatif (tidak ada http)
+  // --- LOGIC FIX VITE IP PORT (Mengembalikan logic yang hilang) ---
+  // Ambil Base URL backend dari .env
+  const apiUrl = (import.meta.env.VITE_APP_API_URL || '').replace(/\/api$/, '');
+
+  // 2. Cegah request lari ke port Vite (5173) dengan memotong URL aslinya
+  if (photo.includes('/storage/')) {
+     const storagePath = photo.substring(photo.indexOf('/storage/')); // ambil mulai dari /storage/..
+     if (apiUrl) {
+         return `${apiUrl}${storagePath}`; // Gabung sama port Laravel aslinya
+     } else {
+         return photo.replace(':5173', ':8000'); // Fallback darurat
+     }
+  }
+
+  // 3. Fallback jika path relatif
   if (!photo.startsWith('http') && !photo.startsWith('data:')) {
-    // Sesuaikan prefix jika folder penyimpananmu bukan /storage/
     photo = photo.startsWith('/') ? photo : `/storage/${photo}`;
+    if (apiUrl) {
+        photo = `${apiUrl}${photo}`;
+    }
   }
 
   return photo;

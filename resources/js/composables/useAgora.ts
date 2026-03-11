@@ -20,6 +20,7 @@ const isAudioEnabled = ref(true);
 const isVideoEnabled = ref(true);
 const remoteAudioTracks = ref(new Map());
 const remoteVideoTracks = ref(new Map());
+const hasMultipleCameras = ref(false);
 
 export const useAgora = () => {
     // Inisialisasi Klien Agora
@@ -152,6 +153,9 @@ export const useAgora = () => {
             }));
             console.log('✅ Video track lokal dibuat dengan resolusi 480p:', localVideoTrack.value);
             tracksToPublish.push(localVideoTrack.value);
+
+            const cameras = await AgoraRTC.getCameras();
+            hasMultipleCameras.value = cameras.length > 1;
         } catch (error: any) {
             console.error('❌ Gagal membuat video track lokal:');
             console.error('❌ Error name:', error.name);
@@ -164,6 +168,9 @@ export const useAgora = () => {
                 localVideoTrack.value = markRaw(await AgoraRTC.createCameraVideoTrack());
                 console.log('✅ Resolusi otomatis video track berhasil');
                 tracksToPublish.push(localVideoTrack.value);
+
+                const cameras = await AgoraRTC.getCameras();
+                hasMultipleCameras.value = cameras.length > 1;
             } catch (fallbackError: any) {
                 console.error('❌ Resolusi otomatis gagal:', fallbackError.message);
 
@@ -414,6 +421,48 @@ export const useAgora = () => {
         }
     };
 
+    let currentVideoDeviceIndex = 0;
+
+    // Switch kamera depan belakang
+    const switchCamera = async () => {
+        if (!localVideoTrack.value) return;
+
+        try {
+            // Ambil SEMUA device kamera yang ada
+            const cameras = await AgoraRTC.getCameras();
+            if (cameras.length <= 1) {
+                console.warn('⚠️ Hanya ada satu kamera, tidak bisa switch');
+                return;
+            }
+
+            // Dapatkan ID kamera yang sedang dipakai SEKARANG
+            const currentTrack = localVideoTrack.value.getMediaStreamTrack();
+            const currentDeviceId = currentTrack.getSettings().deviceId;
+
+            // Cari index kamera yang sedang dipakai di dalam array 'cameras'
+            let currentIndex = cameras.findIndex(c => c.deviceId === currentDeviceId);
+            
+            // Kalau karena alasan tertentu nggak ketemu, anggap aja index 0 (kamera pertama)
+            if (currentIndex === -1) currentIndex = 0;
+
+            // Putar ke index kamera berikutnya (kalau udh mentok belakang, balik ke 0)
+            const nextIndex = (currentIndex + 1) % cameras.length;
+            const nextCamera = cameras[nextIndex];
+
+            if (!nextCamera || !nextCamera.deviceId) {
+                console.error("❌ Kamera selanjutnya gagal dibaca.");
+                return;
+            }
+
+            // Mulai proses ganti source kamera
+            await localVideoTrack.value.setDevice(nextCamera.deviceId);
+            console.log('🔄 Kamera berhasil diganti ke:', nextCamera.label || 'Kamera tanpa nama');
+            
+        } catch (error) {
+            console.error('❌ Gagal switch kamera:', error);
+        }
+    }
+
     return {
         // State
         client,
@@ -431,5 +480,7 @@ export const useAgora = () => {
         leaveChannel,
         toggleAudio,
         toggleVideo,
+        switchCamera,
+        hasMultipleCameras,
     };
 };

@@ -3,8 +3,10 @@ import { computed, ref } from 'vue';
 import { useAgora } from '@/composables/useAgora';
 import { useCallStore } from '@/stores/callStore';
 import { useAuthStore } from '@/stores/authStore';
+
 import VideoPlayer from './VideoPlayer.vue';
 import { Maximize2, PhoneOff, Mic, MicOff, Video, VideoOff } from 'lucide-vue-next';
+import CallControls from '../shared/CallControls.vue';
 
 const emit = defineEmits(['maximize', 'end-call']);
 const store = useCallStore();
@@ -16,7 +18,9 @@ const {
     toggleAudio,
     toggleVideo,
     isAudioEnabled,
-    isVideoEnabled
+    isVideoEnabled,
+    switchCamera,
+    hasMultipleCameras,
 } = useAgora();
 
 const currentUser = computed(() => authStore.user);
@@ -184,19 +188,22 @@ const stopDrag = () => {
 
         <!-- Baris 3: Footer (Dock Buttons) -->
         <div class="frame-footer">
-            <button class="dock-btn" :class="{ off: !isAudioEnabled }" @click.stop="toggleAudio">
-                <MicOff v-if="!isAudioEnabled" :size="14" />
-                <Mic v-else :size="14" />
-            </button>
-            <button class="dock-btn end" @click.stop="emit('end-call')">
-                <PhoneOff :size="14" />
-            </button>
-            <button class="dock-btn" :class="{ off: !isVideoEnabled }" @click.stop="toggleVideo">
-                <VideoOff v-if="!isVideoEnabled" :size="14" />
-                <Video v-else :size="14" />
-            </button>
-            <button class="dock-btn" @click.stop="emit('maximize')">
-                <Maximize2 :size="14" />
+            <CallControls
+                call-type="video"
+                :is-muted="!isAudioEnabled"
+                :is-speaker-on="false"
+                :is-camera-on="isVideoEnabled"
+                :has-multiple-cameras="hasMultipleCameras"
+                @toggle-mute="toggleAudio"
+                @toggle-speaker="() => {}"
+                @toggle-camera="toggleVideo"
+                @toggle-switch-camera="switchCamera"
+                @end-call="emit('end-call')"
+            />
+            
+            <!-- Tombol Maximize tetap ditaruh terpisah di sebelahnya karena dia khusus buat floating -->
+            <button class="dock-btn" @click.stop="emit('maximize')" title="Maximize">
+                <Maximize2 :size="20" />
             </button>
         </div>
     </div>
@@ -327,6 +334,22 @@ const stopDrag = () => {
     align-items: center;
     justify-content: center;
     gap: 10px;
+}
+
+/* Menyesuaikan ukuran CallControls agar muat di Floating Modal */
+.frame-footer :deep(.call-controls-container) {
+    padding: 5px 10px;
+    gap: 8px;
+    background: transparent; /* Biar nyatu sama frame-footer */
+    backdrop-filter: none;
+}
+.frame-footer :deep(.control-btn) {
+    width: 32px;
+    height: 32px;
+}
+.frame-footer :deep(.control-btn svg) {
+    width: 16px;
+    height: 16px;
 }
 
 .dock-btn {

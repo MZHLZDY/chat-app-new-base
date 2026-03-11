@@ -7,7 +7,7 @@ import { useAgora } from '@/composables/useAgora';
 import { useAuthStore } from '@/stores/authStore';
 import VideoPlayer from './VideoPlayer.vue';
 import CallControls from '../shared/CallControls.vue';
-import { MicOff, VideoOff, VideoOffIcon, Minimize2 } from 'lucide-vue-next';
+import { MicOff, VideoOff, VideoOffIcon, Minimize2, SwitchCamera } from 'lucide-vue-next';
 import { usePage } from '@inertiajs/vue3';
 
 const store = useCallStore();
@@ -31,6 +31,8 @@ const {
     isAudioEnabled,
     isVideoEnabled,
     isJoined,
+    switchCamera,
+    hasMultipleCameras,
 } = useAgora();
 
 const currentCall = computed(() => store.currentCall);
@@ -308,6 +310,11 @@ const handleToggleCamera = () => {
     toggleVideo();
 };
 
+const handleToggleSwitchCamera = async () => {
+    console.log('🔄 Button switch camera diklik');
+    await switchCamera();
+}
+
 // watch status 'ended' dari backend
 watch(() => store.callStatus, (newStatus) => {
     if (newStatus === 'ended') {
@@ -424,6 +431,8 @@ onUnmounted(() => {
                             @toggle-mute="handleToggleMute"
                             @toggle-speaker="() => {}"
                             @toggle-camera="handleToggleCamera"
+                            @toggle-switch-camera="handleToggleSwitchCamera"
+                            :has-multiple-cameras="hasMultipleCameras"
                             @end-call="handleEndCall"
                         />
                     </div>
