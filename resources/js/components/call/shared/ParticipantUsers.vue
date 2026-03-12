@@ -40,30 +40,30 @@ const inactiveCount = computed(() => inactiveUsers.value.length);
 </script>
 
 <template>
-  <div class="d-flex justify-content-center gap-3 w-100 mx-auto my-4">
+  <div class="d-flex justify-content-center gap-2 w-100 max-w-sm mx-auto my-2 px-2">
 
-    <div class="d-flex flex-column align-items-center justify-content-center flex-grow-1 py-3 px-2 rounded bg-light-success border border-success border-dashed transition-all">
+    <div class="d-flex flex-column align-items-center justify-content-center flex-grow-1 py-2 px-1 rounded bg-light-success border border-success border-dashed transition-all">
       <div class="text-success mb-1">
-         <UserCheck :size="20" />
+         <UserCheck :size="16" />
       </div>
-      <span class="fs-3 fw-bolder text-success">{{ joinedCount }}</span>
-      <span class="text-muted text-uppercase mt-1" style="font-size: 10px; letter-spacing: 1px;">Joined</span>
+      <span class="fs-4 fw-bolder text-success lh-1">{{ joinedCount }}</span>
+      <span class="text-muted text-uppercase mt-1" style="font-size: 9px; letter-spacing: 0.5px;">Joined</span>
     </div>
 
-    <div class="d-flex flex-column align-items-center justify-content-center flex-grow-1 py-3 px-2 rounded bg-light-warning border border-warning border-dashed transition-all">
+    <div class="d-flex flex-column align-items-center justify-content-center flex-grow-1 py-2 px-1 rounded bg-light-warning border border-warning border-dashed transition-all">
       <div class="text-warning mb-1">
-         <PhoneCall :size="20" />
+         <PhoneCall :size="16" />
       </div>
-      <span class="fs-3 fw-bolder text-warning">{{ ringingCount }}</span>
-      <span class="text-muted text-uppercase mt-1" style="font-size: 10px; letter-spacing: 1px;">Ringing</span>
+      <span class="fs-4 fw-bolder text-warning lh-1">{{ ringingCount }}</span>
+      <span class="text-muted text-uppercase mt-1" style="font-size: 9px; letter-spacing: 0.5px;">Ringing</span>
     </div>
 
-    <div class="d-flex flex-column align-items-center justify-content-center flex-grow-1 py-3 px-2 rounded bg-light-danger border border-danger border-dashed transition-all">
+    <div class="d-flex flex-column align-items-center justify-content-center flex-grow-1 py-2 px-1 rounded bg-light-danger border border-danger border-dashed transition-all">
       <div class="text-danger mb-1">
-         <PhoneOff :size="20" /> 
+         <PhoneOff :size="16" />
       </div>
-      <span class="fs-3 fw-bolder text-danger">{{ inactiveCount }}</span>
-      <span class="text-muted text-uppercase mt-1" style="font-size: 10px; letter-spacing: 1px;">Declined</span>
+      <span class="fs-4 fw-bolder text-danger lh-1">{{ inactiveCount }}</span>
+      <span class="text-muted text-uppercase mt-1" style="font-size: 9px; letter-spacing: 0.5px;">Inactive</span>
     </div>
 
   </div>

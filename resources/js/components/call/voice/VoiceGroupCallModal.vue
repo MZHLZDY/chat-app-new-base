@@ -67,50 +67,40 @@ const handleToggleSpeaker = () => {
 <template>
   <div class="voice-group-overlay" :class="{ 'dark-mode': currentThemeMode === 'dark' }">
     
-    <div class="glass-card-fullscreen">
+    <div class="glass-card-fullscreen flex flex-col justify-between">
         
       <div class="absolute inset-0 z-0 pointer-events-none overflow-hidden">
           <div class="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px]"></div>
           <div class="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-danger/10 rounded-full blur-[100px]"></div>
       </div>
 
-      <header class="shrink-0 p-6 flex items-start justify-between relative z-10 w-full max-w-7xl mx-auto">
-        <div class="flex items-center gap-4 bg-white/30 dark:bg-black/30 backdrop-blur-xl px-4 py-2.5 rounded-2xl border border-white/40 dark:border-white/10 shadow-sm">
+      <div class="w-full flex justify-center pt-8 z-10 relative">
+        <center>
           <div class="relative w-12 h-12 flex-shrink-0">
-            <img :src="callStore.backendGroupCall?.group?.avatar || 'https://via.placeholder.com/150'" class="w-full h-full rounded-full object-cover shadow-md" alt="Group" />
             <div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-success rounded-full border-2 border-white dark:border-gray-800"></div>
           </div>
-          <div class="flex flex-col">
-            <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight drop-shadow-sm">{{ callStore.backendGroupCall?.group?.name || 'Group Call' }}</h1>
+          <div class="flex flex-col text-left">
+            <h1 class="text-lg font-bold text-gray-900 dark:text-white leading-tight drop-shadow-sm">
+              {{ callStore.backendGroupCall?.group?.name || 'Group Call' }}
+            </h1>
             <CallTimer :startTime="startTime" class="text-sm font-medium text-gray-700 dark:text-gray-300 drop-shadow-sm" />
           </div>
-        </div>
+        </center>
+      </div>
+
+      <div class="flex-1 w-full flex items-center justify-center p-6 z-10 overflow-y-auto custom-scrollbar">
+        <VoiceGrid :participants="formattedParticipants" class="w-full max-w-5xl" />
+      </div>
+
+      <div class="w-full h-24 bg-gray-900/95 backdrop-blur-md border-t border-gray-800 flex items-center justify-between px-8 z-50 relative shrink-0">
         
-        <!-- <div class="flex items-center gap-2 bg-white/30 dark:bg-black/30 backdrop-blur-xl px-4 py-2 rounded-full border border-white/40 dark:border-white/10 shadow-sm">
-          <button class="w-10 h-10 rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 hover:text-primary hover:bg-white/50 dark:hover:bg-black/50 transition-all">
-            <Settings :size="20" />
-          </button>
-          <button class="w-10 h-10 rounded-full flex items-center justify-center text-gray-700 dark:text-gray-200 hover:text-primary hover:bg-white/50 dark:hover:bg-black/50 transition-all">
-            <UserPlus :size="20" />
-          </button>
-          <div class="w-px h-6 bg-black/20 dark:bg-white/20 mx-1"></div>
-          <button class="w-10 h-10 rounded-full flex items-center justify-center text-white bg-danger hover:bg-danger/80 transition-all duration-300 shadow-md" @click="handleLeaveCall" title="Minimize / Leave">
-            <XCircle :size="20" />
-          </button>
-        </div> -->
-      </header>
-
-      <main class="flex-1 flex flex-col w-full px-6 overflow-hidden relative z-10">
-        <div class="relative z-10 flex-1 w-full pb-4 overflow-y-auto custom-scrollbar flex items-center justify-center">
-          <div class="w-full max-w-7xl h-full flex flex-col items-center justify-center">
-             <VoiceGrid :participants="formattedParticipants" class="flex-1 w-full" />
-          </div>
+        <div class="w-1/3 flex justify-start">
+           <div class="w-full max-w-[320px]">
+             <ParticipantUsers :participants="formattedParticipants" />
+           </div>
         </div>
-      </main>
 
-      <footer class="pb-10 pt-4 flex items-center justify-center shrink-0 relative z-10 w-full">
-          <div class="bg-white/40 dark:bg-black/50 backdrop-blur-2xl border border-white/50 dark:border-white/10 rounded-[2rem] px-8 py-4 shadow-2xl flex items-center justify-center">
-            <ParticipantUsers :participants="formattedParticipants" class="flex justify-center gap-2" />
+        <div class="w-1/3 flex justify-center">
             <CallControls 
                 :is-muted="!isAudioEnabled" 
                 :is-speaker-on="false"
@@ -122,8 +112,11 @@ const handleToggleSpeaker = () => {
                 @end-call="handleLeaveCall"
                 @end-call-for-all="handleEndCallForAll"
             />
-          </div>
-      </footer>
+        </div>
+
+        <div class="w-1/3"></div>
+
+      </div>
 
     </div>
   </div>
@@ -149,7 +142,6 @@ const handleToggleSpeaker = () => {
   width: 100%;
   height: 100%;
   
-  /* Latar lebih transparan sedikit agar blur dari overlay terasa */
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.3));
   backdrop-filter: blur(25px); 
   -webkit-backdrop-filter: blur(25px);

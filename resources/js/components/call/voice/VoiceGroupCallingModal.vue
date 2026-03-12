@@ -68,13 +68,13 @@ const statusText = computed(() => {
 
       <div class="info-section w-full flex flex-col items-center">
         <h1 class="group-name">{{ props.groupName }}</h1>
-        
+        <center>
         <transition name="fade" mode="out-in">
           <p :key="statusText" class="status-text">
             {{ statusText }}
           </p>  
         </transition>
-
+        </center>
         <!-- <h4 class="call-timeout">
            Ditutup dalam {{ store.timerCount }} detik 
         </h4> -->

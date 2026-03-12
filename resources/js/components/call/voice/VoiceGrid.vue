@@ -18,69 +18,64 @@ const props = defineProps<{
 
 const emit = defineEmits(['recall']);
 
-// Tampilkan peserta yang bergabung, keluar, menolak, DAN yang sedang ditelepon (ringing)
 const displayParticipants = computed(() => {
-    // Tambahkan 'ringing' ke dalam filter ini
     return props.participants.filter(p => ['joined', 'ringing', 'left', 'declined', 'missed'].includes(p.status));
 });
 </script>
 
 <template>
-  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5 w-full max-w-3xl mx-auto">
     
     <div 
       v-for="user in displayParticipants" 
       :key="user.id"
-      class="relative group"
-      :class="{ 'opacity-60 grayscale': user.status !== 'joined' }"
+      class="relative group transition-all duration-300 aspect-square" 
+      :class="{ 'opacity-60 scale-[0.97]': user.status !== 'joined' }"
     >
-      <div 
-        class="aspect-square rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm flex flex-col items-center justify-center p-4 transition-all duration-300 relative"
-        :class="{ 
-            'border-green-500/50 bg-green-500/10 shadow-[0_0_15px_rgba(34,197,94,0.3)]': user.isSpeaking && user.status === 'joined',
-            'hover:bg-white/10': !user.isSpeaking && user.status === 'joined'
-        }"
-      >
-        
-        <div class="relative">
+      <div class="w-full h-full rounded-[1.5rem] sm:rounded-[2rem] bg-white/10 dark:bg-black/20 border border-white/20 dark:border-white/10 backdrop-blur-md shadow-lg flex flex-col items-center justify-center p-3 transition-colors hover:bg-white/20 dark:hover:bg-black/40">
+       
+        <div class="relative mb-2">
+          <center>
              <CallAvatar 
                 :photoUrl="user.avatar" 
                 :displayName="user.name"
                 :isCalling="user.isSpeaking && user.status === 'joined'"
-                size="80px"  
+                size="70px"  
                 pulseColor="rgba(34, 197, 94, 0.6)"
              />
-             
-             <div v-if="user.isMuted && user.status === 'joined'" class="absolute bottom-0 right-0 bg-red-500/90 p-1.5 rounded-full shadow-lg">
+              </center>
+             <div v-if="user.isMuted && user.status === 'joined'" class="absolute bottom-0 right-0 bg-red-500 p-1.5 rounded-full shadow-lg">
                 <MicOff :size="14" class="text-white" />
              </div>
         </div>
 
-        <button
-          v-if="user.status !== 'joined'"
-          @click.stop="emit('recall', user.id)"
-          class="absolute top-3 right-3 p-2 bg-blue-500 rounded-full text-white shadow-lg hover:bg-blue-600 hover:scale-110 transition-all duration-200 z-10"
-          title="Recall Participant"
-        >
-          <PhoneCall :size="16" />
-        </button>
-
-        <div class="mt-4 text-center">
-          <p class="text-sm font-medium text-white/90 truncate w-full px-2">{{ user.name }}</p>
-          <p class="text-xs mt-1 capitalize" :class="user.status === 'joined' ? 'text-green-400' : 'text-red-400'">
-             {{ user.status === 'joined' ? (user.isSpeaking ? 'Speaking' : 'Joined') : user.status }}
+        <div class="text-center w-full z-10">
+          <p class="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate w-full px-1 drop-shadow-sm">{{ user.name }}</p>
+          <p class="text-[10px] sm:text-xs font-semibold mt-0.5 tracking-wider uppercase" 
+             :class="[
+                user.status === 'joined' ? 'text-success' : '',
+                user.status === 'ringing' ? 'text-warning' : '',
+                ['left', 'declined', 'missed'].includes(user.status) ? 'text-danger' : ''
+             ]">
+             {{ user.status }}
           </p>
         </div>
-        
+
+        <div v-if="user.status !== 'joined'" class="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 rounded-[1.5rem] sm:rounded-[2rem]">
+            <button
+              @click.stop="emit('recall', user.id)"
+              class="flex flex-col items-center justify-center gap-1 p-2 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-xl text-white shadow-xl transition-transform transform hover:scale-105"
+              title="Recall Participant"
+            >
+              <div class="bg-primary p-2 rounded-full shadow-md">
+                 <PhoneCall :size="18" class="text-white" />
+              </div>
+              <span class="text-[10px] font-medium tracking-wide">Recall</span>
+            </button>
+        </div>
+
       </div>
     </div>
 
   </div>
 </template>
-
-<style scoped>
-/* Transisi mulus untuk efek redup */
-.group {
-  transition: all 0.3s ease;
-}
-</style>

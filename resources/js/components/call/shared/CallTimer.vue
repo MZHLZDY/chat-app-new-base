@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { themeMode } from "@/layouts/default-layout/config/helper"; 
 
 // Terima startTime dari luar
 const props = defineProps<{
@@ -24,6 +25,8 @@ const updateTimer = () => {
   const diff = Math.floor((now - start) / 1000);
   secondsElapsed.value = diff > 0 ? diff : 0;
 };
+
+const currentThemeMode = computed(() => themeMode.value);
 
 onMounted(() => {
   updateTimer(); //Hitung langsung pas load (biar ga nunggu 1 detik)
@@ -56,7 +59,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="call-timer">
+  <div class="call-timer" :class="{ 'dark-mode': currentThemeMode === 'dark' }">
     <span class="timer-text">{{ formattedTime }}</span>
   </div>
 </template>
@@ -65,9 +68,13 @@ onUnmounted(() => {
 .call-timer {
   display: inline-block;
   padding: 4px 12px;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(88, 87, 87, 0.644);
   border-radius: 12px;
   backdrop-filter: blur(4px);
+}
+
+.dark-mode {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .timer-text {

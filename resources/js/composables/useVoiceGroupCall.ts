@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { database } from '@/libs/firebase';
-import { ref as dbRef, set, remove } from 'firebase/database';
+import { ref as dbRef, set, remove, onValue } from 'firebase/database';
 import { useCallStore } from '@/stores/callStore';
 import { useAuthStore } from '@/stores/auth'; // Sesuaikan path jika berbeda
 import { useAgora } from '@/composables/useAgora';
@@ -42,53 +42,52 @@ export function useVoiceGroupCall() {
     // ======================================================
 
     const startGroupVoiceCall = async (groupId: number, participantIds: number[]) => {
-        // Cegah request jika data kosong
-        if (!groupId || !participantIds || participantIds.length === 0) {
-            toast.error("Gagal: Data grup atau peserta tidak valid.");
-            return;
-        }
+    // Cegah request jika data kosong
+    if (!groupId || !participantIds || participantIds.length === 0) {
+        toast.error("Gagal: Data grup atau peserta tidak valid.");
+        return;
+    }
 
-        processing.value = true;
-        try {
-            // [FIX] Menggunakan "participants" sesuai validasi AgoraController.php
-            const response = await axios.post('/group-call/invite', { 
-                group_id: groupId,
-                participants: participantIds, 
-                call_type: 'voice'
-            });
+    processing.value = true;
+    try {
+        const response = await axios.post('/group-call/invite', { 
+            group_id: groupId,
+            participants: participantIds, 
+            call_type: 'voice'
+        });
 
-            const data = response.data; // Response.data punya 'call', 'token', 'channel_name'
+        const data = response.data; // Response.data punya 'call', 'token', 'channel_name'
 
-            // Set state untuk Group
-            callStore.isGroupCall = true;
-            callStore.backendGroupCall = data.call;
-            callStore.groupParticipants = data.call.participants || [];
+        // Set state untuk Group
+        callStore.isGroupCall = true;
+        callStore.backendGroupCall = data.call;
+        callStore.groupParticipants = data.call.participants || [];
 
-            // Update UI State agar Modal Calling muncul
-            callStore.setCurrentCall({
-                id: data.call.id,
-                isGroup: true,
-                status: 'calling',
-                channelName: data.channel_name,
-                caller: authStore.user as User,
-                receiver: authStore.user as User, // TS Bypass fallback
-            } as any); 
-            
-            callStore.updateCallStatus('calling');
-            callStore.setInCall(true);
+        // Update UI State agar Modal Calling muncul
+        callStore.setBackendGroupCall(data.call, data.token, data.channel_name);
+        callStore.setCurrentCall({
+            id: data.call.id,
+            isGroup: true,
+            status: 'calling',
+            channelName: data.channel_name,
+            caller: authStore.user as User,
+            receiver: authStore.user as User, 
+        } as any);
+        
+        callStore.updateCallStatus('calling');
+        callStore.setInCall(true);
 
-            // Join Agora (Urutan parameter sudah disesuaikan)
-            await joinChannel(data.channel_name, data.token, authStore.user?.id as number);
-            participantIds.forEach((participantId) => {
+        // Join Agora
+        await joinChannel(data.channel_name, data.token, authStore.user?.id as number);
+        
+        participantIds.forEach((participantId) => {
             if (participantId !== authStore.user?.id) {
-                // 1. Path harus sama dengan listener (calls/{id}/incoming)
                 const incomingRef = dbRef(database, `calls/${participantId}/incoming`);
-                
                 set(incomingRef, {
                     call_id: data.call.id,
-                    call_type: 'group_voice', // 2. HARUS SAMA dengan if condition di listener
+                    call_type: 'group_voice', 
                     channel_name: data.channel_name,
-                    caller: authStore.user,   // 3. Listener mu butuh 'caller'
+                    caller: authStore.user,
                     group: data.call.group || { id: groupId, name: callStore.activeGroupName || 'Group Call', photo: callStore.activeGroupAvatar || '' },
                     participants: data.call.participants || participantIds,
                     token: data.token || '', 
@@ -96,15 +95,38 @@ export function useVoiceGroupCall() {
                 });
             }
         });
-            toast.success("Memulai panggilan grup...");
-        } catch (error: any) {
-            console.error('❌ Gagal memulai panggilan grup:', error);
-            const errMsg = error.response?.data?.message || error.response?.data?.error || "Gagal memulai panggilan grup";
-            toast.error(errMsg);
-        } finally {
-            processing.value = false;
-        }
-    };
+
+        // 👇 [TAMBAHKAN INI] Host mendengarkan perubahan status peserta di Firebase 👇
+        const participantsRef = dbRef(database, `group_calls/${data.call.id}/participants`);
+        onValue(participantsRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const participantsData = snapshot.val();
+                
+                // 1. Cek apakah ada minimal 1 peserta yang berstatus 'joined'
+                const isAnyoneJoined = Object.values(participantsData).some((p: any) => p.status === 'joined');
+                
+                // 2. Jika ada yang join dan host masih nyangkut di layar 'calling', pindahkan host ke 'ongoing'
+                if (isAnyoneJoined && callStore.callStatus === 'calling') {
+                    callStore.updateCallStatus('ongoing');
+                }
+
+                // 3. Update status setiap peserta ke store agar UI Grid / Participant List tersinkronisasi
+                Object.entries(participantsData).forEach(([userId, participantState]: [string, any]) => {
+                    callStore.updateGroupParticipantStatus(Number(userId), participantState.status);
+                });
+            }
+        });
+        // 👆 ====================================================================== 👆
+
+        toast.success("Memulai panggilan grup...");
+    } catch (error: any) {
+        console.error('❌ Gagal memulai panggilan grup:', error);
+        const errMsg = error.response?.data?.message || error.response?.data?.error || "Gagal memulai panggilan grup";
+        toast.error(errMsg);
+    } finally {
+        processing.value = false;
+    }
+};
 
     const answerGroupVoiceCall = async (callId: number) => {
         try {
@@ -115,11 +137,9 @@ export function useVoiceGroupCall() {
             const incoming = callStore.incomingCall;
             if (!incoming) return;
 
-            // 1. [WAJIB] Hit API untuk konfirmasi join ke backend sekaligus mengambil TOKEN BARU
-            // Pastikan endpoint ini mengembalikan token untuk user yang sedang login (peserta)
+            // 1. Hit API untuk konfirmasi join ke backend sekaligus mengambil TOKEN BARU & DATA GRUP
             const response = await axios.post('/group-call/answer', { call_id: callId });
             
-            // Ambil token baru dari response backend. Jika backend menggunakan key lain (misal agora_token), sesuaikan ya!
             const newToken = response.data.token || response.data.agora_token;
             const channel = incoming.channel;
 
@@ -128,7 +148,16 @@ export function useVoiceGroupCall() {
                 return;
             }
 
+            // ====================================================================
+            // 🔥 [FIX 1] SIMPAN DATA BACKEND KE STORE AGAR UI TIDAK KOSONG
+            // ====================================================================
+            if (response.data.call) {
+                callStore.setBackendGroupCall(response.data.call, newToken, channel);
+                callStore.groupParticipants = response.data.call.participants || [];
+            }
+
             // 2. Set State agar Modal Ongoing Muncul
+            callStore.isGroupCall = true;
             callStore.isGroupCall = true;
             callStore.setCurrentCall({
                 id: incoming.id,
@@ -140,8 +169,10 @@ export function useVoiceGroupCall() {
                 receiver: authStore.user as any,
             } as any);
             
+            // PASTIKAN DUA FUNGSI DI BAWAH INI HANYA PUNYA 1 ARGUMEN (Jangan ada koma dan variabel lain di dalamnya)
             callStore.updateCallStatus('ongoing');
             callStore.setInCall(true);
+            callStore.isMinimized = false; // Paksa modal buka layar penuh
 
             // Bersihkan modal incoming
             callStore.clearIncomingCall();
@@ -149,9 +180,38 @@ export function useVoiceGroupCall() {
             // 3. Join Agora menggunakan TOKEN BARU milik peserta
             await joinChannel(channel, newToken, authStore.user?.id as number);
 
-            // 4. [FIREBASE] Beri tahu Host dan Peserta lain bahwa kamu sudah join
-            const participantRef = dbRef(database, `group_calls/${callId}/participants/${authStore.user?.id}`);
-            set(participantRef, { status: 'joined', timestamp: Date.now() });
+            // ====================================================================
+            // 🔥 [FIX 2] LISTENER REAL-TIME FIREBASE UNTUK PESERTA (CALLEE)
+            // ====================================================================
+            const participantsRef = dbRef(database, `group_calls/${callId}/participants`);
+            
+            // a. Lapor ke Firebase kalau kita sudah join
+            const myParticipantRef = dbRef(database, `group_calls/${callId}/participants/${authStore.user?.id}`);
+            set(myParticipantRef, { status: 'joined', timestamp: Date.now() });
+
+            // b. Dengarkan perubahan dari peserta lain (Real-time update UI)
+            onValue(participantsRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const participantsData = snapshot.val();
+                    
+                    // Update status peserta lain di UI peserta ini
+                    Object.entries(participantsData).forEach(([userId, participantState]: [string, any]) => {
+                        callStore.updateGroupParticipantStatus(Number(userId), participantState.status);
+                    });
+                }
+            });
+
+            // c. Beri tahu Host bahwa panggilan sudah diterima (jaga-jaga jika Host nyangkut)
+            if (incoming.caller?.id) {
+                const hostStatusRef = dbRef(database, `calls/${incoming.caller.id}/status`);
+                set(hostStatusRef, {
+                    status: 'accepted',
+                    call_id: callId,
+                    call_type: 'group_voice',
+                    user_id: authStore.user?.id,
+                    timestamp: Date.now()
+                });
+            }
 
         } catch (error) {
             console.error('❌ Gagal menerima panggilan grup:', error);
