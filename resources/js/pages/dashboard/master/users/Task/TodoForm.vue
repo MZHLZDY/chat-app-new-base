@@ -60,7 +60,6 @@ watch(
     () => props.show,
     async (newVal) => {
         if (newVal) {
-            // Reset form
             title.value = "";
             description.value = "";
             dueDate.value = "";
@@ -72,7 +71,7 @@ watch(
             showAdvanced.value = false;
             status.value = props.defaultStatus ?? "todo";
 
-            loadContacts(); // muat kontak dari daftar kontak tersimpan
+            loadContacts();
             nextTick(() => {
                 setTimeout(() => inputRef.value?.focus(), 150);
             });
@@ -80,7 +79,6 @@ watch(
     }
 );
 
-// Muat semua kontak saat form dibuka, filter client-side
 const allContacts = ref<Contact[]>([]);
 const isFetchingContacts = ref(false);
 
@@ -97,7 +95,6 @@ const loadContacts = async () => {
     }
 };
 
-// Computed: filter dari allContacts berdasarkan search & belum terpilih
 const filteredContacts = computed(() =>
     allContacts.value.filter(
         (c) =>
@@ -114,7 +111,6 @@ const minDate = computed(
     (): string => new Date().toISOString().split("T")[0] ?? ""
 );
 
-// Helper: delay tutup dropdown agar click item sempat terpanggil dulu
 const closeDropdownDelayed = () => {
     setTimeout(() => {
         showContactDropdown.value = false;

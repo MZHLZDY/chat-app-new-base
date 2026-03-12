@@ -82,12 +82,12 @@ const openMessageMenuId = ref<number | string | null>(null);
 
 // Group Call State
 const callStore = useCallStore();
-const { 
-    startGroupVoiceCall, 
-    answerGroupVoiceCall, 
-    rejectGroupVoiceCall, 
-    leaveGroupVoiceCall 
-} = useVoiceGroupCall();    
+const {
+    startGroupVoiceCall,
+    answerGroupVoiceCall,
+    rejectGroupVoiceCall,
+    leaveGroupVoiceCall,
+} = useVoiceGroupCall();
 
 // Typing State untuk Group
 const typingUsers = ref<string[]>([]);
@@ -217,7 +217,8 @@ onBeforeRouteLeave((to, from, next) => {
     next();
 });
 
-const filteredGroups = computed(() => {1
+const filteredGroups = computed(() => {
+    1;
     if (!searchQuery.value) {
         return groups.value;
     }
@@ -519,7 +520,8 @@ const handleStartVoiceGroupCall = async () => {
     // 2. Amankan dengan optional chaining (?.) dan beri array kosong jika undefined
     // PERHATIKAN: Ganti '.users' dengan key yang benar dari database/backend kamu
     // (Bisa jadi .members, .participants, dll)
-    const groupMembers = activeGroup.value.users || activeGroup.value.members || [];
+    const groupMembers =
+        activeGroup.value.users || activeGroup.value.members || [];
 
     const participantIds = groupMembers
         .filter((u: any) => u.id !== currentUser.value?.id) // Pastikan ID kita tidak ikut ditelepon
@@ -538,9 +540,9 @@ const handleStartVoiceGroupCall = async () => {
 const formattedGroupParticipants = computed(() => {
     return callStore.groupParticipants.map((p: any) => ({
         id: p.user_id || p.id,
-        name: p.user?.name || 'Unknown',
-        avatar: p.user?.photo || p.user?.profile_photo_url || '',
-        status: p.status
+        name: p.user?.name || "Unknown",
+        avatar: p.user?.photo || p.user?.profile_photo_url || "",
+        status: p.status,
     }));
 });
 
@@ -954,42 +956,50 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <!-- <Teleport to="body">
-        
-        <VoiceGroupFloating />
+        <Teleport to="body">
+            <VoiceGroupFloating />
 
-        <VoiceGroupCallingModal
-            v-if="callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'calling' && !callStore.isMinimized"
-            :groupName="activeGroup?.name || 'Group Call'"
-            :groupPhoto="activeGroup?.photo || activeGroup?.avatar || ''"
-            :participants="formattedGroupParticipants"
-            :callStatus="callStore.callStatus"
-            @cancel="leaveGroupVoiceCall(callStore.currentCall.id)" 
-        />
+            <VoiceGroupCallingModal
+                v-if="
+                    callStore.isGroupCall &&
+                    callStore.currentCall &&
+                    callStore.callStatus === 'calling' &&
+                    !callStore.isMinimized
+                "
+                :groupName="activeGroup?.name || 'Group Call'"
+                :groupPhoto="activeGroup?.photo || activeGroup?.avatar || ''"
+                :participants="formattedGroupParticipants"
+                :callStatus="callStore.callStatus"
+                @cancel="leaveGroupVoiceCall(callStore.currentCall.id)"
+            />
 
-        <VoiceGroupIncomingModal
-            v-if="callStore.incomingCall && callStore.incomingCall.isGroup"
-            :groupName="incomingCallAsAny.groupName || 'Group Call'"
-            :groupPhoto="incomingCallAsAny.groupAvatar || ''"
-            :inviterName="callStore.incomingCall.caller?.name"
-            :participants="incomingCallAsAny.participants || []"
-            @accept="() => answerGroupVoiceCall(callStore.incomingCall!.id)"
-            @reject="() => rejectGroupVoiceCall(callStore.incomingCall!.id)"
-        />
+            <VoiceGroupIncomingModal
+                v-if="callStore.incomingCall && callStore.incomingCall.isGroup"
+                :groupName="incomingCallAsAny.groupName || 'Group Call'"
+                :groupPhoto="incomingCallAsAny.groupAvatar || ''"
+                :inviterName="callStore.incomingCall.caller?.name"
+                :participants="incomingCallAsAny.participants || []"
+                @accept="() => answerGroupVoiceCall(callStore.incomingCall!.id)"
+                @reject="() => rejectGroupVoiceCall(callStore.incomingCall!.id)"
+            />
 
-        <VoiceGroupCallModal
-            v-if="callStore.isGroupCall && callStore.currentCall && callStore.callStatus === 'ongoing' && !callStore.isMinimized"
-        />
+            <VoiceGroupCallModal
+                v-if="
+                    callStore.isGroupCall &&
+                    callStore.currentCall &&
+                    callStore.callStatus === 'ongoing' &&
+                    !callStore.isMinimized
+                "
+            />
 
-        <div v-if="callStore.isGroupCall" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #00ff00; padding: 15px; border-radius: 8px; z-index: 999999; font-family: monospace;">
+            <!-- <div v-if="callStore.isGroupCall" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #00ff00; padding: 15px; border-radius: 8px; z-index: 999999; font-family: monospace;">
             <b>🛠️ CALL STATE DEBUGGER</b><br/>
             isGroupCall: {{ callStore.isGroupCall }}<br/>
             Status: {{ callStore.callStatus }}<br/>
             CurrentCall: {{ !!callStore.currentCall }}<br/>
             isMinimized: {{ callStore.isMinimized }}
-        </div>
-
-        </Teleport> -->
+        </div> -->
+        </Teleport>
 
         <div
             class="flex-lg-row-fluid ms-lg-7 ms-xl-10"
@@ -1048,7 +1058,10 @@ onUnmounted(() => {
                             </div>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <button @click="handleStartVoiceGroupCall" class="btn btn-icon btn-sm text-gray-500">
+                            <button
+                                @click="handleStartVoiceGroupCall"
+                                class="btn btn-icon btn-sm text-gray-500"
+                            >
                                 <Phone class="w-20px h-20px" />
                             </button>
                             <button class="btn btn-icon btn-sm text-gray-500">
@@ -1631,432 +1644,341 @@ onUnmounted(() => {
                         </div>
                     </div>
 
-                    <div
-                        v-if="replyingTo"
-                        class="px-4 py-2 bg-light border-top d-flex justify-content-between align-items-center"
-                    >
-                        <div
-                            class="d-flex flex-column border-start border-4 border-primary ps-2"
-                        >
-                            <span class="text-primary fw-bold small">
-                                Balas ke:
-                                {{
-                                    replyingTo.sender_id === currentUser.id
-                                        ? "Anda"
-                                        : replyingTo.sender?.name
-                                }}
-                            </span>
-                            <span
-                                class="text-muted small text-truncate"
-                                style="max-width: 300px"
+                    <!-- Reply Bar -->
+                    <transition name="reply-slide">
+                        <div v-if="replyingTo" class="reply-bar">
+                            <div class="reply-bar-accent"></div>
+                            <div class="reply-bar-icon">
+                                <i class="fas fa-reply"></i>
+                            </div>
+                            <div class="reply-bar-content">
+                                <span class="reply-bar-name">
+                                    Balas ke:
+                                    {{
+                                        replyingTo.sender_id === currentUser.id
+                                            ? "Anda"
+                                            : replyingTo.sender?.name
+                                    }}
+                                </span>
+                                <span class="reply-bar-preview">{{
+                                    replyingTo.message || "Lampiran"
+                                }}</span>
+                            </div>
+                            <button
+                                @click="cancelReply"
+                                class="reply-bar-close"
                             >
-                                {{ replyingTo.message || "Lampiran" }}
-                            </span>
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
-                        <button
-                            @click="cancelReply"
-                            class="btn btn-sm btn-icon btn-light-danger"
-                        >
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
+                    </transition>
 
-                    <transition name="fade">
+                    <!-- Scroll to Bottom -->
+                    <transition name="scroll-btn">
                         <button
                             v-if="showScrollButton"
                             @click="scrollToBottom"
-                            class="btn btn-primary btn-icon shadow-sm rounded-circle position-absolute"
-                            style="
-                                bottom: 100px;
-                                right: 30px;
-                                z-index: 10;
-                                width: 30px;
-                                height: 30px;
-                            "
+                            class="scroll-down-btn"
                         >
-                            <i class="fas fa-arrow-down fs-4"></i>
+                            <i class="fas fa-arrow-down"></i>
                         </button>
                     </transition>
 
-                    <div class="card-footer pt-4 pb-4" style="min-height: 80px">
-                        <div class="d-flex align-items-center">
-                            <button
-                                class="btn btn-sm btn-icon btn-active-light-primary me-2"
-                                @click="triggerFileUpload"
-                            >
-                                <KTIcon
-                                    icon-name="paper-clip"
-                                    icon-class="fs-3"
-                                />
-                            </button>
-                            <input
-                                type="file"
-                                ref="fileInput"
-                                class="d-none"
-                                @change="sendMessage"
-                                accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
-                            />
-                            <input
-                                v-model="newMessage"
-                                @keyup.enter="sendMessage"
-                                type="text"
-                                @input="
-                                    (e) => {
-                                        handleTyping();
-                                        if (activeGroup)
-                                            chatDrafts[activeGroup.id] =
-                                                newMessage;
-                                    }
-                                "
-                                class="form-control form-control-solid me-3"
-                                placeholder="Ketik pesan..."
-                                ref="messageInputRef"
-                            />
-                            <button
-                                class="btn btn-primary btn-icon"
-                                @click="sendMessage"
-                            >
-                                <KTIcon icon-name="send" icon-class="fs-2" />
-                            </button>
-                        </div>
+                    <!-- Footer Input -->
+                    <div class="chat-footer">
+                        <input
+                            type="file"
+                            ref="fileInput"
+                            class="d-none"
+                            @change="sendMessage"
+                            accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+                        />
+                        <button
+                            class="footer-attach-btn"
+                            @click="triggerFileUpload"
+                            title="Lampirkan file"
+                        >
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <input
+                            v-model="newMessage"
+                            @keyup.enter="sendMessage"
+                            type="text"
+                            @input="
+                                (e) => {
+                                    handleTyping();
+                                    if (activeGroup)
+                                        chatDrafts[activeGroup.id] = newMessage;
+                                }
+                            "
+                            class="footer-input"
+                            placeholder="Ketik pesan..."
+                            ref="messageInputRef"
+                        />
+                        <button
+                            class="footer-send-btn"
+                            @click="sendMessage"
+                            :class="{ active: newMessage.trim() }"
+                        >
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    <!-- create group -->
-    <div v-if="isCreateGroupOpen" class="modal-overlay">
+    <!-- ═══ MODAL: Buat Grup ═══ -->
+    <transition name="modal-pop">
         <div
-            class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden"
-            style="max-width: 500px; width: 100%"
+            v-if="isCreateGroupOpen"
+            class="modal-backdrop"
+            @click.self="isCreateGroupOpen = false"
         >
-            <GroupForm
-                @close="isCreateGroupOpen = false"
-                @refresh="fetchGroups"
-            />
+            <div class="modal-card" style="max-width: 520px">
+                <GroupForm
+                    @close="isCreateGroupOpen = false"
+                    @refresh="fetchGroups"
+                />
+            </div>
         </div>
-    </div>
-    <!-- edit group modal -->
-    <div v-if="isEditGroupOpen" class="modal-overlay">
+    </transition>
+
+    <!-- ═══ MODAL: Edit Grup ═══ -->
+    <transition name="modal-pop">
         <div
-            class="modal-content-wrapper bg-white rounded shadow p-0 overflow-hidden"
-            style="max-width: 500px; width: 100%"
+            v-if="isEditGroupOpen"
+            class="modal-backdrop"
+            @click.self="isEditGroupOpen = false"
         >
-            <GroupEdit
-                v-if="isEditGroupOpen"
-                :groupId="groupIdToEdit"
-                :title="editModalTitle"
-                @close="isEditGroupOpen = false"
-                @refresh="fetchGroups"
-                @group-updated="handleGroupUpdated"
-            />
+            <div class="modal-card" style="max-width: 560px">
+                <GroupEdit
+                    v-if="isEditGroupOpen"
+                    :groupId="groupIdToEdit"
+                    :title="editModalTitle"
+                    @close="isEditGroupOpen = false"
+                    @refresh="fetchGroups"
+                    @group-updated="handleGroupUpdated"
+                />
+            </div>
         </div>
-    </div>
-    <!-- lightbox modal -->
-    <div
-        v-if="isLightboxOpen"
-        class="lightbox-overlay"
-        @click.self="closeLightbox"
-    >
-        <div class="lightbox-content position-relative text-center">
-            <button
-                @click="closeLightbox"
-                class="btn btn-icon btn-sm btn-dark position-absolute top-0 end-0 m-3 shadow z-index-10"
-            >
-                <i class="fas fa-times fs-2"></i>
+    </transition>
+
+    <!-- ═══ LIGHTBOX ═══ -->
+    <transition name="lightbox-fade">
+        <div
+            v-if="isLightboxOpen"
+            class="lightbox-backdrop"
+            @click.self="closeLightbox"
+        >
+            <button class="lightbox-close-btn" @click="closeLightbox">
+                <i class="fas fa-times"></i>
             </button>
-            <img
-                :src="activeLightboxUrl"
-                class="img-fluid rounded shadow-lg"
-                style="max-height: 85vh; max-width: 90vw"
-            />
-        </div>
-    </div>
-    <!-- delete message modal -->
-    <div v-if="isDeleteModalOpen" class="modal-overlay">
-        <div
-            class="modal-content bg-white rounded shadow p-5 text-center"
-            style="width: 350px"
-        >
-            <div class="bg-light-danger mb-4">
-                <i class="fas fa-trash fs-2 text-danger p-3"></i>
-            </div>
-            <h3 class="fw-bold text-gray-800 mb-1">Hapus Pesan?</h3>
-            <p class="text-muted fs-7 mb-4">
-                Pesan yang dihapus tidak dapat dikembalikan.
-            </p>
-            <div class="d-grid gap-2">
-                <button
-                    @click="confirmDelete('me')"
-                    class="btn btn-light-primary"
-                >
-                    Hapus untuk saya
-                </button>
-                <button
-                    v-if="messageToDelete?.sender_id === currentUser?.id"
-                    @click="confirmDelete('everyone')"
-                    class="btn btn-light-danger"
-                >
-                    Hapus untuk semua orang
-                </button>
-                <button
-                    @click="closeDeleteModal"
-                    class="btn btn-link text-muted btn-sm"
-                >
-                    Batal
-                </button>
+            <div class="lightbox-img-wrap">
+                <img :src="activeLightboxUrl" class="lightbox-img" />
             </div>
         </div>
-    </div>
-    <!-- info group modal -->
-    <div
-        v-if="isInfoModalOpen"
-        class="modal-overlay"
-        @click.self="isInfoModalOpen = false"
-    >
+    </transition>
+
+    <!-- ═══ MODAL: Hapus Pesan ═══ -->
+    <transition name="modal-pop">
         <div
-            class="modal-content bg-white rounded shadow p-0 overflow-hidden"
-            style="max-width: 400px; width: 100%"
+            v-if="isDeleteModalOpen"
+            class="modal-backdrop"
+            @click.self="closeDeleteModal"
         >
-            <div
-                class="modal-header p-4 border-bottom d-flex justify-content-between align-items-center"
-            >
-                <h3 class="fw-bold m-0">Info Grup</h3>
-                <div
-                    class="btn btn-icon btn-sm btn-active-light-primary ms-2"
-                    @click="isInfoModalOpen = false"
-                >
-                    <i class="fas fa-times fs-2"></i>
+            <div class="modal-card confirm-card" style="max-width: 360px">
+                <div class="confirm-icon-wrap danger">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <h4 class="confirm-title">Hapus Pesan?</h4>
+                <p class="confirm-desc">
+                    Pesan yang dihapus tidak dapat dikembalikan.
+                </p>
+                <div class="confirm-actions">
+                    <button
+                        @click="confirmDelete('me')"
+                        class="confirm-btn secondary"
+                    >
+                        <i class="fas fa-user me-2"></i>Hapus untuk saya
+                    </button>
+                    <button
+                        v-if="messageToDelete?.sender_id === currentUser?.id"
+                        @click="confirmDelete('everyone')"
+                        class="confirm-btn danger"
+                    >
+                        <i class="fas fa-users me-2"></i>Hapus untuk semua
+                    </button>
+                    <button @click="closeDeleteModal" class="confirm-btn ghost">
+                        Batal
+                    </button>
                 </div>
             </div>
-            <div class="modal-body p-5 text-center">
-                <div class="symbol symbol-100px symbol-circle mb-4">
-                    <img
-                        :src="
-                            activeGroup?.photo
-                                ? `/storage/${activeGroup.photo}`
-                                : '/media/avatars/group-blank.png'
-                        "
-                        alt="image"
-                        style="object-fit: cover"
-                    />
+        </div>
+    </transition>
+
+    <!-- ═══ MODAL: Info Grup ═══ -->
+    <transition name="modal-pop">
+        <div
+            v-if="isInfoModalOpen"
+            class="modal-backdrop"
+            @click.self="isInfoModalOpen = false"
+        >
+            <div class="modal-card info-card" style="max-width: 420px">
+                <div class="info-header">
+                    <button
+                        class="info-close-btn"
+                        @click="isInfoModalOpen = false"
+                    >
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <div class="info-avatar-wrap">
+                        <img
+                            :src="
+                                activeGroup?.photo
+                                    ? `/storage/${activeGroup.photo}`
+                                    : '/media/avatars/group-blank.png'
+                            "
+                            class="info-avatar"
+                        />
+                    </div>
+                    <h4 class="info-name">{{ activeGroup?.name }}</h4>
+                    <p class="info-username">
+                        {{ activeGroup?.members_count }} Anggota
+                    </p>
                 </div>
-
-                <h4 class="fw-bold text-gray-800">{{ activeGroup?.name }}</h4>
-                <div class="text-muted fs-7">
-                    {{ activeGroup?.members_count }} Anggota
-                </div>
-
-                <div
-                    class="text-start bg-light rounded p-4 mt-4 overflow-auto"
-                    style="max-height: 250px"
-                >
-                    <h6 class="text-gray-600 mb-3">
-                        Anggota ({{ activeGroup?.members?.length || 0 }})
-                    </h6>
-
+                <div class="info-body">
+                    <div class="info-section-title">
+                        <i class="fas fa-users me-2"></i>Anggota ({{
+                            activeGroup?.members?.length || 0
+                        }})
+                    </div>
                     <div
-                        v-if="
-                            activeGroup?.members &&
-                            activeGroup.members.length > 0
-                        "
+                        class="info-members-list"
+                        v-if="activeGroup?.members?.length"
                     >
                         <div
                             v-for="member in activeGroup.members"
                             :key="member.id"
-                            class="d-flex align-items-center mb-3 border-bottom pb-2"
+                            class="info-member-row"
                         >
-                            <div class="symbol symbol-35px symbol-circle me-3">
+                            <div class="info-member-avatar">
                                 <img
                                     :src="
                                         member.photo
                                             ? `/storage/${member.photo}`
                                             : '/media/avatars/blank.png'
                                     "
-                                    alt="foto"
-                                    style="object-fit: cover"
                                 />
                             </div>
-
-                            <div
-                                class="d-flex flex-grow-1 justify-content-between align-items-center"
-                            >
-                                <div class="d-flex flex-column">
-                                    <span class="fs-7 fw-bold text-gray-800">
-                                        {{ member.name }}
-                                        <span
-                                            v-if="member.id === currentUser?.id"
-                                            class="text-muted fs-9 fw-normal ms-1"
-                                            >(Anda)</span
-                                        >
-                                    </span>
+                            <div class="info-member-detail">
+                                <span class="info-member-name">
+                                    {{ member.name }}
                                     <span
-                                        v-if="!member.is_admin"
-                                        class="text-gray-500 fs-9"
+                                        v-if="member.id === currentUser?.id"
+                                        class="info-member-you"
+                                        >(Anda)</span
                                     >
-                                        {{
-                                            member.phone ||
-                                            member.phone_number ||
-                                            "-"
-                                        }}
-                                    </span>
-                                </div>
-
-                                <div v-if="member.is_admin">
-                                    <span
-                                        class="badge badge-light-success fw-bold fs-9"
-                                        >Admin</span
-                                    >
-                                </div>
+                                </span>
+                                <span
+                                    v-if="!member.is_admin"
+                                    class="info-member-sub"
+                                    >{{
+                                        member.phone ||
+                                        member.phone_number ||
+                                        "-"
+                                    }}</span
+                                >
                             </div>
+                            <span
+                                v-if="member.is_admin"
+                                class="info-member-badge"
+                                >Admin</span
+                            >
                         </div>
                     </div>
-
-                    <div v-else class="text-center py-5">
-                        <span class="text-muted fs-7">
-                            <i class="fas fa-exclamation-circle me-1"></i>
-                            Data anggota belum dimuat.
-                        </span>
-                        <button
-                            @click="fetchGroups"
-                            class="btn btn-sm btn-link text-primary d-block mx-auto mt-2"
-                        >
-                            Refresh Data
+                    <div v-else class="info-empty">
+                        <i class="fas fa-exclamation-circle me-1"></i> Data
+                        anggota belum dimuat.
+                        <button @click="fetchGroups" class="info-refresh-btn">
+                            Refresh
                         </button>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-    <!-- leave gtoup modal -->
-    <div v-if="isLeaveGroupModalOpen" class="modal-overlay">
+    </transition>
+
+    <!-- ═══ MODAL: Keluar Grup ═══ -->
+    <transition name="modal-pop">
         <div
-            class="modal-content bg-white rounded shadow p-5 text-center"
-            style="width: 350px"
+            v-if="isLeaveGroupModalOpen"
+            class="modal-backdrop"
+            @click.self="isLeaveGroupModalOpen = false"
         >
-            <div
-                class="bg-light-warning mb-4 d-flex justify-content-center align-items-center mx-auto rounded-circle"
-                style="width: 60px; height: 60px"
-            >
-                <i class="fas fa-sign-out-alt fs-2 text-danger"></i>
-            </div>
-
-            <h3 class="fw-bold text-gray-800 mb-1">Keluar Grup?</h3>
-            <p class="text-muted fs-7 mb-4">
-                Anda tidak akan bisa melihat atau mengirim pesan di grup
-                <span class="fw-bold text-gray-800"
-                    >"{{ activeGroup?.name }}"</span
-                >
-                lagi.
-            </p>
-
-            <div class="d-grid gap-2">
-                <button
-                    @click="processLeaveGroup"
-                    class="btn btn-danger text-white fw-bold"
-                >
-                    Ya, Keluar
-                </button>
-
-                <button
-                    @click="isLeaveGroupModalOpen = false"
-                    class="btn btn-light btn-active-light-primary"
-                >
-                    Batal
-                </button>
+            <div class="modal-card confirm-card" style="max-width: 360px">
+                <div class="confirm-icon-wrap warning">
+                    <i class="fas fa-sign-out-alt"></i>
+                </div>
+                <h4 class="confirm-title">Keluar Grup?</h4>
+                <p class="confirm-desc">
+                    Anda tidak akan bisa melihat atau mengirim pesan di grup
+                    <strong>"{{ activeGroup?.name }}"</strong> lagi.
+                </p>
+                <div class="confirm-actions">
+                    <button
+                        @click="processLeaveGroup"
+                        class="confirm-btn danger"
+                    >
+                        <i class="fas fa-sign-out-alt me-2"></i>Ya, Keluar
+                    </button>
+                    <button
+                        @click="isLeaveGroupModalOpen = false"
+                        class="confirm-btn ghost"
+                    >
+                        Batal
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
-    <!-- clear chat modal -->
-    <div v-if="isClearChatModalOpen" class="modal-overlay">
+    </transition>
+
+    <!-- ═══ MODAL: Bersihkan Chat ═══ -->
+    <transition name="modal-pop">
         <div
-            class="modal-content bg-white rounded shadow p-5 text-center"
-            style="width: 350px"
+            v-if="isClearChatModalOpen"
+            class="modal-backdrop"
+            @click.self="isClearChatModalOpen = false"
         >
-            <div
-                class="bg-light-danger mb-4 d-flex justify-content-center align-items-center mx-auto rounded-circle"
-                style="width: 60px; height: 60px"
-            >
-                <i class="fas fa-eraser fs-2 text-danger"></i>
-            </div>
-
-            <h3 class="fw-bold text-gray-800 mb-1">Bersihkan Chat?</h3>
-            <p class="text-muted fs-7 mb-4">
-                Semua pesan di grup ini akan dihapus secara permanen. Tindakan
-                ini tidak dapat dibatalkan.
-            </p>
-
-            <div class="d-grid gap-2">
-                <button
-                    @click="processClearChat"
-                    class="btn btn-danger fw-bold"
-                >
-                    Ya, Bersihkan
-                </button>
-
-                <button
-                    @click="isClearChatModalOpen = false"
-                    class="btn btn-light btn-active-light-primary"
-                >
-                    Batal
-                </button>
+            <div class="modal-card confirm-card" style="max-width: 360px">
+                <div class="confirm-icon-wrap warning">
+                    <i class="fas fa-eraser"></i>
+                </div>
+                <h4 class="confirm-title">Bersihkan Chat?</h4>
+                <p class="confirm-desc">
+                    Semua pesan di grup ini akan dihapus secara permanen dan
+                    tidak dapat dikembalikan.
+                </p>
+                <div class="confirm-actions">
+                    <button
+                        @click="processClearChat"
+                        class="confirm-btn danger"
+                    >
+                        <i class="fas fa-eraser me-2"></i>Ya, Bersihkan
+                    </button>
+                    <button
+                        @click="isClearChatModalOpen = false"
+                        class="confirm-btn ghost"
+                    >
+                        Batal
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
+    </transition>
 </template>
 
 <style scoped>
-/* Gunakan style yang sama persis dengan Index.vue untuk konsistensi */
-.scroll-y {
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: #d1d5db transparent;
-}
-
-.chat-body-custom {
-    height: calc(100vh - 265px);
-    overflow-y: auto;
-    background-color: #f9f9f9;
-    scroll-behavior: smooth;
-}
-
-.receiver-bubble {
-    background-color: #ffffff;
-    color: #3f4254;
-}
-
-.modal-overlay,
-.lightbox-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    backdrop-filter: blur(2px);
-    animation: fadeIn 0.2s ease-out;
-}
-
-.lightbox-overlay {
-    background-color: rgba(0, 0, 0, 0.9);
-    z-index: 10000;
-}
-
-/* Delete Button Visibility */
-.delete-btn-wrapper {
-    opacity: 0;
-    transition: opacity 0.2s ease;
-}
-
-.group-hover:hover .delete-btn-wrapper {
-    opacity: 1;
-}
-
-/* Animations */
+/* ═══ KEYFRAMES ═══════════════════════════════════════════════════════════ */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -2065,144 +1987,852 @@ onUnmounted(() => {
         opacity: 1;
     }
 }
-
-/* Animasi Putar untuk Loader */
-.spin-animation {
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
+@keyframes slideInLeft {
     from {
-        transform: rotate(0deg);
+        opacity: 0;
+        transform: translateX(-14px);
     }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(14px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+@keyframes modalPop {
+    from {
+        opacity: 0;
+        transform: scale(0.88) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+@keyframes popIn {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    70% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+@keyframes spin {
     to {
         transform: rotate(360deg);
     }
 }
+@keyframes typing {
+    0%,
+    80%,
+    100% {
+        transform: scale(0.5);
+        opacity: 0.3;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+@keyframes replySlide {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+@keyframes scrollBtnIn {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) scale(0.7);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) scale(1);
+    }
+}
+@keyframes pulseGlow {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(102, 126, 234, 0);
+    }
+}
 
-/* Chat Body Layout */
+/* ═══ SCROLLBAR ═══════════════════════════════════════════════════════════ */
+.scroll-y,
+.chat-body-custom {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(102, 126, 234, 0.2) transparent;
+}
+.scroll-y::-webkit-scrollbar,
+.chat-body-custom::-webkit-scrollbar {
+    width: 4px;
+}
+.scroll-y::-webkit-scrollbar-thumb,
+.chat-body-custom::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.25);
+    border-radius: 10px;
+}
+
+/* ═══ GROUP SIDEBAR ═══════════════════════════════════════════════════════ */
+.contact-item {
+    transition: background 0.2s, transform 0.18s, box-shadow 0.2s;
+    animation: slideInLeft 0.28s ease both;
+    border-radius: 10px !important;
+    border-left: 3px solid transparent;
+}
+.contact-item:hover {
+    background: rgba(102, 126, 234, 0.07) !important;
+    transform: translateX(3px);
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.09);
+}
+.contact-item.bg-light-primary {
+    background: rgba(102, 126, 234, 0.11) !important;
+    border-left-color: #667eea !important;
+}
+.badge-circle.badge-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+    animation: popIn 0.3s ease;
+}
+.badge-light-primary {
+    background: rgba(102, 126, 234, 0.1) !important;
+    color: #667eea !important;
+    border-color: rgba(102, 126, 234, 0.22) !important;
+}
+
+/* ═══ CHAT BODY ═══════════════════════════════════════════════════════════ */
 .chat-body-custom {
     height: calc(100vh - 265px);
     overflow-y: auto;
-    background-color: #f9f9f9; /* Default Light Mode */
+    background: #f9f9f9;
     scroll-behavior: smooth;
+    position: relative;
 }
-
-/* Message Bubble Colors */
 .receiver-bubble {
-    background-color: #ffffff;
-    color: #3f4254; /* Text Dark */
+    background: #fff;
+    color: #3f4254;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+.justify-content-end > .d-flex {
+    animation: slideInRight 0.22s ease both;
+}
+.justify-content-start > .d-flex {
+    animation: slideInLeft 0.22s ease both;
+}
+.tick-read {
+    color: #69f0ae !important;
+    animation: fadeIn 0.3s ease;
+}
+.fa-check,
+.fa-check-double {
+    transition: all 0.2s ease;
+}
+.hover-effect {
+    transition: background 0.2s;
+}
+.hover-effect:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+.border-primary {
+    border-color: #667eea !important;
+}
+.text-primary {
+    color: #667eea !important;
+}
+.delete-btn-wrapper {
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.group-hover:hover .delete-btn-wrapper {
+    opacity: 1;
+}
+.spin-animation {
+    animation: spin 1s linear infinite;
 }
 
-/* toast color */
-:root {
-    --toastify-text-color-light: #000000 !important;
-    --toastify-color-light: #ffffff;
+/* ═══ TYPING INDICATOR ════════════════════════════════════════════════════ */
+.typing-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 10px;
+}
+.typing-indicator span {
+    display: block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    animation: typing 1.4s infinite ease-in-out both;
+}
+.typing-indicator span:nth-child(1) {
+    animation-delay: -0.32s;
+}
+.typing-indicator span:nth-child(2) {
+    animation-delay: -0.16s;
 }
 
-.Toastify__toast-theme--light {
-    color: #333333 !important;
-    background-color: #ffffff !important;
+/* ═══ REPLY BAR ═══════════════════════════════════════════════════════════ */
+.reply-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    background: #fff;
+    border-top: 1px solid #f0f0f0;
+    animation: replySlide 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+.reply-bar-accent {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #667eea, #764ba2);
+    border-radius: 0 2px 2px 0;
+}
+.reply-bar-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(102, 126, 234, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #667eea;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+.reply-bar-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    padding-left: 4px;
+}
+.reply-bar-name {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #667eea;
+}
+.reply-bar-preview {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+}
+.reply-bar-close {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.15s;
+}
+.reply-bar-close:hover {
+    background: rgba(239, 68, 68, 0.2);
+    transform: rotate(90deg);
 }
 
-.Toastify__close-button--light {
-    color: #333333 !important;
-    opacity: 0.7;
+/* ═══ SCROLL DOWN BUTTON ══════════════════════════════════════════════════ */
+.scroll-down-btn {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    font-size: 0.8rem;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(102, 126, 234, 0.45);
+    transition: transform 0.2s, box-shadow 0.2s;
+    animation: scrollBtnIn 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.scroll-down-btn:hover {
+    transform: translateX(-50%) translateY(-2px);
+    box-shadow: 0 6px 18px rgba(102, 126, 234, 0.55);
 }
 
-/* Dark Mode Styles */
-[data-bs-theme="dark"] .chat-body-custom {
-    background-color: #151521 !important; /* Background Gelap */
+/* ═══ CHAT FOOTER ═════════════════════════════════════════════════════════ */
+.chat-footer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #fff;
+    border-top: 1px solid #f0f2f5;
+    min-height: 68px;
+}
+.footer-attach-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s, transform 0.15s;
+}
+.footer-attach-btn:hover {
+    background: rgba(102, 126, 234, 0.2);
+    transform: rotate(-15deg) scale(1.08);
+}
+.footer-input {
+    flex: 1;
+    padding: 10px 16px;
+    border: 1.5px solid #edf0f7;
+    border-radius: 22px;
+    background: #f5f8fa;
+    font-size: 0.88rem;
+    color: #1a202c;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.footer-input:focus {
+    border-color: #667eea;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+.footer-send-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: #e8ecf8;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.25s, color 0.25s, transform 0.15s, box-shadow 0.2s;
+}
+.footer-send-btn.active,
+.footer-send-btn:hover {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
-[data-bs-theme="dark"] .card-header,
-[data-bs-theme="dark"] .card-footer {
-    background-color: #1e1e2d !important;
-    border-bottom: 1px solid #2b2b40 !important;
-    border-top: 1px solid #2b2b40 !important;
-}
-
-[data-bs-theme="dark"] .receiver-bubble {
-    background-color: #2b2b40 !important;
-    color: #ffffff !important;
-}
-
-[data-bs-theme="dark"] .form-control-solid {
-    background-color: #1b1b29 !important;
-    border-color: #2b2b40 !important;
-    color: #ffffff !important;
-}
-
-[data-bs-theme="dark"] .bg-white {
-    background-color: #1e1e2d !important;
-    color: #fff !important;
-}
-
-[data-bs-theme="dark"] .text-gray-900 {
-    color: #fff !important;
-}
-
-[data-bs-theme="dark"] .text-muted {
-    color: #7e8299 !important;
-}
-
-/* fix button video / voice call agar transparan */
-/* Target button di card-header yang wrap Video & Phone icon */
+/* ═══ CALL BUTTONS ════════════════════════════════════════════════════════ */
 .card-header .d-flex button {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
     padding: 8px 10px !important;
-    border-radius: 8px !important;
-    transition: all 0.2s ease !important;
+    border-radius: 10px !important;
+    transition: background 0.2s, transform 0.15s !important;
     cursor: pointer;
 }
-
 .card-header .d-flex button:hover {
-    background: rgba(0, 0, 0, 0.05) !important;
-    transform: scale(1.1);
+    background: rgba(102, 126, 234, 0.1) !important;
+    transform: scale(1.12);
 }
-
 .card-header .d-flex button:active {
-    transform: scale(0.95);
+    transform: scale(0.94);
 }
-
-/* Icon color */
 .card-header .d-flex button svg {
     width: 20px !important;
     height: 20px !important;
     color: #7e8299 !important;
-    transition: color 0.2s ease !important;
+    transition: color 0.2s !important;
 }
-
-/* Video icon hover - hijau */
-.card-header .d-flex button:first-child:hover svg {
+.card-header .d-flex button:nth-last-child(3):hover svg {
     color: #10b981 !important;
 }
-
-/* Phone icon hover - biru */
-.card-header .d-flex button:last-child:hover svg {
-    color: #3b82f6 !important;
+.card-header .d-flex button:nth-last-child(2):hover svg {
+    color: #667eea !important;
 }
 
-/* Dark mode */
-[data-bs-theme="dark"] .card-header .d-flex button {
-    background: transparent !important;
+/* ═══ ADD GROUP BUTTON ════════════════════════════════════════════════════ */
+.btn-light-primary {
+    background: rgba(102, 126, 234, 0.1) !important;
+    color: #667eea !important;
+    border: none;
+    transition: background 0.2s, transform 0.15s;
+}
+.btn-light-primary:hover {
+    background: rgba(102, 126, 234, 0.18) !important;
+    transform: translateY(-1px);
 }
 
+/* ═══ MODAL BACKDROP ══════════════════════════════════════════════════════ */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(15, 15, 30, 0.55);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    animation: fadeIn 0.2s ease;
+}
+.modal-card {
+    background: #fff;
+    border-radius: 18px;
+    overflow: hidden;
+    width: 100%;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
+    animation: modalPop 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+
+/* ── Confirm Card ── */
+.confirm-card {
+    padding: 36px 28px 28px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.confirm-icon-wrap {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 16px;
+    animation: popIn 0.35s ease;
+}
+.confirm-icon-wrap.danger {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+}
+.confirm-icon-wrap.warning {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+}
+.confirm-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1a202c;
+    margin: 0 0 8px;
+}
+.confirm-desc {
+    font-size: 0.84rem;
+    color: #64748b;
+    line-height: 1.6;
+    margin: 0 0 20px;
+}
+.confirm-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+}
+.confirm-btn {
+    width: 100%;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: none;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.confirm-btn:hover {
+    opacity: 0.88;
+    transform: translateY(-1px);
+}
+.confirm-btn.secondary {
+    background: rgba(102, 126, 234, 0.1);
+    color: #667eea;
+}
+.confirm-btn.secondary:hover {
+    background: rgba(102, 126, 234, 0.18);
+}
+.confirm-btn.danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    box-shadow: 0 3px 10px rgba(239, 68, 68, 0.3);
+}
+.confirm-btn.ghost {
+    background: transparent;
+    color: #94a3b8;
+    font-weight: 500;
+}
+.confirm-btn.ghost:hover {
+    background: #f8fafc;
+    color: #64748b;
+}
+
+/* ── Info Group Modal ── */
+.info-card {
+    overflow: hidden;
+}
+.info-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 28px 24px 20px;
+    text-align: center;
+    position: relative;
+}
+.info-close-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.75rem;
+    transition: background 0.2s, transform 0.15s;
+}
+.info-close-btn:hover {
+    background: rgba(255, 255, 255, 0.32);
+    transform: rotate(90deg);
+}
+.info-avatar-wrap {
+    display: inline-block;
+    margin-bottom: 10px;
+}
+.info-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid rgba(255, 255, 255, 0.5);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    animation: popIn 0.35s ease;
+}
+.info-name {
+    font-size: 1rem;
+    font-weight: 800;
+    color: white;
+    margin: 0 0 2px;
+}
+.info-username {
+    font-size: 0.78rem;
+    color: rgba(255, 255, 255, 0.75);
+    margin: 0;
+}
+.info-body {
+    padding: 16px 20px;
+    max-height: 280px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(102, 126, 234, 0.2) transparent;
+}
+.info-section-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #667eea;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+}
+.info-members-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.info-member-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 10px;
+    transition: background 0.2s;
+}
+.info-member-row:hover {
+    background: rgba(102, 126, 234, 0.06);
+}
+.info-member-avatar img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #f0f0f0;
+    flex-shrink: 0;
+}
+.info-member-detail {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+}
+.info-member-name {
+    font-size: 0.84rem;
+    font-weight: 700;
+    color: #1a202c;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.info-member-you {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: #94a3b8;
+    margin-left: 4px;
+}
+.info-member-sub {
+    font-size: 0.74rem;
+    color: #94a3b8;
+}
+.info-member-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    flex-shrink: 0;
+}
+.info-empty {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    text-align: center;
+    padding: 16px 0;
+}
+.info-refresh-btn {
+    background: none;
+    border: none;
+    color: #667eea;
+    font-size: 0.8rem;
+    cursor: pointer;
+    text-decoration: underline;
+    margin-top: 6px;
+}
+
+/* ── Lightbox ── */
+.lightbox-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease;
+}
+.lightbox-close-btn {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255, 255, 255, 0.12);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.9rem;
+    z-index: 1;
+    transition: background 0.2s, transform 0.15s;
+}
+.lightbox-close-btn:hover {
+    background: rgba(255, 255, 255, 0.22);
+    transform: rotate(90deg);
+}
+.lightbox-img-wrap {
+    animation: modalPop 0.28s ease;
+}
+.lightbox-img {
+    max-height: 85vh;
+    max-width: 90vw;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+/* ═══ VUE TRANSITIONS ══════════════════════════════════════════════════════ */
+.fade-enter-active,
+.fade-leave-active {
+    transition: opacity 0.25s;
+}
+.fade-enter-from,
+.fade-leave-to {
+    opacity: 0;
+}
+.modal-pop-enter-active {
+    animation: modalPop 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+.modal-pop-leave-active {
+    animation: modalPop 0.2s ease reverse both;
+}
+.lightbox-fade-enter-active {
+    animation: fadeIn 0.2s ease;
+}
+.lightbox-fade-leave-active {
+    animation: fadeIn 0.18s ease reverse;
+}
+.reply-slide-enter-active {
+    animation: replySlide 0.2s ease;
+}
+.reply-slide-leave-active {
+    animation: replySlide 0.15s ease reverse;
+}
+.scroll-btn-enter-active {
+    animation: scrollBtnIn 0.25s ease;
+}
+.scroll-btn-leave-active {
+    animation: scrollBtnIn 0.18s ease reverse;
+}
+
+/* ═══ TOAST ════════════════════════════════════════════════════════════════ */
+:root {
+    --toastify-text-color-light: #000 !important;
+    --toastify-color-light: #fff;
+}
+.Toastify__toast-theme--light {
+    color: #333 !important;
+    background: #fff !important;
+}
+.Toastify__close-button--light {
+    color: #333 !important;
+    opacity: 0.7;
+}
+
+/* ═══ DARK MODE ════════════════════════════════════════════════════════════ */
+[data-bs-theme="dark"] .chat-body-custom {
+    background: #151521 !important;
+}
+[data-bs-theme="dark"] .card-header,
+[data-bs-theme="dark"] .card-footer {
+    background: #1e1e2d !important;
+    border-color: #2b2b40 !important;
+}
+[data-bs-theme="dark"] .receiver-bubble {
+    background: #2b2b40 !important;
+    color: #fff !important;
+}
+[data-bs-theme="dark"] .form-control-solid {
+    background: #1b1b29 !important;
+    border-color: #2b2b40 !important;
+    color: #fff !important;
+}
+[data-bs-theme="dark"] .bg-white {
+    background: #1e1e2d !important;
+    color: #fff !important;
+}
+[data-bs-theme="dark"] .text-gray-900 {
+    color: #fff !important;
+}
+[data-bs-theme="dark"] .text-muted {
+    color: #7e8299 !important;
+}
+[data-bs-theme="dark"] .contact-item:hover {
+    background: rgba(102, 126, 234, 0.12) !important;
+}
+[data-bs-theme="dark"] .contact-item.bg-light-primary {
+    background: rgba(102, 126, 234, 0.18) !important;
+}
+[data-bs-theme="dark"] .chat-footer {
+    background: #1e1e2d;
+    border-color: #2b2b40;
+}
+[data-bs-theme="dark"] .footer-input {
+    background: #1b1b29;
+    border-color: #2b2b40;
+    color: #e1e1e1;
+}
+[data-bs-theme="dark"] .footer-input:focus {
+    background: #22223a;
+    border-color: #667eea;
+}
+[data-bs-theme="dark"] .footer-attach-btn {
+    background: rgba(102, 126, 234, 0.15);
+    color: #a5b4fc;
+}
+[data-bs-theme="dark"] .footer-send-btn {
+    background: #2b2b40;
+    color: #6b7280;
+}
+[data-bs-theme="dark"] .reply-bar {
+    background: #1e1e2d;
+    border-color: #2b2b40;
+}
+[data-bs-theme="dark"] .modal-card {
+    background: #1e1e2d;
+}
+[data-bs-theme="dark"] .confirm-title {
+    color: #e1e1e1;
+}
+[data-bs-theme="dark"] .confirm-desc {
+    color: #7e8299;
+}
+[data-bs-theme="dark"] .confirm-btn.ghost:hover {
+    background: #2b2b40;
+}
+[data-bs-theme="dark"] .info-body {
+    background: #1e1e2d;
+}
+[data-bs-theme="dark"] .info-member-name {
+    color: #e1e1e1;
+}
+[data-bs-theme="dark"] .info-member-row:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
 [data-bs-theme="dark"] .card-header .d-flex button:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
+    background: rgba(102, 126, 234, 0.15) !important;
 }
-
 [data-bs-theme="dark"] .card-header .d-flex button svg {
     color: #a1a5b7 !important;
 }
-
-[data-bs-theme="dark"] .card-header .d-flex button:first-child:hover svg {
+[data-bs-theme="dark"] .card-header .d-flex button:nth-last-child(3):hover svg {
     color: #34d399 !important;
 }
-
-[data-bs-theme="dark"] .card-header .d-flex button:last-child:hover svg {
-    color: #60a5fa !important;
+[data-bs-theme="dark"] .card-header .d-flex button:nth-last-child(2):hover svg {
+    color: #a5b4fc !important;
 }
 </style>
