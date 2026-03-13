@@ -118,7 +118,7 @@ watch(
 </script>
 
 <template>
-    <div class="ai-chat-wrapper">
+    <div class="ai-chat-wrapper overflow-hidden" style="height: calc(100vh - 170px);">
         <div class="card ai-chat-card">
             <!-- ── Header — sama dengan private chat ── -->
             <div
@@ -325,7 +325,6 @@ watch(
 </template>
 
 <style scoped>
-/* ── Layout ──────────────────────────────────────────────────────────────── */
 .ai-chat-wrapper {
     display: flex;
     justify-content: center;
@@ -336,13 +335,12 @@ watch(
 .ai-chat-card {
     width: 100%;
     max-width: 900px;
-    height: 85vh;
+    height: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
 }
 
-/* ── Chat Body — persis seperti private chat ─────────────────────────────── */
 .chat-body-custom {
     flex: 1;
     overflow-y: auto;
@@ -350,13 +348,11 @@ watch(
     scroll-behavior: smooth;
 }
 
-/* ── Receiver bubble ─────────────────────────────────────────────────────── */
 .receiver-bubble {
     background-color: #ffffff;
     color: #3f4254;
 }
 
-/* ── Typing Indicator ────────────────────────────────────────────────────── */
 .typing-indicator {
     display: inline-flex;
     align-items: center;
@@ -390,7 +386,6 @@ watch(
     }
 }
 
-/* ── Transitions ─────────────────────────────────────────────────────────── */
 .message-fade-enter-active,
 .message-fade-leave-active {
     transition: all 0.25s ease;
@@ -410,7 +405,6 @@ watch(
     opacity: 0;
 }
 
-/* ── Scrollbar ───────────────────────────────────────────────────────────── */
 .chat-body-custom::-webkit-scrollbar {
     width: 5px;
 }
@@ -425,7 +419,6 @@ watch(
     background: rgba(0, 0, 0, 0.18);
 }
 
-/* ── Dark Mode — persis seperti private chat ─────────────────────────────── */
 [data-bs-theme="dark"] .chat-body-custom {
     background-color: #151521 !important;
 }

@@ -135,12 +135,6 @@ const greeting = computed(() => {
             >
                 <div class="welcome-gradient"></div>
                 <div class="welcome-content">
-                    <div class="icon-wrapper animate-float">
-                        <div class="icon-circle"></div>
-                        <div class="icon-circle delay-1"></div>
-                        <div class="icon-circle delay-2"></div>
-                        <MessagesSquare class="icon-main" />
-                    </div>
                     <div class="greeting-text">{{ greeting }},</div>
                     <h2 class="welcome-title">
                         {{ currentUser?.name?.toUpperCase() || "USER" }}
@@ -443,14 +437,14 @@ const greeting = computed(() => {
 
 /* --- LAYOUT UTAMA --- */
 .dashboard-container {
-    min-height: 100vh;
+    min-height: 100%;
     padding: 1.5rem;
-    background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+    background: #ffff;
     transition: all 0.3s ease;
 }
 
 .dashboard-container.dark-mode {
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    background: #0d0d0d;
 }
 
 .dashboard-grid {
@@ -494,13 +488,14 @@ const greeting = computed(() => {
 
 /* --- WELCOME CARD --- */
 .welcome-card {
-    padding: 2rem 2rem;
+    padding: 1.5rem 2rem;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    min-height: 380px;
+    min-height: 220px;
+    max-height: 260px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
 }
@@ -590,18 +585,18 @@ const greeting = computed(() => {
 }
 
 .welcome-title {
-    font-size: 1.6rem;
+    font-size: 1.3rem;
     font-weight: 800;
     color: white;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.25rem;
     letter-spacing: 1px;
     text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
 .welcome-subtitle {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.9);
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     font-weight: 400;
 }
 
@@ -615,7 +610,7 @@ const greeting = computed(() => {
 
 .btn-chat {
     flex: 1;
-    padding: 0.85rem 1.25rem;
+    padding: 0.65rem 1rem;
     border-radius: 0.65rem;
     font-weight: 600;
     font-size: 0.875rem;
@@ -678,7 +673,8 @@ const greeting = computed(() => {
 /* --- TODO CARD --- */
 .todo-card {
     padding: 0;
-    min-height: 380px;
+    min-height: 220px;
+    max-height: 260px;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -795,7 +791,7 @@ const greeting = computed(() => {
     display: flex;
     flex-direction: column;
     min-height: 0;
-    padding: 0.85rem 1.5rem 1.25rem;
+    padding: 0.5rem 1.25rem 0.75rem;
 }
 
 .todo-list-wrapper {

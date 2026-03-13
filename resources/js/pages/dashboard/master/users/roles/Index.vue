@@ -1089,7 +1089,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-    <div class="d-flex flex-column flex-lg-row h-100">
+    <div
+        class="d-flex flex-column flex-lg-row overflow-hidden"
+        style="height: calc(100vh - 170px)"
+    >
         <div
             class="flex-column flex-lg-row-auto w-100 w-lg-350px w-xl-400px mb-10 mb-lg-0"
             :class="showMobileChat ? 'd-none d-lg-block' : 'd-block'"
@@ -1121,11 +1124,11 @@ onUnmounted(() => {
                     </div>
                 </div>
 
-                <div class="card-body pt-5" id="kt_chat_contacts_body">
-                    <div
-                        class="scroll-y me-n5 pe-5 h-200px h-lg-auto"
-                        style="max-height: 60vh"
-                    >
+                <div
+                    class="card-body pt-5 d-flex flex-column overflow-hidden"
+                    id="kt_chat_contacts_body"
+                >
+                    <div class="hide-scrollbar me-n5 pe-5 flex-grow-1 h-100">
                         <div v-if="isLoadingContact" class="text-center mt-5">
                             <span
                                 class="spinner-border spinner-border-sm text-primary"
@@ -2231,9 +2234,6 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* ═══════════════════════════════════════════════════════════════════════════
-   KEYFRAMES
-═══════════════════════════════════════════════════════════════════════════ */
 @keyframes fadeIn {
     from {
         opacity: 0;
@@ -2352,9 +2352,6 @@ onUnmounted(() => {
     }
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   SCROLLBAR
-═══════════════════════════════════════════════════════════════════════════ */
 .scroll-y,
 .chat-body-custom {
     scrollbar-width: thin;
@@ -2370,9 +2367,15 @@ onUnmounted(() => {
     border-radius: 10px;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   CONTACT SIDEBAR LIST
-═══════════════════════════════════════════════════════════════════════════ */
+.hide-scrollbar {
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
 .contact-item {
     transition: background 0.2s ease, transform 0.18s ease, box-shadow 0.2s ease;
     animation: slideInLeft 0.28s ease both;
@@ -2401,9 +2404,6 @@ onUnmounted(() => {
     border-color: rgba(102, 126, 234, 0.22) !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   ADD CONTACT BUTTON
-═══════════════════════════════════════════════════════════════════════════ */
 .btn-light-primary {
     background: rgba(102, 126, 234, 0.1) !important;
     color: #667eea !important;
@@ -2416,9 +2416,6 @@ onUnmounted(() => {
     transform: translateY(-1px);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   CHAT BODY
-═══════════════════════════════════════════════════════════════════════════ */
 .chat-body-custom {
     height: calc(100vh - 265px);
     overflow-y: auto;
@@ -2465,9 +2462,6 @@ onUnmounted(() => {
     color: #667eea !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   TYPING INDICATOR
-═══════════════════════════════════════════════════════════════════════════ */
 .typing-indicator {
     display: flex;
     align-items: center;
@@ -2490,16 +2484,10 @@ onUnmounted(() => {
     animation-delay: -0.16s;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   SPIN
-═══════════════════════════════════════════════════════════════════════════ */
 .spin-animation {
     animation: spin 1s linear infinite;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   DELETE BUTTON ON HOVER
-═══════════════════════════════════════════════════════════════════════════ */
 .delete-btn-wrapper {
     opacity: 0;
     transition: opacity 0.2s;
@@ -2508,9 +2496,6 @@ onUnmounted(() => {
     opacity: 1;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   REPLY BAR
-═══════════════════════════════════════════════════════════════════════════ */
 .reply-bar {
     display: flex;
     align-items: center;
@@ -2583,9 +2568,6 @@ onUnmounted(() => {
     transform: rotate(90deg);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   SCROLL TO BOTTOM BUTTON
-═══════════════════════════════════════════════════════════════════════════ */
 .scroll-down-btn {
     position: absolute;
     bottom: 100px;
@@ -2612,9 +2594,6 @@ onUnmounted(() => {
     box-shadow: 0 6px 18px rgba(102, 126, 234, 0.55);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   CHAT FOOTER INPUT
-═══════════════════════════════════════════════════════════════════════════ */
 .chat-footer {
     display: flex;
     align-items: center;
@@ -2682,9 +2661,6 @@ onUnmounted(() => {
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   CALL BUTTONS (HEADER)
-═══════════════════════════════════════════════════════════════════════════ */
 .card-header .d-flex button {
     background: transparent !important;
     border: none !important;
@@ -2714,9 +2690,6 @@ onUnmounted(() => {
     color: #667eea !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   MODAL BACKDROP
-═══════════════════════════════════════════════════════════════════════════ */
 .modal-backdrop {
     position: fixed;
     inset: 0;
@@ -2978,9 +2951,6 @@ onUnmounted(() => {
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   VUE TRANSITIONS
-═══════════════════════════════════════════════════════════════════════════ */
 .fade-enter-active,
 .fade-leave-active {
     transition: opacity 0.25s;
@@ -3018,9 +2988,6 @@ onUnmounted(() => {
     animation: scrollBtnIn 0.18s ease reverse;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   TOAST
-═══════════════════════════════════════════════════════════════════════════ */
 :root {
     --toastify-text-color-light: #000 !important;
     --toastify-color-light: #fff;
@@ -3034,9 +3001,6 @@ onUnmounted(() => {
     opacity: 0.7;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   DARK MODE
-═══════════════════════════════════════════════════════════════════════════ */
 [data-bs-theme="dark"] .chat-body-custom {
     background: #151521 !important;
 }
