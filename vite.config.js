@@ -10,14 +10,14 @@ export default defineConfig(({ mode }) => {
     const myIp = '192.168.112.158'; 
 
     return {
-        server: {
-            host: true,
-            port: 5173,
-            strictPort: true,
-            cors: true,
-            origin: `http://${myIp}:5173`,
-            hmr: { host: myIp },
-        },
+        // server: {
+        //     host: true,
+        //     port: 5173,
+        //     strictPort: true,
+        //     cors: true,
+        //     origin: `http://${myIp}:5173`,
+        //     hmr: { host: myIp },
+        // },
         plugins: [
             laravel({
                 input: ["resources/css/app.css", "resources/js/main.ts"],

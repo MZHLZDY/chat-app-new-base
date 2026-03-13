@@ -41,6 +41,7 @@ import VoiceGroupCallingModal from "@/components/call/voice/VoiceGroupCallingMod
 import VoiceGroupIncomingModal from "@/components/call/voice/VoiceGroupIncomingModal.vue";
 import VoiceGroupCallModal from "@/components/call/voice/VoiceGroupCallModal.vue";
 import VoiceGroupFloating from "@/components/call/voice/VoiceGroupFloating.vue";
+import { useVideoGroupCall } from "@/composables/useVideoGroupCall";
 
 // --- STATE UTAMA ---
 const authStore = useAuthStore();
@@ -88,6 +89,9 @@ const {
     rejectGroupVoiceCall,
     leaveGroupVoiceCall,
 } = useVoiceGroupCall();
+
+// State video call group
+const { startGroupVideoCall } = useVideoGroupCall();
 
 // Typing State untuk Group
 const typingUsers = ref<string[]>([]);
@@ -534,6 +538,32 @@ const handleStartVoiceGroupCall = async () => {
 
     // Panggil fungsi composable-nya
     await startGroupVoiceCall(activeGroup.value.id, participantIds);
+};
+
+// Fungsi video call group
+const handleStartVideoGroupCall = async () => {
+    if (!activeGroup.value) {
+        toast.error("Tidak ada grup yang dipilih.");
+        return;
+    }
+
+    const groupMembers = activeGroup.value.users || activeGroup.value.members || [];
+
+    const participantIds = groupMembers
+        .filter((u: any) => u.id !== currentUser.value?.id) // Hilangkan Host sendiri
+        .map((u: any) => u.id);
+
+    if (participantIds.length === 0) {
+        toast.warning("Tidak ada peserta lain di dalam grup untuk ditelepon.");
+        return;
+    }
+
+    // Set Info Dasar ke CallStore agar Modal Punya Data Gambar/Nama Grup
+    callStore.activeGroupName = activeGroup.value.name;
+    callStore.activeGroupAvatar = activeGroup.value.photo || activeGroup.value.avatar || '';
+
+    // Action! 🎥
+    await startGroupVideoCall(activeGroup.value.id, participantIds);
 };
 
 // --- [TS FIX] Format Data agar sesuai dengan Modal ---
@@ -1064,7 +1094,7 @@ onUnmounted(() => {
                             >
                                 <Phone class="w-20px h-20px" />
                             </button>
-                            <button class="btn btn-icon btn-sm text-gray-500">
+                            <button @click="handleStartVideoGroupCall" class="btn btn-icon btn-sm text-gray-500">
                                 <Video class="w-20px h-20px" />
                             </button>
 

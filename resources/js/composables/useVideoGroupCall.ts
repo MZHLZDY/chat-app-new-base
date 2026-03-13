@@ -67,19 +67,12 @@ export function useVideoGroupCall() {
                 id: callData.id,
                 type: 'video',
                 isGroup: true,
-                status: 'ongoing', // Host otomatis ongoing
+                status: 'calling',
                 channelName: response.channel_name,
                 caller: authStore.user as User,
                 receiver: authStore.user as User, // TS bypass untuk store lama
             } as any); 
             
-            callStore.updateCallStatus('ongoing');
-            callStore.setInCall(true);
-
-            // Join Agora
-            console.log('🚀 Host bergabung ke channel Agora grup...');
-            await joinChannel(response.channel_name, response.token, authStore.user?.id as number);
-
             toast.success("Memulai panggilan video grup...");
         } catch (error: any) {
             console.error('❌ Gagal memulai panggilan video grup:', error);
@@ -168,6 +161,22 @@ export function useVideoGroupCall() {
     // 2. EVENT HANDLERS (Untuk dipanggil UI / Socket listener)
     // ======================================================
 
+    const handleGroupIncomingCall = (payload: any) => {
+        console.log('📡 [Event] Panggilan Group Video Masuk:', payload);
+        callStore.setIncomingCall({
+            id: payload.call_id,
+            type: 'video',
+            isGroup: true,
+            status: 'ringing',
+            channelName: payload.channel_name,
+            token: payload.agora_token,
+            caller: payload.caller,
+            groupName: payload.group_name || 'Group Call',
+            groupAvatar: payload.group_avatar || '',
+            participants: payload.participants || []
+        } as any);
+    };
+
     const handleGroupCallAnswered = (payload: any) => {
         // payload dari event: { call_id, user, accepted, context }
         console.log('📡 [Event] Group Call Answered:', payload);
@@ -213,6 +222,7 @@ export function useVideoGroupCall() {
         recallParticipant,
         toggleMute: toggleAudio,
         toggleCamera: toggleVideo,
+        handleGroupIncomingCall,
         handleGroupCallAnswered,
         handleGroupParticipantLeft,
         handleGroupParticipantRecalled,

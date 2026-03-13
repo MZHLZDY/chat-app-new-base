@@ -33,6 +33,9 @@ import VoiceGroupCallingModal from "@/components/call/voice/VoiceGroupCallingMod
 import VoiceGroupIncomingModal from "@/components/call/voice/VoiceGroupIncomingModal.vue";
 import VoiceGroupCallModal from "@/components/call/voice/VoiceGroupCallModal.vue";
 import VoiceGroupFloating from "@/components/call/voice/VoiceGroupFloating.vue";
+import { useVideoGroupCall } from '@/composables/useVideoGroupCall';
+import VideoGroupCallingModal from '@/components/call/video/VideoGroupCallingModal.vue';
+import VideoGroupIncomingModal from '@/components/call/video/VideoGroupIncomingModal.vue';
 
 // --- State Utama ---
 const route = useRoute();
@@ -174,6 +177,17 @@ const {
     handleGroupParticipantLeft,
     handleGroupParticipantRecalled,
 } = useVoiceGroupCall();    
+
+// State untuk video call group
+const { 
+    startGroupVideoCall,
+    handleGroupIncomingCall: handleVideoGroupIncomingCall,
+    handleGroupCallAnswered: handleVideoGroupCallAnswered,
+    handleGroupParticipantLeft: handleVideoGroupParticipantLeft,
+    handleGroupParticipantRecalled: handleVideoGroupParticipantRecalled,
+    handleGroupCallEnded: handleVideoGroupCallEnded,
+    handleGroupCallCancelled: handleVideoGroupCallCancelled,
+} = useVideoGroupCall();
 
 const isMinimized = ref(false); // State untuk mode minimize
 const isSpeakerOn = ref(false); // State untuk speaker (UI only)
@@ -445,6 +459,33 @@ const handleStartVoiceGroupCall = async () => {
     await startGroupVoiceCall(activeGroup.value.id, participantIds);
 };
 
+// Fungsi video call group
+const handleStartVideoGroupCall = async () => {
+    if (!activeGroup.value) {
+        toast.error("Pilih grup terlebih dahulu");
+        return;
+    }
+
+    const groupMembers = activeGroup.value.users || activeGroup.value.members || [];
+    
+    // Ambil ID peserta selain Host (diri sendiri)
+    const participantIds = groupMembers
+        .filter((member: any) => member.id !== currentUser.value?.id)
+        .map((member: any) => member.id);
+
+    if (participantIds.length === 0) {
+        toast.error("Tidak ada peserta lain di grup ini");
+        return;
+    }
+
+    // Set nama grup & foto khusus untuk state
+    callStore.activeGroupName = activeGroup.value.name;
+    callStore.activeGroupAvatar = activeGroup.value.avatar || activeGroup.value.photo || '';
+
+    // Panggil aksi dari composable! 🚀
+    await startGroupVideoCall(activeGroup.value.id, participantIds);
+};
+
 // --- [TS FIX] Format Data agar sesuai dengan Modal ---
 const formattedGroupParticipants = computed(() => {
     return callStore.groupParticipants.map((p: any) => ({
@@ -524,8 +565,10 @@ onMounted(() => {
     }  else if (data.call_type === 'voice') {
       // 🔥 TAMBAHKAN INI
       handleIncomingCall(data);
-    } else if (data.call_type === 'group_voice' || data.call_type === 'group_video') {
+    } else if (data.call_type === 'group_voice') {
         handleGroupIncomingCall(data);
+    } else if (data.call_type === 'group_video') {
+        handleVideoGroupIncomingCall(data);
     }
       // Hapus setelah dibaca
       remove(incomingCallRef);
@@ -778,6 +821,8 @@ watch(
             <!-- Video call modals tetap sama -->
             <VideoCallingModal v-if="showVideoCallingModal" />
             <VideoIncomingModal v-if="showVideoIncomingModal" />
+            <VideoGroupIncomingModal/>
+            <VideoGroupCallingModal/>
             <VideoCallModal v-if="callStore.currentCall && callStore.currentCall.type === 'video' && callStore.callStatus === 'ongoing' && !callStore.isGroupCall && !callStore.isMinimized" 
               @minimize="callStore.toggleMinimize" 
             />
