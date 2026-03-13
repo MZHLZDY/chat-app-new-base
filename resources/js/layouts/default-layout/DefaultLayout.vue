@@ -834,7 +834,7 @@ watch(
             <VoiceGroupFloating />
 
             <VoiceGroupCallingModal
-                v-if="callStore.isGroupCall && (callStore.currentCall || callStore.backendGroupCall) && callStore.callStatus === 'calling' && !callStore.isMinimized"
+                v-if="callStore.isGroupCall && callStore.currentCall?.type === 'voice' && (callStore.currentCall || callStore.backendGroupCall) && callStore.callStatus === 'calling' && !callStore.isMinimized"
                 :groupName="callStore.backendGroupCall?.group?.name || callStore.activeGroupName || 'Group Call'"
                 :groupPhoto="callStore.backendGroupCall?.group?.photo || callStore.backendGroupCall?.group?.avatar || callStore.activeGroupAvatar || ''"
                 :participants="formattedGroupParticipants"
@@ -843,7 +843,7 @@ watch(
             />
 
         <VoiceGroupIncomingModal
-            v-if="callStore.incomingCall && callStore.incomingCall.isGroup"
+            v-if="callStore.incomingCall && callStore.incomingCall.isGroup && callStore.incomingCall.type === 'voice'"
             :groupName="incomingCallAsAny.groupName || 'Group Call'"
             :groupPhoto="incomingCallAsAny.groupAvatar || ''"
             :inviterName="callStore.incomingCall.caller?.name"
@@ -853,7 +853,7 @@ watch(
         />
 
         <VoiceGroupCallModal
-            v-if="callStore.isGroupCall && (callStore.currentCall || callStore.backendGroupCall) && callStore.callStatus === 'ongoing' && !callStore.isMinimized"
+            v-if="callStore.isGroupCall && callStore.currentCall?.type === 'voice' && (callStore.currentCall || callStore.backendGroupCall) && callStore.callStatus === 'ongoing' && !callStore.isMinimized"
         />
 
     </Teleport>

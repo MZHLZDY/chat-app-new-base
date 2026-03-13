@@ -987,40 +987,6 @@ onUnmounted(() => {
         </div>
 
         <Teleport to="body">
-            <VoiceGroupFloating />
-
-            <VoiceGroupCallingModal
-                v-if="
-                    callStore.isGroupCall &&
-                    callStore.currentCall &&
-                    callStore.callStatus === 'calling' &&
-                    !callStore.isMinimized
-                "
-                :groupName="activeGroup?.name || 'Group Call'"
-                :groupPhoto="activeGroup?.photo || activeGroup?.avatar || ''"
-                :participants="formattedGroupParticipants"
-                :callStatus="callStore.callStatus"
-                @cancel="leaveGroupVoiceCall(callStore.currentCall.id)"
-            />
-
-            <VoiceGroupIncomingModal
-                v-if="callStore.incomingCall && callStore.incomingCall.isGroup"
-                :groupName="incomingCallAsAny.groupName || 'Group Call'"
-                :groupPhoto="incomingCallAsAny.groupAvatar || ''"
-                :inviterName="callStore.incomingCall.caller?.name"
-                :participants="incomingCallAsAny.participants || []"
-                @accept="() => answerGroupVoiceCall(callStore.incomingCall!.id)"
-                @reject="() => rejectGroupVoiceCall(callStore.incomingCall!.id)"
-            />
-
-            <VoiceGroupCallModal
-                v-if="
-                    callStore.isGroupCall &&
-                    callStore.currentCall &&
-                    callStore.callStatus === 'ongoing' &&
-                    !callStore.isMinimized
-                "
-            />
 
             <!-- <div v-if="callStore.isGroupCall" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #00ff00; padding: 15px; border-radius: 8px; z-index: 999999; font-family: monospace;">
             <b>🛠️ CALL STATE DEBUGGER</b><br/>
