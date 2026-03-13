@@ -18,7 +18,7 @@ const authStore = useAuthStore();
 const startTime = new Date();
 
 // Destructure fungsi dari composable
-const { leaveGroupVoiceCall, endGroupVoiceCallForAll, toggleMute, isAudioEnabled } = useVoiceGroupCall();
+const { leaveGroupVoiceCall, endGroupVoiceCallForAll, handleGroupParticipantRecalled, toggleMute, isAudioEnabled } = useVoiceGroupCall();
 
 // Cek Host
 const isUserHost = computed(() => {
@@ -88,8 +88,19 @@ const handleToggleSpeaker = () => {
         </center>
       </div>
 
-      <div class="flex-1 w-full flex items-center justify-center p-6 z-10 overflow-y-auto custom-scrollbar">
-        <VoiceGrid :participants="formattedParticipants" class="w-full max-w-5xl" />
+      <div class="flex-1 overflow-y-auto custom-scrollbar relative">
+        <div class="min-h-full flex flex-col p-4 sm:p-6">
+          <div class="flex-1 flex items-start w-full">
+      
+            <VoiceGrid 
+             class="w-full my-auto custom-voice-grid" 
+             :participants="formattedParticipants" 
+             @recall="handleGroupParticipantRecalled" 
+            />
+      
+            
+          </div>
+        </div>
       </div>
 
       <div class="w-full h-24 bg-gray-900/95 backdrop-blur-md border-t border-gray-800 flex items-center justify-between px-8 z-50 relative shrink-0">
@@ -160,11 +171,26 @@ const handleToggleSpeaker = () => {
   background: linear-gradient(135deg, rgba(30, 30, 30, 0.7), rgba(15, 15, 15, 0.5));
 }
 
+/* 1. Styling elemen root dari VoiceGrid */
+.custom-voice-grid {
+  max-width: 200px; /* Batasi lebar maksimal grid */
+  margin-left: auto;
+  margin-right: auto;
+  /* Tambahkan style lain khusus untuk container luarnya */
+}
+
+/* 2. Styling elemen ANAK di dalam VoiceGrid (Gunakan :deep) */
+/* Kalau kamu mau ubah ukuran kotak avatar dari luar tanpa menyentuh file VoiceGrid.vue */
+.custom-voice-grid :deep(.aspect-square) {
+  border-radius: 2rem !important; /* Paksa ubah border radius */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(1.02); }
   to { opacity: 1; transform: scale(1); }
 }
-
+ 
 /* Scrollbar Customization */
 .custom-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(0, 0, 0, 0.15) transparent; }
 .dark-mode .custom-scrollbar { scrollbar-color: rgba(255, 255, 255, 0.15) transparent; }
