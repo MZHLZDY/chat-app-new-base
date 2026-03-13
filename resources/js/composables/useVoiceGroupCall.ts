@@ -68,6 +68,7 @@ export function useVoiceGroupCall() {
         callStore.setCurrentCall({
             id: data.call.id,
             isGroup: true,
+            type: 'voice',
             status: 'calling',
             channelName: data.channel_name,
             caller: authStore.user as User,
@@ -319,20 +320,19 @@ export function useVoiceGroupCall() {
         // playIncomingRingtone();
     };
 
-    const handleGroupVoiceCallAnswered = (payload: any) => {
-        console.log('📡 [Firebase] Participant Joined:', payload);
+    const handleGroupVoiceCallAnswered = async (payload: any) => {
+        console.log('📡 [Firebase] Participant Answered/Joined:', payload);
         
-        // 1. LANGSUNG PAKSA UPDATE STATE TANPA SYARAT IF
-        callStore.updateCallStatus('ongoing');
-        callStore.setInCall(true); // Pastikan aplikasi tahu kita sedang di dalam panggilan
-        callStore.isGroupCall = true; // Berjaga-jaga memastikan ini mode grup
-        callStore.isMinimized = false; // Paksa modal utama terbuka (bukan floating)
+        // Update status partisipan di store
+        callStore.updateGroupParticipantStatus(payload.user.id, 'joined');
 
-        // 2. Update status peserta di UI Host menjadi 'joined' (Hijau)
-        // Pastikan ID user didapatkan dengan benar dari payload
-        const userId = payload.user_id || payload.id;
-        if (userId) {
-            callStore.updateGroupParticipantStatus(userId, 'joined');
+        // JIKA KITA HOST, ubah ke 'ongoing' HANYA jika yang join BUKAN diri kita sendiri
+        if (
+            callStore.currentCall && 
+            callStore.callStatus === 'calling' && 
+            Number(payload.user.id) !== Number(authStore.user?.id) // <--- INI KUNCI FIX-NYA
+        ) {
+            callStore.updateCallStatus('ongoing');
         }
     };
 

@@ -24,17 +24,18 @@ const displayParticipants = computed(() => {
 </script>
 
 <template>
-  <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-5 w-full max-w-3xl mx-auto">
+  <div class="flex flex-wrap items-center justify-center gap-4 sm:gap-6 w-full mx-auto">
     
     <div 
       v-for="user in displayParticipants" 
       :key="user.id"
-      class="relative group transition-all duration-300 aspect-square" 
+      class="relative group transition-all duration-300 w-44 h-44 sm:w-56 sm:h-56 flex-shrink-0" 
       :class="{ 'opacity-60 scale-[0.97]': user.status !== 'joined' }"
     >
+      
       <div class="w-full h-full rounded-[1.5rem] sm:rounded-[2rem] bg-white/10 dark:bg-black/20 border border-white/20 dark:border-white/10 backdrop-blur-md shadow-lg flex flex-col items-center justify-center p-3 transition-colors hover:bg-white/20 dark:hover:bg-black/40">
        
-        <div class="relative mb-2">
+        <div class="relative mb-3">
           <center>
              <CallAvatar 
                 :photoUrl="user.avatar" 
@@ -43,15 +44,15 @@ const displayParticipants = computed(() => {
                 size="70px"  
                 pulseColor="rgba(34, 197, 94, 0.6)"
              />
-              </center>
-             <div v-if="user.isMuted && user.status === 'joined'" class="absolute bottom-0 right-0 bg-red-500 p-1.5 rounded-full shadow-lg">
-                <MicOff :size="14" class="text-white" />
-             </div>
+          </center>
+          <div v-if="user.isMuted && user.status === 'joined'" class="absolute bottom-0 right-0 bg-red-500 p-1.5 rounded-full shadow-lg">
+             <MicOff :size="14" class="text-white" />
+          </div>
         </div>
 
-        <div class="text-center w-full z-10">
-          <p class="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate w-full px-1 drop-shadow-sm">{{ user.name }}</p>
-          <p class="text-[10px] sm:text-xs font-semibold mt-0.5 tracking-wider uppercase" 
+        <div class="text-center w-full z-10 mt-1">
+          <p class="text-sm sm:text-base font-bold text-gray-900 dark:text-white truncate w-full px-2 drop-shadow-sm">{{ user.name }}</p>
+          <p class="text-[10px] sm:text-xs font-semibold mt-1 tracking-wider uppercase" 
              :class="[
                 user.status === 'joined' ? 'text-success' : '',
                 user.status === 'ringing' ? 'text-warning' : '',
@@ -79,3 +80,13 @@ const displayParticipants = computed(() => {
 
   </div>
 </template>
+
+<style scoped>
+/* Target langsung class bawaan dari Tailwind yang ada di template */
+.aspect-square {
+  max-width: 200px; /* Batasi maksimal lebarnya di SINI, bukan di grid utamanya */
+  margin: 0 auto; /* Pastikan selalu di tengah */
+  border-radius: 2rem !important; /* Memaksa border-radius */
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+</style>

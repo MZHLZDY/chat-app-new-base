@@ -37,10 +37,6 @@ import { onAuthStateChanged } from "firebase/auth";
 // --- Group Call Import ---
 import { useCallStore } from "@/stores/callStore";
 import { useVoiceGroupCall } from "@/composables/useVoiceGroupCall";
-import VoiceGroupCallingModal from "@/components/call/voice/VoiceGroupCallingModal.vue";
-import VoiceGroupIncomingModal from "@/components/call/voice/VoiceGroupIncomingModal.vue";
-import VoiceGroupCallModal from "@/components/call/voice/VoiceGroupCallModal.vue";
-import VoiceGroupFloating from "@/components/call/voice/VoiceGroupFloating.vue";
 import { useVideoGroupCall } from "@/composables/useVideoGroupCall";
 
 // --- STATE UTAMA ---
@@ -989,16 +985,13 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <Teleport to="body">
-
-            <!-- <div v-if="callStore.isGroupCall" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #00ff00; padding: 15px; border-radius: 8px; z-index: 999999; font-family: monospace;">
+        <!-- <div v-if="callStore.isGroupCall" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #00ff00; padding: 15px; border-radius: 8px; z-index: 999999; font-family: monospace;">
             <b>🛠️ CALL STATE DEBUGGER</b><br/>
             isGroupCall: {{ callStore.isGroupCall }}<br/>
             Status: {{ callStore.callStatus }}<br/>
             CurrentCall: {{ !!callStore.currentCall }}<br/>
             isMinimized: {{ callStore.isMinimized }}
         </div> -->
-        </Teleport>
 
         <div
             class="flex-lg-row-fluid ms-lg-7 ms-xl-10"
