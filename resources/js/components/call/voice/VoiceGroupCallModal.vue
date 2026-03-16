@@ -33,14 +33,20 @@ const isUserHost = computed(() => {
 });
 
 // Format participant
+// VoiceGroupCallModal.vue
+
+// Format participant
 const formattedParticipants = computed(() => {
     return callStore.groupParticipants.map((p: any) => {
-        const user = p.user || {};
+        // Antisipasi jika API tidak membungkus data dalam properti "user"
+        const user = p.user || {}; 
+        
         return {
             id: p.user_id || user.id || p.id,
-            // Cek p.name (dari Firebase) juga sebagai fallback
-            name: user.name || p.name || 'Unknown',
-            avatar: user.photo || user.avatar || user.profile_photo_url || p.photo || '',
+            // Fallback ekstraksi nama yang lebih agresif
+            name: user.name || user.display_name || p.name || p.display_name || 'Unknown',
+            // Fallback ekstraksi foto (memasukkan profile_photo_url jika ada)
+            avatar: user.profile_photo_url || user.photo || user.avatar || p.profile_photo_url || p.photo || p.avatar || '',
             status: p.status || 'ringing',
             isSpeaking: false, 
             isMuted: false,    

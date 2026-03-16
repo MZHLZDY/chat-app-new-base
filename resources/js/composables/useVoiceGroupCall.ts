@@ -83,11 +83,11 @@ export function useVoiceGroupCall() {
             callStore.setInCall(true);
 
             // 2. KIRIM UNDANGAN KE FIREBASE SECEPATNYA 
-            // (Jangan biarkan peserta lain menunggu!)
             participantIds.forEach((participantId) => {
                 if (participantId !== authStore.user?.id) {
                     const incomingRef = dbRef(database, `calls/${participantId}/incoming`);
                     set(incomingRef, {
+                        // ... [kode bawaan kamu biarkan sama]
                         call_id: data.call.id,
                         call_type: 'group_voice', 
                         channel_name: data.channel_name,
@@ -100,41 +100,54 @@ export function useVoiceGroupCall() {
                 }
             });
 
+            // 🔥 [FIX 1] HOST HARUS MENULIS DATANYA SENDIRI KE FIREBASE AGAR PESERTA LAIN TAHU PROFIL HOST
+            const myParticipantRef = dbRef(database, `group_calls/${data.call.id}/participants/${authStore.user?.id}`);
+            set(myParticipantRef, { 
+                status: 'joined', 
+                timestamp: Date.now(),
+                user_id: authStore.user?.id,
+                name: authStore.user?.name,
+                photo: authStore.user?.photo || (authStore.user as any)?.profile_photo_url || '',
+            });
+
+            // 🔥 Langsung update diri Host sendiri di Store
+            callStore.updateGroupParticipantStatus(authStore.user?.id as number, 'joined');
+            callStore.updateGroupParticipantInfo(authStore.user?.id as number, {
+                name: authStore.user?.name,
+                photo: authStore.user?.photo || (authStore.user as any)?.profile_photo_url || '',
+            });
+
             /// 3. PASANG LISTENER STATUS PARTICIPANT
             const participantsRef = dbRef(database, `group_calls/${data.call.id}/participants`);
-                onValue(participantsRef, (snapshot) => {
-                    if (callStore.backendGroupCall?.call_type !== 'voice' && callStore.currentCall?.type !== 'voice') {
-                        return; // Berhenti! Ini bukan panggilan Voice
-                    }
+            onValue(participantsRef, (snapshot) => {
+                if (callStore.backendGroupCall?.call_type !== 'voice' && callStore.currentCall?.type !== 'voice') return;
 
-                    if (snapshot.exists()) {
+                if (snapshot.exists()) {
                     const participantsData = snapshot.val();
                     const hostIdStr = String(authStore.user?.id);
-        
                     let foundOtherParticipantJoined = false;
 
                     Object.entries(participantsData).forEach(([key, participantState]: [string, any]) => {
-                    // AMBIL USER ID ASLI:
-                    // Coba ambil dari participantState.user_id, jika tidak ada coba participantState.id, 
-                    // jika masih tidak ada baru gunakan key-nya.
-                    const actualUserId = String(participantState.user_id || participantState.id || key);
-            
-                    // Log ini akan membantumu melihat bentuk data aslinya di console!
-                    console.log(`[Cek Partisipan] ID Asli: ${actualUserId}, Status: ${participantState.status}`);
+                        const actualUserId = Number(participantState.user_id || participantState.id || key);
 
-                    // Update UI avatar warna-warni menggunakan ID Asli
-                    callStore.updateGroupParticipantStatus(Number(actualUserId), participantState.status);
-            
-                    // Pengecekan ketat: Pastikan ID Asli BUKAN Host DAN status 'joined'
-                    if (actualUserId !== hostIdStr && participantState.status === 'joined') {
-                        foundOtherParticipantJoined = true;
+                        callStore.updateGroupParticipantStatus(actualUserId, participantState.status);
+
+                        // 🔥 [FIX 2] HOST HARUS UPDATE INFO JIKA CALLEE MENGIRIM NAMA/FOTO KE FIREBASE
+                        if (participantState.name || participantState.photo) {
+                            callStore.updateGroupParticipantInfo(actualUserId, {
+                                name: participantState.name,
+                                photo: participantState.photo,
+                            });
+                        }
+
+                        if (String(actualUserId) !== hostIdStr && participantState.status === 'joined') {
+                            foundOtherParticipantJoined = true;
+                        }
+                    });
+
+                    if (foundOtherParticipantJoined && callStore.callStatus === 'calling') {
+                        callStore.updateCallStatus('ongoing');
                     }
-                });
-
-                if (foundOtherParticipantJoined && callStore.callStatus === 'calling') {
-                      console.log("👉 Ada partisipan lain yang BENAR-BENAR join, ubah UI ke Ongoing Call!");
-                      callStore.updateCallStatus('ongoing');
-                   }
                 }
             });
 
