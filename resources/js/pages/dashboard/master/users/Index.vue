@@ -76,6 +76,8 @@ const searchQuery = ref("");
 const chatDrafts = ref<Record<string | number, string>>({});
 const showMobileChat = ref(false);
 const openMessageMenuId = ref<number | string | null>(null);
+const openMessageMenuMsg = ref<any>(null);
+const menuPosition = ref({ x: 0, y: 0 });
 
 // Group Call State
 const callStore = useCallStore();
@@ -163,10 +165,8 @@ const fetchGroups = async () => {
 };
 
 const selectGroup = async (group: any) => {
-    // 1. Cek jika grup yang diklik sama dengan yang aktif (hindari reload)
     if (activeGroup.value?.id === group.id) return;
 
-    // 2. Simpan Draft Pesan Grup sebelumnya (jika ada)
     if (activeGroup.value) {
         chatDrafts.value[activeGroup.value.id] = newMessage.value;
     }
@@ -507,19 +507,14 @@ const openEditGroupModal = () => {
     isEditGroupOpen.value = true;
 };
 
-// ✅ KODE YANG DIPERBAIKI
 const handleStartVoiceGroupCall = async () => {
     if (!activeGroup.value) {
         toast.error("Tidak ada grup yang dipilih.");
         return;
     }
 
-    // 1. Debugging: Cek apa isi sebenarnya dari activeGroup
     console.log("Data activeGroup:", activeGroup.value);
 
-    // 2. Amankan dengan optional chaining (?.) dan beri array kosong jika undefined
-    // PERHATIKAN: Ganti '.users' dengan key yang benar dari database/backend kamu
-    // (Bisa jadi .members, .participants, dll)
     const groupMembers =
         activeGroup.value.users || activeGroup.value.members || [];
 
@@ -532,21 +527,20 @@ const handleStartVoiceGroupCall = async () => {
         return;
     }
 
-    // Panggil fungsi composable-nya
     await startGroupVoiceCall(activeGroup.value.id, participantIds);
 };
 
-// Fungsi video call group
 const handleStartVideoGroupCall = async () => {
     if (!activeGroup.value) {
         toast.error("Tidak ada grup yang dipilih.");
         return;
     }
 
-    const groupMembers = activeGroup.value.users || activeGroup.value.members || [];
+    const groupMembers =
+        activeGroup.value.users || activeGroup.value.members || [];
 
     const participantIds = groupMembers
-        .filter((u: any) => u.id !== currentUser.value?.id) // Hilangkan Host sendiri
+        .filter((u: any) => u.id !== currentUser.value?.id)
         .map((u: any) => u.id);
 
     if (participantIds.length === 0) {
@@ -556,7 +550,8 @@ const handleStartVideoGroupCall = async () => {
 
     // Set Info Dasar ke CallStore agar Modal Punya Data Gambar/Nama Grup
     callStore.activeGroupName = activeGroup.value.name;
-    callStore.activeGroupAvatar = activeGroup.value.photo || activeGroup.value.avatar || '';
+    callStore.activeGroupAvatar =
+        activeGroup.value.photo || activeGroup.value.avatar || "";
 
     // Action! 🎥
     await startGroupVideoCall(activeGroup.value.id, participantIds);
@@ -665,17 +660,30 @@ const listenToGroupTyping = (groupId: number) => {
     });
 };
 
-const toggleMessageMenu = (id: number | string) => {
+const toggleMessageMenu = (
+    id: number | string,
+    msg: any,
+    event: MouseEvent
+) => {
     if (openMessageMenuId.value === id) {
         openMessageMenuId.value = null;
-    } else {
-        openMessageMenuId.value = id;
+        openMessageMenuMsg.value = null;
+        return;
     }
+    const btn = event.currentTarget as HTMLElement;
+    const rect = btn.getBoundingClientRect();
+    menuPosition.value = {
+        x: rect.left,
+        y: rect.bottom + 4,
+    };
+    openMessageMenuId.value = id;
+    openMessageMenuMsg.value = msg;
 };
 
 const handleMessageAction = (action: Function, msg: any) => {
     action(msg);
     openMessageMenuId.value = null;
+    openMessageMenuMsg.value = null;
 };
 
 const handleEscKey = (e: KeyboardEvent) => {
@@ -709,11 +717,9 @@ const handleEscKey = (e: KeyboardEvent) => {
 };
 
 const setupSidebarListeners = () => {
-    // Kurangi 2 detik untuk toleransi waktu server vs client
     const timeThreshold = pageLoadTime - 2000;
 
     groups.value.forEach((group) => {
-        // Cek duplikasi listener
         if (sidebarUnsubscribes[group.id]) return;
 
         const messagesRef = firebaseRef(db, `group_messages/${group.id}`);
@@ -985,7 +991,8 @@ onUnmounted(() => {
             </div>
         </div>
 
-        <!-- <div v-if="callStore.isGroupCall" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #00ff00; padding: 15px; border-radius: 8px; z-index: 999999; font-family: monospace;">
+        <Teleport to="body">
+            <!-- <div v-if="callStore.isGroupCall" style="position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.85); color: #00ff00; padding: 15px; border-radius: 8px; z-index: 999999; font-family: monospace;">
             <b>🛠️ CALL STATE DEBUGGER</b><br/>
             isGroupCall: {{ callStore.isGroupCall }}<br/>
             Status: {{ callStore.callStatus }}<br/>
@@ -1001,18 +1008,21 @@ onUnmounted(() => {
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
                 <div
                     v-if="!activeGroup"
-                    class="card-body d-flex flex-column justify-content-center align-items-center h-100"
+                    class="card-body d-flex flex-column justify-content-center align-items-center h-100 gc-empty-state"
                 >
-                    <div class="symbol symbol-100px mb-5">
-                        <Users class="w-100px h-100px text-gray-300" />
+                    <div class="gc-empty-icon">
+                        <i class="fas fa-users"></i>
                     </div>
-                    <h3 class="fw-bold text-gray-800">Grup Chat</h3>
-                    <p class="text-muted">Pilih grup untuk mulai berdiskusi.</p>
+                    <h4 class="gc-empty-title">Mulai Diskusi Grup</h4>
+                    <p class="gc-empty-desc">
+                        Pilih grup di sebelah kiri untuk mulai berdiskusi
+                        bersama.
+                    </p>
                 </div>
 
                 <div v-else class="d-flex flex-column h-100">
                     <div
-                        class="card-header d-flex align-items-center p-3 border-bottom"
+                        class="card-header d-flex align-items-center p-3 border-bottom gc-header"
                         style="min-height: 70px"
                     >
                         <div class="d-flex align-items-center flex-grow-1">
@@ -1056,7 +1066,10 @@ onUnmounted(() => {
                             >
                                 <Phone class="w-20px h-20px" />
                             </button>
-                            <button @click="handleStartVideoGroupCall" class="btn btn-icon btn-sm text-gray-500">
+                            <button
+                                @click="handleStartVideoGroupCall"
+                                class="btn btn-icon btn-sm text-gray-500"
+                            >
                                 <Video class="w-20px h-20px" />
                             </button>
 
@@ -1152,9 +1165,7 @@ onUnmounted(() => {
                                 v-if="shouldShowDateDivider(index)"
                                 class="d-flex justify-content-center my-4"
                             >
-                                <span
-                                    class="badge badge-light-primary text-primary px-3 py-2 rounded-pill shadow-sm fs-9 fw-bold border"
-                                >
+                                <span class="gc-date-divider">
                                     {{ formatDateLabel(msg.created_at) }}
                                 </span>
                             </div>
@@ -1194,15 +1205,11 @@ onUnmounted(() => {
                                     "
                                 >
                                     <div
-                                        class="p-3 rounded shadow-sm position-relative group-hover"
+                                        class="gc-bubble position-relative group-hover"
                                         :class="
                                             msg.sender_id === currentUser?.id
-                                                ? 'bg-primary text-white rounded-bottom-end-0'
-                                                : 'receiver-bubble rounded-bottom-start-0'
-                                        "
-                                        style="
-                                            max-width: 320px;
-                                            min-width: 120px;
+                                                ? 'gc-bubble-out bg-primary text-white'
+                                                : 'gc-bubble-in receiver-bubble'
                                         "
                                     >
                                         <div
@@ -1210,7 +1217,7 @@ onUnmounted(() => {
                                                 msg.sender_id !==
                                                 currentUser?.id
                                             "
-                                            class="fw-bold mb-1 small text-primary ms-1"
+                                            class="gc-sender-name"
                                         >
                                             {{
                                                 msg.sender?.name ||
@@ -1538,11 +1545,14 @@ onUnmounted(() => {
                                         >
                                             <button
                                                 @click.stop="
-                                                    toggleMessageMenu(msg.id)
+                                                    toggleMessageMenu(
+                                                        msg.id,
+                                                        msg,
+                                                        $event
+                                                    )
                                                 "
                                                 class="btn btn-sm btn-icon btn-circle shadow-sm w-20px h-20px"
                                                 style="
-                                                    z-index: 10;
                                                     background-color: rgba(
                                                         255,
                                                         255,
@@ -1555,64 +1565,6 @@ onUnmounted(() => {
                                                     class="fas fa-ellipsis-v fs-9 text-gray-600"
                                                 ></i>
                                             </button>
-
-                                            <div
-                                                v-if="
-                                                    openMessageMenuId === msg.id
-                                                "
-                                                class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-bold w-150px py-2 show position-absolute end-0 mt-1 shadow-lg bg-white"
-                                                style="z-index: 105"
-                                            >
-                                                <div class="menu-item px-3">
-                                                    <a
-                                                        href="#"
-                                                        class="menu-link px-3 fs-7"
-                                                        @click.prevent="
-                                                            handleMessageAction(
-                                                                setReply,
-                                                                msg
-                                                            )
-                                                        "
-                                                    >
-                                                        <i
-                                                            class="fas fa-reply me-2 text-warning fs-8"
-                                                        ></i>
-                                                        Balas
-                                                    </a>
-                                                </div>
-
-                                                <div class="menu-item px-3">
-                                                    <a
-                                                        href="#"
-                                                        class="menu-link px-3 fs-7 text-danger"
-                                                        @click.prevent="
-                                                            handleMessageAction(
-                                                                openDeleteModal,
-                                                                msg
-                                                            )
-                                                        "
-                                                    >
-                                                        <i
-                                                            class="fas fa-trash me-2 text-danger fs-8"
-                                                        ></i>
-                                                        Hapus
-                                                    </a>
-                                                </div>
-                                            </div>
-
-                                            <div
-                                                v-if="
-                                                    openMessageMenuId === msg.id
-                                                "
-                                                @click.stop="
-                                                    openMessageMenuId = null
-                                                "
-                                                class="position-fixed top-0 start-0 w-100 h-100"
-                                                style="
-                                                    z-index: 104;
-                                                    cursor: default;
-                                                "
-                                            ></div>
                                         </div>
                                     </div>
                                 </div>
@@ -1719,6 +1671,55 @@ onUnmounted(() => {
             </div>
         </div>
     </div>
+    <!-- ═══ FLOATING MESSAGE MENU (Teleport ke body agar tidak tertutup bubble) ═══ -->
+    <Teleport to="body">
+        <div
+            v-if="openMessageMenuId && openMessageMenuMsg"
+            @click.stop="
+                openMessageMenuId = null;
+                openMessageMenuMsg = null;
+            "
+            class="position-fixed top-0 start-0 w-100 h-100"
+            style="z-index: 9998; cursor: default"
+        ></div>
+        <div
+            v-if="openMessageMenuId && openMessageMenuMsg"
+            class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-bold w-150px py-2 show position-fixed shadow-lg bg-white"
+            :style="{
+                zIndex: 9999,
+                top: menuPosition.y + 'px',
+                left: menuPosition.x + 'px',
+                transform: 'translateX(-50%)',
+            }"
+            @click.stop
+        >
+            <div class="menu-item px-3">
+                <a
+                    href="#"
+                    class="menu-link px-3 fs-7"
+                    @click.prevent="
+                        handleMessageAction(setReply, openMessageMenuMsg)
+                    "
+                >
+                    <i class="fas fa-reply me-2 text-warning fs-8"></i>
+                    Balas
+                </a>
+            </div>
+            <div class="menu-item px-3">
+                <a
+                    href="#"
+                    class="menu-link px-3 fs-7 text-danger"
+                    @click.prevent="
+                        handleMessageAction(openDeleteModal, openMessageMenuMsg)
+                    "
+                >
+                    <i class="fas fa-trash me-2 text-danger fs-8"></i>
+                    Hapus
+                </a>
+            </div>
+        </div>
+    </Teleport>
+
     <!-- ═══ MODAL: Buat Grup ═══ -->
     <transition name="modal-pop">
         <div
@@ -2112,14 +2113,24 @@ onUnmounted(() => {
 .chat-body-custom {
     height: calc(100vh - 265px);
     overflow-y: auto;
-    background: #f9f9f9;
+    background-color: #f0f2f5;
+    background-image: radial-gradient(
+            circle at 20% 50%,
+            rgba(102, 126, 234, 0.04) 0%,
+            transparent 60%
+        ),
+        radial-gradient(
+            circle at 80% 20%,
+            rgba(118, 75, 162, 0.04) 0%,
+            transparent 60%
+        );
     scroll-behavior: smooth;
     position: relative;
 }
 .receiver-bubble {
-    background: #fff;
-    color: #3f4254;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    background: #ffffff;
+    color: #1a202c;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 .justify-content-end > .d-flex {
     animation: slideInRight 0.22s ease both;
@@ -2282,10 +2293,10 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px 16px;
+    padding: 10px 16px;
     background: #fff;
-    border-top: 1px solid #f0f2f5;
-    min-height: 68px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    min-height: 64px;
 }
 .footer-attach-btn {
     width: 38px;
@@ -2308,19 +2319,21 @@ onUnmounted(() => {
 }
 .footer-input {
     flex: 1;
-    padding: 10px 16px;
-    border: 1.5px solid #edf0f7;
-    border-radius: 22px;
-    background: #f5f8fa;
+    padding: 10px 18px;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 24px;
+    background: #f5f7fb;
     font-size: 0.88rem;
     color: #1a202c;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 .footer-input:focus {
     border-color: #667eea;
     background: #fff;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1),
+        inset 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 .footer-send-btn {
     width: 40px;
@@ -2812,5 +2825,146 @@ onUnmounted(() => {
 }
 [data-bs-theme="dark"] .card-header .d-flex button:nth-last-child(2):hover svg {
     color: #a5b4fc !important;
+}
+
+/* ══════════════════════════════════════════════
+   GROUP CHAT — ROOM REDESIGN
+══════════════════════════════════════════════ */
+
+.gc-bubble {
+    max-width: 340px;
+    min-width: 80px;
+    padding: 10px 14px 8px;
+    border-radius: 18px;
+    word-break: break-word;
+    line-height: 1.45;
+    font-size: 0.9rem;
+}
+.gc-bubble-out {
+    border-bottom-right-radius: 4px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.35);
+}
+.gc-bubble-in {
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.03);
+}
+
+/* Nama pengirim di bubble masuk */
+.gc-sender-name {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #667eea;
+    margin-bottom: 4px;
+    padding-left: 2px;
+    letter-spacing: 0.1px;
+}
+
+/* Date divider */
+.gc-date-divider {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 14px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.08);
+    border-radius: 20px;
+    border: 1px solid rgba(102, 126, 234, 0.15);
+    letter-spacing: 0.2px;
+}
+
+/* Header */
+.gc-header {
+    background: #fff;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Empty state */
+.gc-empty-state {
+    background: linear-gradient(160deg, #f8f9ff 0%, #f0f2f5 100%);
+}
+.gc-empty-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(
+        135deg,
+        rgba(102, 126, 234, 0.12),
+        rgba(118, 75, 162, 0.12)
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #667eea;
+    margin-bottom: 20px;
+    animation: popIn 0.4s ease;
+}
+.gc-empty-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #3f4254;
+    margin-bottom: 8px;
+}
+.gc-empty-desc {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    text-align: center;
+    max-width: 280px;
+}
+
+/* Rapat antar bubble */
+.chat-body-custom .d-flex.mb-4 {
+    margin-bottom: 6px !important;
+}
+
+/* ── Dark mode ── */
+[data-bs-theme="dark"] .chat-body-custom {
+    background-color: #0f0f17 !important;
+    background-image: radial-gradient(
+            circle at 20% 50%,
+            rgba(102, 126, 234, 0.06) 0%,
+            transparent 60%
+        ),
+        radial-gradient(
+            circle at 80% 20%,
+            rgba(118, 75, 162, 0.06) 0%,
+            transparent 60%
+        ) !important;
+}
+[data-bs-theme="dark"] .gc-bubble-in {
+    background: #1e2235 !important;
+    color: #e8eaf0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: none;
+}
+[data-bs-theme="dark"] .gc-header {
+    background: #1e1e2d !important;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+}
+[data-bs-theme="dark"] .gc-empty-state {
+    background: linear-gradient(160deg, #151521 0%, #1a1a2e 100%) !important;
+}
+[data-bs-theme="dark"] .gc-empty-title {
+    color: #e1e1e1;
+}
+[data-bs-theme="dark"] .gc-date-divider {
+    background: rgba(102, 126, 234, 0.12);
+    border-color: rgba(102, 126, 234, 0.2);
+    color: #a5b4fc;
+}
+[data-bs-theme="dark"] .gc-sender-name {
+    color: #a5b4fc;
+}
+[data-bs-theme="dark"] .footer-input {
+    background: #1b1b29 !important;
+    border-color: #2b2b40 !important;
+    color: #e1e1e1 !important;
+    box-shadow: none !important;
+}
+[data-bs-theme="dark"] .footer-input:focus {
+    background: #22223a !important;
+    border-color: #667eea !important;
 }
 </style>

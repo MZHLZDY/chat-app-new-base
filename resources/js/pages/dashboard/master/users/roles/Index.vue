@@ -107,6 +107,8 @@ const isMuted = ref(false);
 const messageInputRef = ref<HTMLTextAreaElement | null>(null);
 const isClearChatModalOpen = ref(false);
 const openMessageMenuId = ref<number | string | null>(null);
+const openMessageMenuMsg = ref<any>(null);
+const menuPosition = ref({ x: 0, y: 0 });
 let typingTimeout: ReturnType<typeof setTimeout> | null = null;
 let typingListenerOff: Unsubscribe | null = null;
 
@@ -810,17 +812,30 @@ const handleEscKey = (e: KeyboardEvent) => {
     }
 };
 
-const toggleMessageMenu = (id: number | string) => {
+const toggleMessageMenu = (
+    id: number | string,
+    msg: any,
+    event: MouseEvent
+) => {
     if (openMessageMenuId.value === id) {
         openMessageMenuId.value = null;
-    } else {
-        openMessageMenuId.value = id;
+        openMessageMenuMsg.value = null;
+        return;
     }
+    const btn = event.currentTarget as HTMLElement;
+    const rect = btn.getBoundingClientRect();
+    menuPosition.value = {
+        x: rect.left,
+        y: rect.bottom + 4,
+    };
+    openMessageMenuId.value = id;
+    openMessageMenuMsg.value = msg;
 };
 
 const handleMessageAction = (action: Function, msg: any) => {
     action(msg);
     openMessageMenuId.value = null;
+    openMessageMenuMsg.value = null;
 };
 
 // --- SETUP LISTENER YANG BENAR ---
@@ -1252,23 +1267,20 @@ onUnmounted(() => {
             <div class="card h-100 overflow-hidden" id="kt_chat_messenger">
                 <div
                     v-if="!activeContact"
-                    class="card-body d-flex flex-column justify-content-center align-items-center h-100"
+                    class="card-body d-flex flex-column justify-content-center align-items-center h-100 pc-empty-state"
                 >
-                    <div class="symbol symbol-100px mb-5">
-                        <img
-                            src="/media/illustrations/sketchy-1/2.png"
-                            alt="Welcome"
-                        />
+                    <div class="pc-empty-icon">
+                        <i class="fas fa-comments"></i>
                     </div>
-                    <h3 class="fw-bold text-gray-800">Selamat Datang</h3>
-                    <p class="text-muted">
-                        Silakan pilih kontak untuk mulai mengobrol.
+                    <h4 class="pc-empty-title">Mulai Percakapan</h4>
+                    <p class="pc-empty-desc">
+                        Pilih kontak di sebelah kiri untuk mulai mengobrol.
                     </p>
                 </div>
 
                 <div v-else class="d-flex flex-column h-100">
                     <div
-                        class="card-header d-flex align-items-center p-3 border-bottom"
+                        class="card-header d-flex align-items-center p-3 border-bottom pc-header"
                         style="min-height: 70px"
                         v-if="activeContact"
                     >
@@ -1442,9 +1454,7 @@ onUnmounted(() => {
                                 v-if="shouldShowDateDivider(index)"
                                 class="d-flex justify-content-center my-4"
                             >
-                                <span
-                                    class="badge badge-light-primary text-primary px-3 py-2 rounded-pill shadow-sm fs-9 fw-bold border"
-                                >
+                                <span class="pc-date-divider">
                                     {{ formatDateSeparator(msg.created_at) }}
                                 </span>
                             </div>
@@ -1465,15 +1475,11 @@ onUnmounted(() => {
                                     "
                                 >
                                     <div
-                                        class="p-3 rounded shadow-sm position-relative group-hover"
+                                        class="pc-bubble position-relative group-hover"
                                         :class="
                                             msg.sender_id === currentUser?.id
-                                                ? 'bg-primary text-white rounded-bottom-end-0'
-                                                : 'receiver-bubble rounded-bottom-start-0'
-                                        "
-                                        style="
-                                            max-width: 320px;
-                                            min-width: 120px;
+                                                ? 'pc-bubble-out bg-primary text-white'
+                                                : 'pc-bubble-in receiver-bubble'
                                         "
                                     >
                                         <div
@@ -1814,11 +1820,14 @@ onUnmounted(() => {
                                         >
                                             <button
                                                 @click.stop="
-                                                    toggleMessageMenu(msg.id)
+                                                    toggleMessageMenu(
+                                                        msg.id,
+                                                        msg,
+                                                        $event
+                                                    )
                                                 "
                                                 class="btn btn-sm btn-icon btn-circle shadow-sm w-20px h-20px"
                                                 style="
-                                                    z-index: 10;
                                                     background-color: rgba(
                                                         255,
                                                         255,
@@ -1831,70 +1840,6 @@ onUnmounted(() => {
                                                     class="fas fa-ellipsis-v fs-9 text-gray-600"
                                                 ></i>
                                             </button>
-
-                                            <div
-                                                v-if="
-                                                    openMessageMenuId === msg.id
-                                                "
-                                                class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-bold w-100px py-1 show position-absolute mt-1 shadow-lg bg-white"
-                                                :class="
-                                                    msg.sender_id ===
-                                                    currentUser?.id
-                                                        ? 'start-0'
-                                                        : 'end-0'
-                                                "
-                                                style="z-index: 105"
-                                            >
-                                                <div class="menu-item px-2">
-                                                    <a
-                                                        href="#"
-                                                        class="menu-link px-2 fs-7"
-                                                        @click.prevent="
-                                                            handleMessageAction(
-                                                                setReply,
-                                                                msg
-                                                            )
-                                                        "
-                                                    >
-                                                        <i
-                                                            class="fas fa-reply me-2 text-warning fs-8"
-                                                        ></i>
-                                                        Balas
-                                                    </a>
-                                                </div>
-
-                                                <div class="menu-item px-2">
-                                                    <a
-                                                        href="#"
-                                                        class="menu-link px-2 fs-7 text-danger"
-                                                        @click.prevent="
-                                                            handleMessageAction(
-                                                                openDeleteModal,
-                                                                msg
-                                                            )
-                                                        "
-                                                    >
-                                                        <i
-                                                            class="fas fa-trash me-2 text-danger fs-8"
-                                                        ></i>
-                                                        Hapus
-                                                    </a>
-                                                </div>
-                                            </div>
-
-                                            <div
-                                                v-if="
-                                                    openMessageMenuId === msg.id
-                                                "
-                                                @click.stop="
-                                                    openMessageMenuId = null
-                                                "
-                                                class="position-fixed top-0 start-0 w-100 h-100"
-                                                style="
-                                                    z-index: 104;
-                                                    cursor: default;
-                                                "
-                                            ></div>
                                         </div>
                                     </div>
                                 </div>
@@ -2042,6 +1987,55 @@ onUnmounted(() => {
             </div>
         </div>
     </div>
+
+    <!-- ═══ FLOATING MESSAGE MENU (Teleport ke body agar tidak tertutup bubble) ═══ -->
+    <Teleport to="body">
+        <div
+            v-if="openMessageMenuId && openMessageMenuMsg"
+            @click.stop="
+                openMessageMenuId = null;
+                openMessageMenuMsg = null;
+            "
+            class="position-fixed top-0 start-0 w-100 h-100"
+            style="z-index: 9998; cursor: default"
+        ></div>
+        <div
+            v-if="openMessageMenuId && openMessageMenuMsg"
+            class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-bold w-100px py-1 show position-fixed shadow-lg bg-white"
+            :style="{
+                zIndex: 9999,
+                top: menuPosition.y + 'px',
+                left: menuPosition.x + 'px',
+                transform: 'translateX(-50%)',
+            }"
+            @click.stop
+        >
+            <div class="menu-item px-2">
+                <a
+                    href="#"
+                    class="menu-link px-2 fs-7"
+                    @click.prevent="
+                        handleMessageAction(setReply, openMessageMenuMsg)
+                    "
+                >
+                    <i class="fas fa-reply me-2 text-warning fs-8"></i>
+                    Balas
+                </a>
+            </div>
+            <div class="menu-item px-2">
+                <a
+                    href="#"
+                    class="menu-link px-2 fs-7 text-danger"
+                    @click.prevent="
+                        handleMessageAction(openDeleteModal, openMessageMenuMsg)
+                    "
+                >
+                    <i class="fas fa-trash me-2 text-danger fs-8"></i>
+                    Hapus
+                </a>
+            </div>
+        </div>
+    </Teleport>
 
     <!-- ═══ MODAL: Tambah Kontak ═══ -->
     <transition name="modal-pop">
@@ -2419,14 +2413,24 @@ onUnmounted(() => {
 .chat-body-custom {
     height: calc(100vh - 265px);
     overflow-y: auto;
-    background-color: #f9f9f9;
+    background-color: #f0f2f5;
+    background-image: radial-gradient(
+            circle at 20% 50%,
+            rgba(102, 126, 234, 0.04) 0%,
+            transparent 60%
+        ),
+        radial-gradient(
+            circle at 80% 20%,
+            rgba(118, 75, 162, 0.04) 0%,
+            transparent 60%
+        );
     scroll-behavior: smooth;
     position: relative;
 }
 .receiver-bubble {
-    background: #fff;
-    color: #3f4254;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    background: #ffffff;
+    color: #1a202c;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.04);
 }
 
 /* Bubble entry animations */
@@ -2598,10 +2602,10 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 12px 16px;
+    padding: 10px 16px;
     background: #fff;
-    border-top: 1px solid #f0f2f5;
-    min-height: 68px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    min-height: 64px;
 }
 .footer-attach-btn {
     width: 38px;
@@ -2624,19 +2628,21 @@ onUnmounted(() => {
 }
 .footer-input {
     flex: 1;
-    padding: 10px 16px;
-    border: 1.5px solid #edf0f7;
-    border-radius: 22px;
-    background: #f5f8fa;
+    padding: 10px 18px;
+    border: 1.5px solid #e8eaf0;
+    border-radius: 24px;
+    background: #f5f7fb;
     font-size: 0.88rem;
     color: #1a202c;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 .footer-input:focus {
     border-color: #667eea;
     background: #fff;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1),
+        inset 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 .footer-send-btn {
     width: 40px;
@@ -3111,5 +3117,144 @@ onUnmounted(() => {
 }
 [data-bs-theme="dark"] .card-header .d-flex button:nth-last-child(2):hover svg {
     color: #a5b4fc !important;
+}
+
+/* ══════════════════════════════════════════════
+   PRIVATE CHAT — ROOM REDESIGN
+══════════════════════════════════════════════ */
+
+/* Bubble base */
+.pc-bubble {
+    max-width: 340px;
+    min-width: 80px;
+    padding: 10px 14px 8px;
+    border-radius: 18px;
+    word-break: break-word;
+    line-height: 1.45;
+    font-size: 0.9rem;
+}
+
+/* Outgoing (kanan) */
+.pc-bubble-out {
+    border-bottom-right-radius: 4px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.35);
+}
+
+/* Incoming (kiri) */
+.pc-bubble-in {
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.03);
+}
+
+/* Date divider */
+.pc-date-divider {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 14px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.08);
+    border-radius: 20px;
+    border: 1px solid rgba(102, 126, 234, 0.15);
+    letter-spacing: 0.2px;
+}
+
+/* Chat header */
+.pc-header {
+    background: #fff;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Empty state */
+.pc-empty-state {
+    background: linear-gradient(160deg, #f8f9ff 0%, #f0f2f5 100%);
+}
+.pc-empty-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(
+        135deg,
+        rgba(102, 126, 234, 0.12),
+        rgba(118, 75, 162, 0.12)
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #667eea;
+    margin-bottom: 20px;
+    animation: popIn 0.4s ease;
+}
+.pc-empty-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #3f4254;
+    margin-bottom: 8px;
+}
+.pc-empty-desc {
+    font-size: 0.875rem;
+    color: #94a3b8;
+    text-align: center;
+    max-width: 260px;
+}
+
+/* Nama kontak di header */
+.pc-header .fw-bold.text-gray-800.fs-6 {
+    font-size: 0.95rem !important;
+    letter-spacing: 0.1px;
+}
+
+/* mb-4 antar bubble lebih rapat */
+.chat-body-custom .d-flex.mb-4 {
+    margin-bottom: 6px !important;
+}
+
+/* Dark mode */
+[data-bs-theme="dark"] .chat-body-custom {
+    background-color: #0f0f17 !important;
+    background-image: radial-gradient(
+            circle at 20% 50%,
+            rgba(102, 126, 234, 0.06) 0%,
+            transparent 60%
+        ),
+        radial-gradient(
+            circle at 80% 20%,
+            rgba(118, 75, 162, 0.06) 0%,
+            transparent 60%
+        ) !important;
+}
+[data-bs-theme="dark"] .pc-bubble-in {
+    background: #1e2235 !important;
+    color: #e8eaf0 !important;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: none;
+}
+[data-bs-theme="dark"] .pc-header {
+    background: #1e1e2d !important;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, 0.3);
+}
+[data-bs-theme="dark"] .pc-empty-state {
+    background: linear-gradient(160deg, #151521 0%, #1a1a2e 100%) !important;
+}
+[data-bs-theme="dark"] .pc-empty-title {
+    color: #e1e1e1;
+}
+[data-bs-theme="dark"] .pc-date-divider {
+    background: rgba(102, 126, 234, 0.12);
+    border-color: rgba(102, 126, 234, 0.2);
+    color: #a5b4fc;
+}
+[data-bs-theme="dark"] .footer-input {
+    background: #1b1b29 !important;
+    border-color: #2b2b40 !important;
+    color: #e1e1e1 !important;
+    box-shadow: none !important;
+}
+[data-bs-theme="dark"] .footer-input:focus {
+    background: #22223a !important;
+    border-color: #667eea !important;
 }
 </style>
