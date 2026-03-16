@@ -999,6 +999,7 @@ onUnmounted(() => {
             CurrentCall: {{ !!callStore.currentCall }}<br/>
             isMinimized: {{ callStore.isMinimized }}
         </div> -->
+        </Teleport>
 
         <div
             class="flex-lg-row-fluid ms-lg-7 ms-xl-10"
