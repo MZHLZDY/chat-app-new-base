@@ -713,7 +713,8 @@ class AgoraController extends Controller
                 'host_id' => $host->id,
                 'channel_name' => $channelName,
                 'call_type' => $request->call_type,
-                'status' => 'ongoing', // Langsung ongoing karena host masuk duluan
+                // UBAH: Status awal panggilan grup adalah 'calling', belum 'ongoing'
+                'status' => 'calling', 
                 'started_at' => now(),
             ]);
 
@@ -754,7 +755,8 @@ class AgoraController extends Controller
 
             return response()->json([
                 'message' => 'Panggilan grup dimulai',
-                'call' => $call->load('participants', 'group'), 
+                // UBAH: Tambahkan .user agar data nama & avatar peserta ikut terkirim ke Vue
+                'call' => $call->load('participants.user', 'group'), 
                 'token' => $token,
                 'channel_name' => $channelName
             ]);

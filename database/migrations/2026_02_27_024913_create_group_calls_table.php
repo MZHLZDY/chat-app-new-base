@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('host_id')->constrained('users')->onDelete('cascade');
             $table->string('channel_name');
             $table->enum('call_type', ['voice', 'video'])->default('voice');
-            $table->enum('status', ['ongoing', 'ended', 'missed'])->default('ongoing');
+            $table->enum('status', ['calling', 'ongoing', 'ended', 'missed'])->default('ongoing');
             $table->timestamp('started_at')->nullable();
             $table->timestamp('ended_at')->nullable();
             $table->timestamps();

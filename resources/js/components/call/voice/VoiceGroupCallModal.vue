@@ -38,8 +38,9 @@ const formattedParticipants = computed(() => {
         const user = p.user || {};
         return {
             id: p.user_id || user.id || p.id,
-            name: user.name || 'Unknown',
-            avatar: user.photo || user.avatar || user.profile_photo_url || '',
+            // Cek p.name (dari Firebase) juga sebagai fallback
+            name: user.name || p.name || 'Unknown',
+            avatar: user.photo || user.avatar || user.profile_photo_url || p.photo || '',
             status: p.status || 'ringing',
             isSpeaking: false, 
             isMuted: false,    
@@ -130,7 +131,7 @@ const handleToggleSpeaker = () => {
                 </div>
 
                 <div class="text-center w-100 z-10 mt-1">
-                  <p class="fs-6 fw-bold text-dark dark:text-white text-truncate w-100 px-2 m-0 drop-shadow-sm">{{ user.name }}</p>
+                  <p class="fs-6 fw-bold user-text text-truncate w-100 px-2 m-0 drop-shadow-sm">{{ user.name }}</p>
                   <p class="fs-7 fw-semibold mt-1 tracking-wider text-uppercase m-0" 
                      :class="[
                         user.status === 'joined' ? 'text-success' : '',
@@ -222,12 +223,20 @@ const handleToggleSpeaker = () => {
   animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.user-text {
+  color: rgb(73, 26, 245);
+}
+
 .dark-mode .voice-group-overlay {
   background: rgba(0, 0, 0, 0.3) !important;
 }
 
 .dark-mode .glass-card-fullscreen {
   background: linear-gradient(135deg, rgba(30, 30, 30, 0.7), rgba(15, 15, 15, 0.5));
+}
+
+.dark-mode .user-text {
+  color: rgb(26, 157, 245);
 }
 
 @keyframes fadeIn {

@@ -140,6 +140,20 @@ export const useCallStore = defineStore('call', () => {
         }
     };
 
+    // fungsi baru
+    const updateGroupParticipantInfo = (userId: number, info: { name?: string; photo?: string }) => {
+        const participant = groupParticipants.value.find(p => p.user_id === userId);
+        if (participant) {
+            if (!participant) return;
+            if (!participant.user) participant.user = {} as any;
+            const user = participant.user!;  // ← ! memberitahu TS: "saya jamin ini tidak null"
+            if (info.name) user.name = info.name;
+            if (info.photo) user.photo = info.photo;
+        }
+    };
+
+    
+
     // Fungsi untuk mereset/mengubah status partisipan kembali menjadi 'ringing' saat di-recall
     const setParticipantRecalled = (userId: number) => {
         updateGroupParticipantStatus(userId, 'ringing');
@@ -252,6 +266,7 @@ export const useCallStore = defineStore('call', () => {
         setCallStartTime,
         setBackendGroupCall,
         updateGroupParticipantStatus,
+        updateGroupParticipantInfo,
         setParticipantRecalled,
         dismissGroupCall,
         updateRemoteVideoStates,

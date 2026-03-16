@@ -486,14 +486,17 @@ const handleStartVideoGroupCall = async () => {
     await startGroupVideoCall(activeGroup.value.id, participantIds);
 };
 
-// --- [TS FIX] Format Data agar sesuai dengan Modal ---
+// Tambahkan ini untuk memformat data partisipan agar disetujui oleh TypeScript
 const formattedGroupParticipants = computed(() => {
-    return callStore.groupParticipants.map((p: any) => ({
-        id: p.user_id || p.id,
-        name: p.user?.name || 'Unknown',
-        avatar: p.user?.photo || p.user?.profile_photo_url || '',
-        status: p.status
-    }));
+    return callStore.groupParticipants.map((p: any) => {
+        const user = p.user || {};
+        return {
+            id: p.user_id || user.id || p.id,
+            name: user.name || 'Unknown',
+            avatar: user.photo || user.avatar || user.profile_photo_url || '',
+            status: p.status || 'ringing'
+        };
+    });
 });
 
 // --- [TS FIX] Cast incomingCall ke any untuk mengakses custom properti ---
@@ -821,8 +824,10 @@ watch(
             <!-- Video call modals tetap sama -->
             <VideoCallingModal v-if="showVideoCallingModal" />
             <VideoIncomingModal v-if="showVideoIncomingModal" />
-            <VideoGroupIncomingModal/>
-            <VideoGroupCallingModal/>
+            <VideoGroupIncomingModal />
+            <VideoGroupCallingModal
+                v-if="callStore.isGroupCall && (callStore.currentCall?.type === 'video' || callStore.backendGroupCall?.call_type === 'video') && (callStore.currentCall || callStore.backendGroupCall) && callStore.callStatus === 'calling' && !callStore.isMinimized"
+            />
             <VideoCallModal v-if="callStore.currentCall && callStore.currentCall.type === 'video' && callStore.callStatus === 'ongoing' && !callStore.isGroupCall && !callStore.isMinimized" 
               @minimize="callStore.toggleMinimize" 
             />
@@ -834,10 +839,10 @@ watch(
             <VoiceGroupFloating />
 
             <VoiceGroupCallingModal
-                v-if="callStore.isGroupCall && callStore.currentCall?.type === 'voice' && (callStore.currentCall || callStore.backendGroupCall) && callStore.callStatus === 'calling' && !callStore.isMinimized"
+                v-if="callStore.isGroupCall && callStore.callStatus === 'calling' && !callStore.isMinimized && (callStore.currentCall?.type === 'voice' || callStore.backendGroupCall?.call_type === 'voice')"
                 :groupName="callStore.backendGroupCall?.group?.name || callStore.activeGroupName || 'Group Call'"
                 :groupPhoto="callStore.backendGroupCall?.group?.photo || callStore.backendGroupCall?.group?.avatar || callStore.activeGroupAvatar || ''"
-                :participants="formattedGroupParticipants"
+                :participants="formattedGroupParticipants" 
                 :callStatus="callStore.callStatus"
                 @cancel="leaveGroupVoiceCall(callStore.currentCall?.id || callStore.backendGroupCall?.id || 0)" 
             />
@@ -853,7 +858,7 @@ watch(
         />
 
         <VoiceGroupCallModal
-            v-if="callStore.isGroupCall && callStore.currentCall?.type === 'voice' && (callStore.currentCall || callStore.backendGroupCall) && callStore.callStatus === 'ongoing' && !callStore.isMinimized"
+            v-if="callStore.isGroupCall && callStore.callStatus === 'ongoing' && !callStore.isMinimized && (callStore.currentCall?.type === 'voice' || callStore.backendGroupCall?.call_type === 'voice')"
         />
 
     </Teleport>
