@@ -20,6 +20,9 @@ import {
     FileText,
     Image as ImageIcon,
     AlertTriangle,
+    ArrowRightLeft,
+    History,
+    ShieldAlert,
 } from "lucide-vue-next";
 import axios from "@/libs/axios";
 import { toast } from "vue3-toastify";
@@ -45,6 +48,7 @@ interface Attachment {
 interface Todo {
     id: number;
     user_id: number;
+    board_id?: number;
     title: string;
     description?: string;
     status: "todo" | "in_progress" | "done";
@@ -69,9 +73,9 @@ const editDesc = ref("");
 const isSaving = ref(false);
 const isDeleting = ref(false);
 const showDeleteConfirm = ref(false);
-const activeTab = ref<"detail" | "attachments" | "members" | "comments">(
-    "detail"
-);
+const activeTab = ref<
+    "detail" | "attachments" | "members" | "comments" | "activity"
+>("detail");
 
 // Deadline editing
 const editDueDate = ref("");
@@ -519,6 +523,118 @@ const removeAssignee = async (userId: number) => {
     }
 };
 
+// --- REASSIGN ---
+const showReassignModal = ref(false);
+const reassignToUserId = ref<number | null>(null);
+const reassignNote = ref("");
+const isReassigning = ref(false);
+const boardMembers = ref<Assignee[]>([]);
+const isLoadingBoardMembers = ref(false);
+
+const fetchBoardMembers = async () => {
+    if (!localTodo.value.board_id || boardMembers.value.length) return;
+    isLoadingBoardMembers.value = true;
+    try {
+        const res = await axios.get(`/chat/boards/${localTodo.value.board_id}`);
+        const data = res.data.data ?? res.data;
+        boardMembers.value = data.members ?? [];
+    } catch {
+        boardMembers.value = [];
+    } finally {
+        isLoadingBoardMembers.value = false;
+    }
+};
+
+const openReassign = () => {
+    reassignToUserId.value = null;
+    reassignNote.value = "";
+    fetchBoardMembers();
+    showReassignModal.value = true;
+};
+
+const doReassign = async () => {
+    if (!reassignToUserId.value) return;
+    isReassigning.value = true;
+    try {
+        const res = await axios.post(
+            `/chat/todos/${localTodo.value.id}/reassign`,
+            {
+                to_user_id: reassignToUserId.value,
+                remove_old: true,
+                note: reassignNote.value,
+            }
+        );
+        const updated = res.data.data ?? res.data;
+        localTodo.value.assignees = updated.assignees;
+        showReassignModal.value = false;
+        emit("updated");
+        toast.success(res.data.message ?? "Tugas berhasil dialihkan");
+    } catch (e: any) {
+        toast.error(e.response?.data?.message ?? "Gagal reassign");
+    } finally {
+        isReassigning.value = false;
+    }
+};
+
+// --- ACTIVITY LOG ---
+interface ActivityLog {
+    id: number;
+    action: string;
+    label: string;
+    meta: Record<string, any> | null;
+    user: { id: number; name: string; photo?: string } | null;
+    created_at: string;
+}
+const activityLogs = ref<ActivityLog[]>([]);
+const isLoadingActivity = ref(false);
+
+const fetchActivityLog = async () => {
+    isLoadingActivity.value = true;
+    try {
+        const res = await axios.get(
+            `/chat/todos/${localTodo.value.id}/activity`
+        );
+        activityLogs.value = res.data.data ?? res.data;
+    } catch {
+        activityLogs.value = [];
+    } finally {
+        isLoadingActivity.value = false;
+    }
+};
+
+const escalationLevelInfo = computed(
+    (): { label: string; color: string; bg: string } => {
+        const level = (localTodo.value as any).overdue_escalation_level ?? 0;
+        const map: Record<
+            number,
+            { label: string; color: string; bg: string }
+        > = {
+            0: { label: "", color: "", bg: "" },
+            1: {
+                label: "Overdue — assignee sudah dinotifikasi",
+                color: "#ef4444",
+                bg: "#fef2f2",
+            },
+            2: {
+                label: "Owner board sudah dinotifikasi",
+                color: "#f97316",
+                bg: "#fff7ed",
+            },
+            3: {
+                label: "Perlu Perhatian Segera 🚨",
+                color: "#dc2626",
+                bg: "#fef2f2",
+            },
+            4: {
+                label: "Notifikasi final telah terkirim ke semua",
+                color: "#7f1d1d",
+                bg: "#fee2e2",
+            },
+        };
+        return map[level] ?? { label: "", color: "", bg: "" };
+    }
+);
+
 // --- DELETE TODO ---
 const deleteTodo = async () => {
     isDeleting.value = true;
@@ -606,7 +722,7 @@ const deleteTodo = async () => {
                         <!-- TABS -->
                         <div class="dmodal-tabs">
                             <button
-                                v-for="tab in ['detail', 'attachments', 'members', 'comments'] as const"
+                                v-for="tab in ['detail', 'attachments', 'members', 'comments', 'activity'] as const"
                                 :key="tab"
                                 class="dtab"
                                 :class="{ active: activeTab === tab }"
@@ -614,6 +730,7 @@ const deleteTodo = async () => {
                                     activeTab = tab;
                                     tab === 'comments' && fetchComments();
                                     tab === 'members' && fetchAllContacts();
+                                    tab === 'activity' && fetchActivityLog();
                                 "
                             >
                                 <span v-if="tab === 'detail'">📋 Detail</span>
@@ -635,15 +752,15 @@ const deleteTodo = async () => {
                                         {{ localTodo.assignees.length }}
                                     </span>
                                 </span>
-                                <span v-else>
+                                <span v-else-if="tab === 'comments'">
                                     💬 Komentar
                                     <span
                                         v-if="comments.length"
                                         class="tab-badge"
+                                        >{{ comments.length }}</span
                                     >
-                                        {{ comments.length }}
-                                    </span>
                                 </span>
+                                <span v-else>📜 Aktivitas</span>
                             </button>
                         </div>
 
@@ -1218,16 +1335,269 @@ const deleteTodo = async () => {
                                     </p>
                                 </div>
                             </div>
+
+                            <!-- ===== TAB: ACTIVITY LOG ===== -->
+                            <div
+                                v-if="activeTab === 'activity'"
+                                class="tab-content"
+                            >
+                                <!-- Escalation Warning Banner -->
+                                <div
+                                    v-if="escalationLevelInfo?.label"
+                                    class="escalation-banner"
+                                    :style="{
+                                        background: escalationLevelInfo?.bg,
+                                        borderColor: escalationLevelInfo?.color,
+                                    }"
+                                >
+                                    <ShieldAlert
+                                        class="w-4 h-4"
+                                        :style="{
+                                            color: escalationLevelInfo?.color,
+                                        }"
+                                    />
+                                    <span
+                                        :style="{
+                                            color: escalationLevelInfo?.color,
+                                            fontWeight: '600',
+                                        }"
+                                    >
+                                        {{ escalationLevelInfo?.label }}
+                                    </span>
+                                    <button
+                                        class="btn-reassign-sm"
+                                        @click="openReassign"
+                                    >
+                                        <ArrowRightLeft class="w-3 h-3" />
+                                        Reassign
+                                    </button>
+                                </div>
+
+                                <!-- Log List -->
+                                <div v-if="isLoadingActivity" class="empty-tab">
+                                    <span
+                                        class="spinner-border spinner-border-sm"
+                                    ></span>
+                                    <p>Memuat aktivitas...</p>
+                                </div>
+                                <div
+                                    v-else-if="activityLogs.length"
+                                    class="activity-list"
+                                >
+                                    <div
+                                        v-for="log in activityLogs"
+                                        :key="log.id"
+                                        class="activity-item"
+                                    >
+                                        <div class="activity-dot"></div>
+                                        <div class="activity-body">
+                                            <div class="activity-header">
+                                                <span class="activity-actor">{{
+                                                    log.user?.name ?? "Sistem"
+                                                }}</span>
+                                                <span class="activity-time">{{
+                                                    formatCommentTime(
+                                                        log.created_at
+                                                    )
+                                                }}</span>
+                                            </div>
+                                            <p class="activity-label">
+                                                {{ log.label }}
+                                            </p>
+                                            <p
+                                                v-if="log.meta?.note"
+                                                class="activity-note"
+                                            >
+                                                "{{ log.meta.note }}"
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else class="empty-tab">
+                                    <span style="font-size: 2rem">📜</span>
+                                    <p>Belum ada aktivitas tercatat</p>
+                                </div>
+
+                                <button
+                                    class="btn-reassign-main"
+                                    @click="openReassign"
+                                >
+                                    <ArrowRightLeft class="w-4 h-4" />
+                                    Alihkan Tugas ke Member Lain
+                                </button>
+                            </div>
                         </div>
+                        <!-- end dmodal-body -->
+
+                        <!-- MODAL REASSIGN (Teleport ke body) -->
+                        <Teleport to="body">
+                            <Transition name="backdrop">
+                                <div
+                                    v-if="showReassignModal"
+                                    class="reassign-backdrop"
+                                    @click.self="showReassignModal = false"
+                                >
+                                    <div class="reassign-card">
+                                        <div class="reassign-header">
+                                            <ArrowRightLeft
+                                                class="w-4 h-4"
+                                                style="color: #667eea"
+                                            />
+                                            <span>Alihkan Tugas</span>
+                                            <button
+                                                class="btn-close-x"
+                                                @click="
+                                                    showReassignModal = false
+                                                "
+                                                style="margin-left: auto"
+                                            >
+                                                <X class="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <div class="reassign-body">
+                                            <p
+                                                class="section-label"
+                                                style="margin-bottom: 8px"
+                                            >
+                                                Pilih member tujuan:
+                                            </p>
+                                            <div
+                                                v-if="isLoadingBoardMembers"
+                                                class="empty-tab"
+                                            >
+                                                <span
+                                                    class="spinner-border spinner-border-sm"
+                                                ></span>
+                                            </div>
+                                            <div
+                                                v-else
+                                                class="reassign-member-list"
+                                            >
+                                                <div
+                                                    v-for="m in boardMembers"
+                                                    :key="m.id"
+                                                    class="reassign-member-item"
+                                                    :class="{
+                                                        selected:
+                                                            reassignToUserId ===
+                                                            m.id,
+                                                    }"
+                                                    @click="
+                                                        reassignToUserId = m.id
+                                                    "
+                                                >
+                                                    <div
+                                                        class="member-avatar"
+                                                        style="
+                                                            width: 32px;
+                                                            height: 32px;
+                                                            font-size: 0.8rem;
+                                                        "
+                                                    >
+                                                        <img
+                                                            v-if="
+                                                                m.profile_photo_url
+                                                            "
+                                                            :src="
+                                                                m.profile_photo_url
+                                                            "
+                                                        />
+                                                        <span v-else>{{
+                                                            m.name[0]
+                                                        }}</span>
+                                                    </div>
+                                                    <div style="flex: 1">
+                                                        <p
+                                                            class="member-name"
+                                                            style="
+                                                                font-size: 0.85rem;
+                                                            "
+                                                        >
+                                                            {{ m.name }}
+                                                        </p>
+                                                        <p
+                                                            class="member-role"
+                                                            style="
+                                                                font-size: 0.72rem;
+                                                            "
+                                                        >
+                                                            {{
+                                                                m.pivot
+                                                                    ?.role ===
+                                                                "owner"
+                                                                    ? "Owner Board"
+                                                                    : "Member"
+                                                            }}
+                                                        </p>
+                                                    </div>
+                                                    <Check
+                                                        v-if="
+                                                            reassignToUserId ===
+                                                            m.id
+                                                        "
+                                                        class="w-4 h-4"
+                                                        style="color: #667eea"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <textarea
+                                                v-model="reassignNote"
+                                                class="comment-textarea"
+                                                placeholder="Catatan untuk penerima tugas (opsional)..."
+                                                rows="2"
+                                                style="margin-top: 12px"
+                                            ></textarea>
+                                        </div>
+                                        <div class="reassign-footer">
+                                            <button
+                                                class="dp-save"
+                                                :disabled="
+                                                    !reassignToUserId ||
+                                                    isReassigning
+                                                "
+                                                @click="doReassign"
+                                            >
+                                                {{
+                                                    isReassigning
+                                                        ? "Mengalihkan..."
+                                                        : "Alihkan Sekarang"
+                                                }}
+                                            </button>
+                                            <button
+                                                class="dp-cancel"
+                                                @click="
+                                                    showReassignModal = false
+                                                "
+                                            >
+                                                Batal
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Transition>
+                        </Teleport>
 
                         <!-- FOOTER -->
                         <div class="dmodal-footer">
-                            <div v-if="!showDeleteConfirm">
+                            <div
+                                v-if="!showDeleteConfirm"
+                                style="
+                                    display: flex;
+                                    gap: 8px;
+                                    align-items: center;
+                                "
+                            >
                                 <button
                                     class="btn-delete-todo"
                                     @click="showDeleteConfirm = true"
                                 >
                                     <Trash2 class="w-4 h-4" /> Hapus Tugas
+                                </button>
+                                <button
+                                    class="btn-reassign-footer"
+                                    @click="openReassign"
+                                >
+                                    <ArrowRightLeft class="w-4 h-4" /> Alihkan
                                 </button>
                             </div>
                             <div v-else class="confirm-delete-row">
@@ -2185,5 +2555,246 @@ const deleteTodo = async () => {
 }
 [data-bs-theme="dark"] .comment-content {
     color: #d1d5db;
+}
+
+/* ── Escalation Banner ── */
+.escalation-banner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid;
+    margin-bottom: 14px;
+    font-size: 0.82rem;
+}
+.btn-reassign-sm {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid #667eea;
+    background: white;
+    color: #667eea;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.btn-reassign-sm:hover {
+    background: rgba(102, 126, 234, 0.08);
+}
+
+/* ── Activity Log timeline ── */
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+    padding-left: 22px;
+}
+.activity-list::before {
+    content: "";
+    position: absolute;
+    left: 7px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: #e5e7eb;
+    border-radius: 2px;
+}
+.activity-item {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    position: relative;
+}
+.activity-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #667eea;
+    border: 2px solid white;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.25);
+    flex-shrink: 0;
+    margin-top: 4px;
+    margin-left: -18px;
+}
+.activity-body {
+    flex: 1;
+    min-width: 0;
+}
+.activity-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+    flex-wrap: wrap;
+}
+.activity-actor {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #374151;
+}
+.activity-time {
+    font-size: 0.72rem;
+    color: #9ca3af;
+}
+.activity-label {
+    font-size: 0.82rem;
+    color: #4b5563;
+    margin: 0;
+}
+.activity-note {
+    font-size: 0.78rem;
+    color: #6b7280;
+    font-style: italic;
+    margin: 2px 0 0;
+}
+
+.btn-reassign-main {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 16px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    border: 1.5px dashed #667eea;
+    background: rgba(102, 126, 234, 0.05);
+    color: #667eea;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    justify-content: center;
+    transition: background 0.15s;
+}
+.btn-reassign-main:hover {
+    background: rgba(102, 126, 234, 0.12);
+}
+
+.btn-reassign-footer {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid #667eea;
+    background: rgba(102, 126, 234, 0.07);
+    color: #667eea;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.btn-reassign-footer:hover {
+    background: rgba(102, 126, 234, 0.14);
+}
+
+/* ── Reassign Modal ── */
+.reassign-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10100;
+    background: rgba(0, 0, 0, 0.45);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.reassign-card {
+    background: white;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 420px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    animation: modalPop 0.25s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+}
+.reassign-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #f0f0f0;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+.reassign-body {
+    padding: 16px 20px;
+}
+.reassign-member-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 240px;
+    overflow-y: auto;
+}
+.reassign-member-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1.5px solid #f0f0f0;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.reassign-member-item:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.04);
+}
+.reassign-member-item.selected {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.08);
+}
+.reassign-footer {
+    display: flex;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid #f0f0f0;
+    justify-content: flex-end;
+}
+
+/* ── Dark mode ── */
+[data-bs-theme="dark"] .escalation-banner {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+}
+[data-bs-theme="dark"] .activity-actor {
+    color: #e5e7eb;
+}
+[data-bs-theme="dark"] .activity-label {
+    color: #9ca3af;
+}
+[data-bs-theme="dark"] .activity-list::before {
+    background: #374151;
+}
+[data-bs-theme="dark"] .activity-dot {
+    border-color: #1e2235;
+}
+[data-bs-theme="dark"] .reassign-card {
+    background: #1e1e2d;
+}
+[data-bs-theme="dark"] .reassign-header {
+    border-color: #2b2b40;
+    color: #e1e1e1;
+}
+[data-bs-theme="dark"] .reassign-footer {
+    border-color: #2b2b40;
+}
+[data-bs-theme="dark"] .reassign-member-item {
+    border-color: #2b2b40;
+}
+[data-bs-theme="dark"] .reassign-member-item:hover {
+    background: rgba(102, 126, 234, 0.1);
+}
+[data-bs-theme="dark"] .reassign-member-item.selected {
+    background: rgba(102, 126, 234, 0.15);
+}
+[data-bs-theme="dark"] .btn-reassign-sm {
+    background: #1e1e2d;
 }
 </style>

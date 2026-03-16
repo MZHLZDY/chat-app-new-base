@@ -117,10 +117,8 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::delete('boards/{taskBoard}', [TaskBoardController::class, 'destroy'])->name('boards.destroy');
         Route::post('boards/{taskBoard}/members', [TaskBoardController::class, 'addMember'])->name('boards.members.add');
         Route::delete('boards/{taskBoard}/members/{user}', [TaskBoardController::class, 'removeMember'])->name('boards.members.remove');
-        // ──────────────────────────────────────────────────────────────────────
 
         // ── Todo Routes ────────────────────────────────────────────────────────
-        // PENTING: Route statik harus di atas route dengan {wildcard}
 
         // Attachments
         Route::post('todos/attachments', [TodoController::class, 'storeAttachment'])->name('todos.attachments.store');
@@ -134,6 +132,10 @@ Route::middleware(['auth', 'json'])->group(function () {
         // Assignees
         Route::post('todos/{todo}/assignees', [TodoController::class, 'addAssignee'])->name('todos.assignees.add');
         Route::delete('todos/{todo}/assignees/{user}', [TodoController::class, 'removeAssignee'])->name('todos.assignees.remove');
+
+        // Reassign & Activity Log
+        Route::post('todos/{todo}/reassign', [TodoController::class, 'reassign'])->name('todos.reassign');
+        Route::get('todos/{todo}/activity', [TodoController::class, 'activityLog'])->name('todos.activity');
 
         // CRUD
         Route::get('todos', [TodoController::class, 'index'])->name('todos.index');
@@ -162,10 +164,10 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::post('/answer', [AgoraController::class, 'answerGroupCall'])->name('answer');
         Route::post('/reject', [AgoraController::class, 'rejectGroupCall'])->name('reject');
         // [UPDATE] Rute untuk Host membubarkan panggilan
-        Route::post('/end-all', [AgoraController::class, 'endGroupCallForAll'])->name('end-all'); 
-        Route::post('/cancel', [AgoraController::class, 'cancelGroupCall'])->name('cancel'); 
+        Route::post('/end-all', [AgoraController::class, 'endGroupCallForAll'])->name('end-all');
+        Route::post('/cancel', [AgoraController::class, 'cancelGroupCall'])->name('cancel');
         // [UPDATE] Rute untuk Peserta biasa keluar
-        Route::post('/leave', [AgoraController::class, 'leaveGroupCall'])->name('leave'); 
+        Route::post('/leave', [AgoraController::class, 'leaveGroupCall'])->name('leave');
         Route::post('/recall', [AgoraController::class, 'recallParticipant'])->name('recall');
         Route::post('/missed', [AgoraController::class, 'missedGroupCall'])->name('missed');
         Route::post('/token', [AgoraController::class, 'generateGroupToken'])->name('token');
