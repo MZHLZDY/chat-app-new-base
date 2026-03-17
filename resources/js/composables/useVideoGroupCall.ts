@@ -53,6 +53,8 @@ export function useVideoGroupCall() {
             callStore.isGroupCall = true;
             callStore.backendGroupCall = callData;
             callStore.groupParticipants = callData.participants || [];
+            callStore.agoraToken = response.token;
+            callStore.channelName = response.channel_name;
 
             callStore.setCurrentCall({
                 id: callData.id,
@@ -94,21 +96,35 @@ export function useVideoGroupCall() {
             );
 
             const participantsRef = dbRef(database, `group_calls/${callData.id}/participants`);
-            onValue(participantsRef, (snapshot) => {
+            onValue(participantsRef, async (snapshot) => {
                 if (snapshot.exists()) {
                     const participantsData = snapshot.val();
+                    
                     const isAnyoneJoined = Object.values(participantsData).some((p: any) => p.status === 'joined');
                     
+                    // Cek apakah SEMUA peserta di list ini menolak (declined) atau keluar (left)
+                    const totalParticipants = Object.keys(participantsData).length;
+                    const declinedParticipants = Object.values(participantsData).filter((p: any) => ['declined', 'left'].includes(p.status)).length;
+                    
+                    const isAllDeclinedOrLeft = totalParticipants > 0 && declinedParticipants === totalParticipants;
+                    
+                    // Update list participant di store biar UI nampilin Realtime
+                    Object.entries(participantsData).forEach(([userId, participantState]: [string, any]) => {
+                        callStore.updateGroupParticipantStatus(Number(userId), participantState.status);
+                    });
+
                     // Kalau ada yang join, pindah dari layar 'memanggil' ke 'ngobrol' (ongoing)
                     if (isAnyoneJoined && callStore.callStatus === 'calling') {
                         callStore.updateCallStatus('ongoing');
                         callStore.setInCall(true);
+                    } 
+                    // Kalau semuanya nolak, Host otomatis kita paksa keluar modalnya!
+                    else if (isAllDeclinedOrLeft && callStore.callStatus === 'calling') {
+                        setTimeout(async () => {
+                            toast.info("Panggilan tidak ada yang menerima.");
+                            await leaveGroupVideoCall(callData.id);
+                        }, 1000); // Dijeda 1 detik biar user sempet liat avatarnya merah
                     }
-                    
-                    // Update list participant di store biar UI nampilin Realtime!
-                    Object.entries(participantsData).forEach(([userId, participantState]: [string, any]) => {
-                        callStore.updateGroupParticipantStatus(Number(userId), participantState.status);
-                    });
                 }
             });
 
@@ -164,6 +180,9 @@ export function useVideoGroupCall() {
                 });
             }
 
+            const myParticipantRef = dbRef(database, `group_calls/${callId}/participants/${authStore.user?.id}`);
+            await set(myParticipantRef, { status: 'joined', timestamp: Date.now() });
+
             toast.success('Bergabung ke panggilan video...');
         } catch (error: any) {
             console.error('Gagal menjawab panggilan:', error);
@@ -174,8 +193,38 @@ export function useVideoGroupCall() {
     };
 
     const rejectGroupVideoCall = async (callId: number) => {
+        if (callStore.callStatus === 'calling') {
+            try {
+                // Tembak backend jika ada endpointnya (dibiarkan opsional lewat leaveGroupCall)
+                await callServices.leaveGroupCall(callId);
+            } catch (error) {
+                console.error('Backend leave/cancel error:', error);
+            }
+
+            // 🔥 Tembak status Cancelled (Missed) ke SEMUA peserta di Firebase agar dering mati
+            const participants = callStore.groupParticipants || [];
+            participants.forEach((p: any) => {
+                const participantId = typeof p === 'object' ? (p.user_id || p.id) : p;
+                
+                if (participantId && participantId !== authStore.user?.id) {
+                    const statusRef = dbRef(database, `calls/${participantId}/status`);
+                    set(statusRef, {
+                        status: 'cancelled',
+                        call_id: callId,
+                        call_type: 'group_video',
+                        timestamp: Date.now()
+                    });
+                }
+            });
+
+            await stopAndClearCall();
+            return;
+        }
+
         try {
             await callServices.rejectGroupCall(callId);
+            const myParticipantRef = dbRef(database, `group_calls/${callId}/participants/${authStore.user?.id}`);
+            await set(myParticipantRef, { status: 'declined', timestamp: Date.now() });
             callStore.clearIncomingCall();
         } catch (error) {
             console.error('Gagal menolak panggilan:', error);
@@ -185,6 +234,8 @@ export function useVideoGroupCall() {
     const leaveGroupVideoCall = async (callId: number) => {
         try {
             await callServices.leaveGroupCall(callId);
+            const myParticipantRef = dbRef(database, `group_calls/${callId}/participants/${authStore.user?.id}`);
+            await set(myParticipantRef, { status: 'left', timestamp: Date.now() });
             await stopAndClearCall();
         } catch (error) {
             console.error('Gagal keluar panggilan:', error);

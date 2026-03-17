@@ -7,7 +7,7 @@ import { X, Video } from 'lucide-vue-next';
 
 // Setup Store & Composables
 const store = useCallStore();
-const { leaveGroupVideoCall } = useVideoGroupCall();
+const { rejectGroupVideoCall } = useVideoGroupCall();
 
 // Info basic grup yang sedang ditelpon
 const groupCall = computed(() => store.backendGroupCall);
@@ -54,7 +54,7 @@ watch(rejectedParticipants, (count) => {
 const handleCancel = async () => {
     if (groupCall.value) {
         // Anggap host ingin membubarkan / membatalkan karena blm ada yg angkat
-        await leaveGroupVideoCall(groupCall.value.id);
+        await rejectGroupVideoCall(groupCall.value.id);
         store.clearCurrentCall();
     }
 };

@@ -38,6 +38,7 @@ import VoiceGroupFloating from "@/components/call/voice/VoiceGroupFloating.vue";
 import { useVideoGroupCall } from '@/composables/useVideoGroupCall';
 import VideoGroupCallingModal from '@/components/call/video/VideoGroupCallingModal.vue';
 import VideoGroupIncomingModal from '@/components/call/video/VideoGroupIncomingModal.vue';
+import VideoGroupCallModal from '@/components/call/video/VideoGroupCallModal.vue';
 
 // --- State Utama ---
 const route = useRoute();
@@ -887,6 +888,7 @@ watch(
             <VideoIncomingModal v-if="showVideoIncomingModal" />
             <VideoGroupIncomingModal/>
             <VideoGroupCallingModal v-if="callStore.isGroupCall && callStore.currentCall?.type === 'video' && !callStore.isMinimized" />
+            <VideoGroupCallModal/>
             <VideoCallModal v-if="callStore.currentCall && callStore.currentCall.type === 'video' && callStore.callStatus === 'ongoing' && !callStore.isGroupCall && !callStore.isMinimized" 
               @minimize="callStore.toggleMinimize" 
             />
