@@ -21,22 +21,31 @@ const isLoadingContacts = ref(false);
 const isSubmitting = ref(false);
 
 // Ambil data kontak dari backend (Sesuaikan endpoint dengan API kamu)
+// Ambil data kontak dari backend
 const fetchContacts = async () => {
   isLoadingContacts.value = true;
   try {
-    // Asumsi: endpoint ini mengembalikan daftar user/kontak
-    const response = await axios.get('/api/users'); 
+    const { data } = await axios.get('/master/users');
     
+    // Cek di console browser untuk melihat bentuk asli data dari backend
+    console.log('Cek isi response:', response.data); 
+
+    // Ambil array user-nya. 
+    // Jika bentuknya langsung array -> response.data
+    // Jika dibungkus "data" -> response.data.data
+    // Jika dibungkus "users" -> response.data.users
+    const usersArray = response.data.users || response.data.data || response.data || [];
+
     // Filter agar user yang sedang menelepon saat ini dan diri sendiri tidak muncul di daftar
     const currentOpponentId = callStore.currentCall?.caller.id === authStore.user?.id 
       ? callStore.currentCall?.receiver.id 
       : callStore.currentCall?.caller.id;
 
-    contacts.value = response.data.users.filter((u: any) => 
+    contacts.value = usersArray.filter((u: any) => 
       u.id !== authStore.user?.id && u.id !== currentOpponentId
     );
   } catch (error) {
-    console.error('Gagal mengambil kontak:', error);
+    console.error('Gagal memuat kontak:', error);
   } finally {
     isLoadingContacts.value = false;
   }
