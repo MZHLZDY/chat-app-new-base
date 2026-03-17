@@ -7,10 +7,12 @@ import { useAgora } from '@/composables/useAgora';
 import axios from '@/libs/axios';
 import { toast } from 'vue3-toastify';
 import type { User } from '@/types/call';
+import { upgradeCallToGroup } from '@/services/callServices';
 
 export function useVoiceGroupCall() {
     const callStore = useCallStore();
     const authStore = useAuthStore();
+    
     
     // Ambil fungsi & state dari useAgora
     const { 
@@ -362,6 +364,103 @@ export function useVoiceGroupCall() {
         }
     };
 
+    // 🔥 FUNGSI BARU: Transisi dari Personal ke Group Call
+    const upgradeToGroupCall = async (newParticipantIds: number[]) => {
+        if (!callStore.currentCall) return;
+        processing.value = true;
+
+        try {
+            // 1. Tentukan siapa lawan bicara (callee/caller) yang lama
+            const currentOpponentId = callStore.currentCall.caller.id === authStore.user?.id 
+                ? callStore.currentCall.receiver.id 
+                : callStore.currentCall.caller.id;
+
+            // Gabungkan ID peserta lama dan peserta baru
+            const allParticipantIds = [currentOpponentId, ...newParticipantIds];
+
+            // 2. Request ke Backend API untuk membuat Panggilan Grup Baru
+            // Memanggil endpoint Laravel via fungsi service (callServices.ts)
+            const data = await upgradeCallToGroup(callStore.currentCall.id, allParticipantIds);
+
+            // 3. Tinggalkan channel Panggilan Personal (Agora)
+            await leaveChannel();
+
+            // Opsional: Hapus record panggilan personal di Firebase untuk lawan bicara saat ini
+            const personalIncomingRef = dbRef(database, `calls/${currentOpponentId}/incoming`);
+            await remove(personalIncomingRef);
+
+            // 4. Update Store ke Mode Panggilan Grup secara terpusat
+            callStore.transitionToGroupCall(data.call, allParticipantIds);
+
+            // 5. Join Channel Grup Baru (Agora)
+            await joinChannel(data.token, data.channel_name, authStore.user?.id as number);
+
+            // 6. Kirim undangan Firebase ke SEMUA peserta (Lama & Baru)
+            allParticipantIds.forEach((participantId) => {
+                if (participantId !== authStore.user?.id) {
+                    const incomingRef = dbRef(database, `calls/${participantId}/incoming`);
+                    set(incomingRef, {
+                        call_id: data.call.id,
+                        call_type: 'group_voice',
+                        channel_name: data.channel_name,
+                        caller: authStore.user,
+                        group: data.call.group || { id: 'upgrade', name: 'Group Call', photo: '' }, // Fallback info grup
+                        participants: allParticipantIds,
+                        token: data.token || '',
+                        timestamp: Date.now(),
+                        is_upgrade: true // 🔥 Penanda khusus agar UI lawan bicara bisa transisi mulus
+                    });
+                }
+            });
+
+            // 7. Host mendaftarkan dirinya sendiri ke Firebase
+            const myParticipantRef = dbRef(database, `group_calls/${data.call.id}/participants/${authStore.user?.id}`);
+            set(myParticipantRef, { 
+                status: 'joined', 
+                timestamp: Date.now(),
+                user_id: authStore.user?.id,
+                name: authStore.user?.name,
+                photo: authStore.user?.photo || (authStore.user as any)?.profile_photo_url || '',
+            });
+
+            callStore.updateGroupParticipantStatus(authStore.user?.id as number, 'joined');
+            callStore.updateGroupParticipantInfo(authStore.user?.id as number, {
+                name: authStore.user?.name,
+                photo: authStore.user?.photo || (authStore.user as any)?.profile_photo_url || '',
+            });
+
+            // 8. Pasang Listener untuk memantau status peserta yang diundang
+            const participantsRef = dbRef(database, `group_calls/${data.call.id}/participants`);
+            onValue(participantsRef, (snapshot) => {
+                if (!callStore.isGroupCall) return;
+
+                if (snapshot.exists()) {
+                    const participantsData = snapshot.val();
+                    Object.entries(participantsData).forEach(([key, participantState]: [string, any]) => {
+                        const actualUserId = Number(participantState.user_id || participantState.id || key);
+                        
+                        // Update status (ringing/joined/rejected)
+                        callStore.updateGroupParticipantStatus(actualUserId, participantState.status);
+
+                        // Update profil jika mereka mengirimkan data
+                        if (participantState.name || participantState.photo) {
+                            callStore.updateGroupParticipantInfo(actualUserId, {
+                                name: participantState.name,
+                                photo: participantState.photo,
+                            });
+                        }
+                    });
+                }
+            });
+
+        } catch (error) {
+            console.error('❌ Gagal upgrade ke group call:', error);
+            toast.error("Gagal menambahkan peserta, silakan coba lagi.");
+        } finally {
+            processing.value = false;
+        }
+    };
+
     // ======================================================
     // 2. FIREBASE EVENT HANDLERS (Dipanggil dari Global Listener)
     // ======================================================
@@ -449,6 +548,7 @@ export function useVoiceGroupCall() {
         leaveGroupVoiceCall,
         endGroupVoiceCallForAll,
         recallParticipant,
+        upgradeToGroupCall,
         toggleMute: toggleAudio,
         handleGroupIncomingCall,
         handleGroupVoiceCallAnswered,

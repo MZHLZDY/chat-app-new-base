@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
-import { Minimize2 } from 'lucide-vue-next'; 
+import { Minimize2, UserPlus } from 'lucide-vue-next'; 
 import { themeMode } from "@/layouts/default-layout/config/helper"; 
 import { useAuthStore } from "@/stores/auth"; 
 // --- IMPORT USEAGORA & STORE ---
@@ -27,7 +27,8 @@ const emit = defineEmits([
   'toggleMute', 
   'toggleSpeaker', 
   'endCall', 
-  'minimize' 
+  'minimize',
+  'addParticipant' 
 ]);
 
 const currentThemeMode = computed(() => themeMode.value);
@@ -263,6 +264,13 @@ onUnmounted(() => {
           
           <div class="separator"></div>
 
+          <!-- <button 
+            @click="emit('addParticipant')" 
+            class="btn btn-icon btn-sm btn-active-light-primary bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-full text-white"
+            title="Tambah Peserta (Upgrade ke Grup)"
+          >
+            <UserPlus :size="20" />
+          </button> -->
           <button @click="emit('minimize')" class="minimize-btn" title="Minimize">
             <Minimize2 :size="16" />
           </button>
@@ -314,9 +322,11 @@ onUnmounted(() => {
           call-type="voice"
           :is-muted="props.isMuted"
           :is-speaker-on="props.isSpeakerOn" 
+          :showAddParticipant="true"
           @toggle-mute="emit('toggleMute')"
           @toggle-speaker="emit('toggleSpeaker')"
           @end-call="emit('endCall')"
+          @add-participant="emit('addParticipant')"
         />
       </div>
 

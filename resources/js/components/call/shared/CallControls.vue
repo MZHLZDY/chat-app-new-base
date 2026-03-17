@@ -10,7 +10,8 @@ import {
   CameraOff,
   SwitchCamera,
   PhoneOff,     // Import Icon baru untuk End Call For All
-  SwitchCameraIcon
+  SwitchCameraIcon,
+  UserPlus
 } from 'lucide-vue-next';
 import { themeMode } from "@/layouts/default-layout/config/helper"; 
 
@@ -20,8 +21,10 @@ interface Props {
   isCameraOn?: boolean;
   hasMultipleCameras?: boolean; // Penanda jika perangkat memiliki lebih dari 1 kamera
   callType: 'voice' | 'video';
+  isPersonalCall?:boolean;
   isGroupCall?: boolean; // Penanda group call
   isHost?: boolean;      // Penanda jika user ini adalah host
+  showAddParticipant?: boolean;
 }
 
 const currentThemeMode = computed(() => themeMode.value);
@@ -34,6 +37,7 @@ const props = withDefaults(defineProps<Props>(), {
   callType: 'voice',
   isGroupCall: false,
   isHost: false,
+  showAddParticipant: false,
 });
 
 // Update emits dengan event baru
@@ -43,7 +47,8 @@ const emit = defineEmits([
   'toggleCamera',
   'toggleSwitchCamera', // Emit baru untuk switch camera
   'endCall', 
-  'endCallForAll' // Emit baru untuk bubarkan panggilan
+  'endCallForAll', // Emit baru untuk bubarkan panggilan
+  'addParticipant',
 ]);
 </script>
 
@@ -57,6 +62,16 @@ const emit = defineEmits([
       title="Mute/Unmute"
     >
       <component :is="props.isMuted ? MicOff : Mic" :size="24" />
+    </button>
+
+    <button 
+      v-if="props.callType === 'voice'"
+      @click="emit('toggleSpeaker')" 
+      class="control-btn" 
+      :class="{ 'active': !props.isCameraOn }"
+      title="Toggle Speaker"
+    >
+      <component :is="props.isSpeakerOn ? Volume2 : VolumeOff" :size="24" />
     </button>
 
     <button 
@@ -84,6 +99,15 @@ const emit = defineEmits([
       title="Leave Call"
     >
       <PhoneForwarded :size="24" />
+    </button>
+
+    <button 
+      v-if="props.showAddParticipant"
+      @click="emit('addParticipant')" 
+      class="control-btn"
+      title="Tambah Peserta (Upgrade ke Grup)"
+    >
+      <UserPlus :size="24" />
     </button>
 
     <button 

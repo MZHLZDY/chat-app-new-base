@@ -20,6 +20,7 @@ use App\Events\CallAccepted;
 use App\Events\CallCancelled;
 use App\Events\CallRejected;
 use App\Events\CallEnded;
+use App\Events\CallUpgradedToGroup;
 use App\Events\GroupCallInitiated; // Atau GroupCallInvitation (sesuai yang Anda pakai untuk memanggil)
 use App\Events\GroupCallInvitation;
 use App\Events\GroupIncomingCall;
@@ -687,6 +688,84 @@ class AgoraController extends Controller
             ]);
             return response()->json(['error' => 'Gagal mendapatkan histori panggilan'], 500);
         }
+    }
+
+    // ==== Upgrade Personal Call to Group Call ====
+    public function upgradeToGroupCall(Request $request)
+    {
+        $request->validate([
+            'original_call_id' => 'required|integer',
+            'participant_ids' => 'required|array',
+            'participant_ids.*' => 'integer|exists:users,id',
+        ]);
+
+        $user = auth()->user();
+        
+        // 1. Cari panggilan personal yang sedang berlangsung
+        $originalCall = PersonalCall::find($request->original_call_id);
+        if (!$originalCall) {
+            return response()->json(['message' => 'Original call not found'], 404);
+        }
+
+        // 2. Akhiri panggilan personal tersebut (secara database)
+        $originalCall->update([
+            'status' => 'ended',
+            'ended_at' => now(),
+            'ended_by' => $user->id,
+        ]);
+
+        // 3. Buat Panggilan Grup Baru (Ad-hoc / tanpa grup spesifik jika tidak ada)
+        $channelName = 'group_voice_' . uniqid();
+        
+        $groupCall = GroupCall::create([
+            // Jika database mengharuskan group_id, kamu mungkin perlu membuat dummy group
+            // Atau pastikan kolom group_id di database MySQL mu 'nullable' untuk panggilan dadakan
+            'group_id' => null, 
+            'host_id' => $user->id,
+            'channel_name' => $channelName,
+            'call_type' => 'voice',
+            'status' => 'ongoing', // Langsung ongoing karena host & 1 callee sudah siap
+            'started_at' => now(),
+        ]);
+
+        // 4. Masukkan Host (Pembuat upgrade) sebagai participant
+        GroupParticipant::create([
+            'call_id' => $groupCall->id,
+            'user_id' => $user->id,
+            'status' => 'joined',
+            'joined_at' => now(),
+        ]);
+
+        // 5. Masukkan sisa partisipan yang diundang (status ringing)
+        foreach ($request->participant_ids as $participantId) {
+            // Abaikan jika id sama dengan host untuk mencegah duplikat
+            if ($participantId != $user->id) {
+                GroupParticipant::create([
+                    'call_id' => $groupCall->id,
+                    'user_id' => $participantId,
+                    'status' => 'ringing',
+                ]);
+            }
+        }
+
+        // 6. Generate Token Agora baru untuk Host
+        $token = $this->agoraService->generateRtcToken($channelName, $user->id);
+
+        // Load relasi agar data di frontend (Store) utuh
+        $groupCall->load(['participants.user', 'host']);
+
+        event(new \App\Events\CallUpgradedToGroup(
+            $request->original_call_id, 
+            $groupCall, 
+            $request->participant_ids
+        ));
+
+        return response()->json([
+            'message' => 'Call upgraded successfully',
+            'call' => $groupCall,
+            'token' => $token,
+            'channel_name' => $channelName
+        ]);
     }
 
     // ==== Group Call Methods =====

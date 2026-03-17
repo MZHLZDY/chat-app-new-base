@@ -122,6 +122,26 @@ export const useCallStore = defineStore('call', () => {
         }
     };
 
+    // 🔥 Transisi mulus dari Panggilan Personal ke Grup
+    const transitionToGroupCall = (newGroupCall: GroupCall, participantIds: number[]) => {
+        // 1. Bersihkan state panggilan personal
+        currentCall.value = null;
+        backendCall.value = null;
+        
+        // 2. Ubah mode ke Group Call
+        isGroupCall.value = true;
+        callStatus.value = 'ongoing'; // Host otomatis statusnya ongoing
+        backendGroupCall.value = newGroupCall;
+        
+        // 3. Masukkan partisipan awal (semua diset 'ringing' dulu)
+        groupParticipants.value = participantIds.map(id => ({
+            id: id,
+            user_id: id,
+            call_id: newGroupCall.id,
+            status: 'ringing'
+        }));
+    };
+
     const setBackendGroupCall = (call: GroupCall, token: string, channel: string) => {
         backendGroupCall.value = call;
         agoraToken.value = token;
@@ -259,6 +279,7 @@ export const useCallStore = defineStore('call', () => {
         toggleMinimize,
         setBackendCall,
         updateBackendCall,
+        transitionToGroupCall,
         setHasJoinedAgora,
         setCallTimeout,
         startCallTimeout,

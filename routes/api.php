@@ -154,7 +154,7 @@ Route::middleware(['auth', 'json'])->group(function () {
         Route::post('/reject', [AgoraController::class, 'rejectCall']);
         Route::post('/cancel', [AgoraController::class, 'cancelCall']);
         Route::post('/end', [AgoraController::class, 'endCall']);
-
+        Route::post('/upgrade', [AgoraController::class, 'upgradeToGroupCall'])->name('upgrade');
         // Histori panggilan
         Route::get('/history', [AgoraController::class, 'getCallHistory']);
     });

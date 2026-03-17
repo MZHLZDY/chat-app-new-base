@@ -16,7 +16,7 @@ import { useVoiceCall } from '@/composables/useVoiceCall';
 import { usePersonalCall } from "@/composables/usePersonalCall";
 import { useAgora } from '@/composables/useAgora';
 import { database } from '@/libs/firebase';
-import { ref as dbRef, onValue, remove } from 'firebase/database';
+import { ref as dbRef, onValue, remove, off } from 'firebase/database';
 // Call import
 import type { PersonalCall, User } from "@/types/call";
 import VoiceIncomingModal from '@/components/call/voice/VoiceIncomingModal.vue';
@@ -27,6 +27,8 @@ import VideoCallingModal from '@/components/call/video/VideoCallingModal.vue';
 import VideoIncomingModal from '@/components/call/video/VideoIncomingModal.vue';
 import VideoCallModal from '@/components/call/video/VideoCallModal.vue';
 import VideoFloating from '@/components/call/video/VideoFloating.vue';
+// --- Upgrade Call Import ---
+import AddParticipantModal from '@/components/call/shared/AddParticipantModal.vue';
 // --- Group Call Import ---
 import { useVoiceGroupCall } from "@/composables/useVoiceGroupCall";
 import VoiceGroupCallingModal from "@/components/call/voice/VoiceGroupCallingModal.vue";
@@ -44,6 +46,7 @@ const authStore = useAuthStore();
 const groups = ref<any[]>([]);
 const activeContact = ref<any>(null);
 const activeGroup = ref<any>(null);
+const showAddParticipantModal = ref(false);
 
 // --- CALL LOGIC ---
 const callStore = useCallStore();
@@ -508,6 +511,41 @@ onBeforeMount(() => {
 
 let incomingUnsub: (() => void) | undefined;
 let statusUnsub: (() => void) | undefined;
+let upgradeListenerRef: any = null;
+
+watch(() => callStore.currentCall?.id, (newCallId, oldCallId) => {
+    // Bersihkan listener lama jika panggilan berganti/selesai
+    if (oldCallId && upgradeListenerRef) {
+        off(upgradeListenerRef);
+        upgradeListenerRef = null;
+    }
+
+    // Jika ada panggilan personal sedang aktif
+    if (newCallId) {
+        upgradeListenerRef = dbRef(database, `calls/${newCallId}/upgrade`);
+        
+        onValue(upgradeListenerRef, async (snapshot) => {
+            const data = snapshot.val();
+            
+            if (data && data.is_upgraded && data.group_call) {
+                console.log("📡 [Firebase] Panggilan di-upgrade ke Group Call:", data);
+                toast.info("Panggilan dialihkan ke Panggilan Grup...", { autoClose: 3000 });
+
+                // Hapus trigger agar tidak berulang
+                await remove(upgradeListenerRef);
+
+                // Eksekusi Transisi UI
+                callStore.clearCurrentCall();
+                callStore.setBackendGroupCall(
+                    data.group_call, 
+                    data.group_call?.token || data.token || '', 
+                    data.group_call?.channel_name || data.channel_name || ''
+                );
+                callStore.isGroupCall = true;
+            }
+        });
+    }
+}, { immediate: true });
 
 onMounted(() => {
     nextTick(() => {
@@ -523,222 +561,187 @@ onMounted(() => {
         console.log("✅ Debug Variabel diekspos ke window");
     }
 
-  const userId = authStore.user?.id;
-  if (!userId) return;
+    const userId = authStore.user?.id;
+    if (!userId) return;
 
-  // Listener panggilan masuk
-  const incomingCallRef = dbRef(database, `calls/${userId}/incoming`);
-  incomingUnsub = onValue(incomingCallRef, (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      if (data.call_type === 'video') {
-    // Buat objek incoming call
-    const incomingCall = {
-        id: data.call_id,
-        type: 'video' as const,
-        caller: data.caller,
-        receiver: {
-            id: authStore.user!.id,
-            name: authStore.user!.name,
-            email: authStore.user!.email,
-            avatar: authStore.user!.photo || authStore.user!.profile_photo_url
-        },
-        status: 'ringing' as const,
-        token: data.agora_token,
-        channel: data.channel_name
-    };
-    callStore.setIncomingCall(incomingCall);
+    // --------------------------------------------------
+    // A. LISTENER PANGGILAN MASUK (INCOMING)
+    // --------------------------------------------------
+    const incomingCallRef = dbRef(database, `calls/${userId}/incoming`);
+    incomingUnsub = onValue(incomingCallRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            if (data.call_type === 'video') {
+                // Buat objek incoming call
+                const incomingCall = {
+                    id: data.call_id,
+                    type: 'video' as const,
+                    caller: data.caller,
+                    receiver: {
+                        id: authStore.user!.id,
+                        name: authStore.user!.name,
+                        email: authStore.user!.email,
+                        avatar: authStore.user!.photo || authStore.user!.profile_photo_url
+                    },
+                    status: 'ringing' as const,
+                    token: data.agora_token,
+                    channel: data.channel_name
+                };
+                callStore.setIncomingCall(incomingCall);
 
-    // Buat backend call (PersonalCall)
-    const backendCall: PersonalCall = {
-        id: data.call_id,
-        caller_id: data.caller.id,
-        callee_id: authStore.user!.id,
-        call_type: "video",
-        channel_name: data.channel_name,
-        status: "ringing",
-        answered_at: null,
-        ended_at: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        duration: null,
-        ended_by: null,
-    };
-    callStore.setBackendCall(backendCall, data.agora_token, data.channel_name);
-    }  else if (data.call_type === 'voice') {
-      // 🔥 TAMBAHKAN INI
-      handleIncomingCall(data);
-    } else if (data.call_type === 'group_voice') {
-        handleGroupIncomingCall(data);
-    } else if (data.call_type === 'group_video') {
-        handleVideoGroupIncomingCall(data);
-    }
-      // Hapus setelah dibaca
-      remove(incomingCallRef);
-    }
-  });
+                // Buat backend call (PersonalCall)
+                const backendCall: PersonalCall = {
+                    id: data.call_id,
+                    caller_id: data.caller.id,
+                    callee_id: authStore.user!.id,
+                    call_type: "video",
+                    channel_name: data.channel_name,
+                    status: "ringing",
+                    answered_at: null,
+                    ended_at: null,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    duration: null,
+                    ended_by: null,
+                };
+                callStore.setBackendCall(backendCall, data.agora_token, data.channel_name);
 
-  // Listener status panggilan
-  const statusRef = dbRef(database, `calls/${userId}/status`);
-  statusUnsub = onValue(statusRef, (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      switch (data.status) {
-                    case "accepted":
-                        console.log("✅ Firebase: Panggilan diterima");
+            } else if (data.call_type === 'voice') {
+                handleIncomingCall(data);
+            } else if (data.call_type === 'group_voice') {
+                handleGroupIncomingCall(data);
+            } else if (data.call_type === 'group_video') {
+                // Pastikan fungsi handleVideoGroupIncomingCall sudah di-import/ada
+                handleVideoGroupIncomingCall(data); 
+            }
+            
+            // Hapus setelah data dibaca
+            remove(incomingCallRef);
+        }
+    });
 
-                        if (data.call_type === "video") {
-                            callStore.updateCallStatus("ongoing");
-                            callStore.setInCall(true);
+    // --------------------------------------------------
+    // B. LISTENER STATUS PANGGILAN
+    // --------------------------------------------------
+    const statusRef = dbRef(database, `calls/${userId}/status`);
+    statusUnsub = onValue(statusRef, (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            switch (data.status) {
+                case "accepted":
+                    console.log("✅ Firebase: Panggilan diterima");
 
-                            (async () => {
-                                // Caller join channel setelah diterima
-                                if (
-                                    callStore.agoraToken &&
-                                    callStore.channelName &&
-                                    authStore.user?.id
-                                ) {
-                                    console.log(
-                                        "👋 Caller bergabung ke channel"
-                                    );
+                    if (data.call_type === "video") {
+                        callStore.updateCallStatus("ongoing");
+                        callStore.setInCall(true);
 
-                                    const { joinChannel } = useAgora();
-                                    await joinChannel(
-                                        callStore.channelName,
-                                        callStore.agoraToken,
-                                        Number(authStore.user.id)
-                                    );
+                        (async () => {
+                            if (callStore.agoraToken && callStore.channelName && authStore.user?.id) {
+                                console.log("👋 Caller bergabung ke channel");
+                                const { joinChannel } = useAgora();
+                                await joinChannel(
+                                    callStore.channelName,
+                                    callStore.agoraToken,
+                                    Number(authStore.user.id)
+                                );
+                                console.log("✅ Caller berhasil bergabung ke channel");
+                            }
+                            if (data.call) callStore.updateBackendCall(data.call);
+                        })();
+                    } else if (data.call_type === "group_voice" || data.call_type === "group_video") {
+                        console.log('✅ Panggilan grup diterima');
+                        handleGroupVoiceCallAnswered(data);
+                        callStore.clearIncomingCall();
+                    } else {
+                        handleCallAccepted(data);
+                    }
+                    break;
 
-                                    console.log(
-                                        "✅ Caller berhasil bergabung ke channel"
-                                    );
-                                }
+                case "rejected":
+                    console.log("❌ Firebase: Panggilan ditolak");
 
-                                // Update backend call jika ada
-                                if (data.call) {
-                                    callStore.updateBackendCall(data.call);
-                                }
-                            })();
-                        } else if (data.call_type === "group_voice" || data.call_type === "group_video"){
-                            console.log('✅ Panggilan grup diterima');
-                            handleGroupVoiceCallAnswered(data);
+                    if (data.call_type === "video") {
+                        callStore.updateCallStatus("rejected");
+                        setTimeout(() => {
+                            callStore.clearCurrentCall();
                             callStore.clearIncomingCall();
-                        } else {
-                            handleCallAccepted(data);
-                        }
+                        }, 2000);
+                    } else if (data.call_type === "group_voice" || data.call_type === "group_video") {
+                        callStore.clearIncomingCall();
+                    } else {
+                        handleCallRejected();
+                    }
+                    break;
 
-                        // Hapus status dari firebase
-                        remove(statusRef);
-                        break;
-                    case "rejected":
-                        console.log("❌ Firebase: Panggilan ditolak");
+                case "missed":
+                case "cancelled":
+                    console.log(`❌ Firebase: Panggilan ${data.status}`);
 
-                        if (data.call_type === "video") {
-                            callStore.updateCallStatus("rejected");
-                            setTimeout(() => {
+                    callStore.clearIncomingCall();
+
+                    if (data.call_type === "video") {
+                        callStore.updateCallStatus(data.status);
+                        setTimeout(() => {
+                            callStore.clearCurrentCall();
+                        }, 2000);
+                    } else if (data.call_type === "group_voice" || data.call_type === "group_video") {
+                        console.log('Panggilan group dibatalkan oleh caller');
+                        handleGroupCallCancelled(data);
+                    } else {
+                        console.log("Eksekusi handleCallCancelled untuk Voice");
+                        handleCallCancelled();
+                    }
+                    break;
+
+                case "ended":
+                    console.log("📴 Firebase: Panggilan diakhiri");
+
+                    if (data.call_type === "video") {
+                        (async () => {
+                            try {
+                                const { leaveChannel } = useAgora();
+                                console.log("👋 Meninggalkan channel Agora (Remote diberhentikan)");
+                                await leaveChannel();
+                                
+                                console.log("🧹 Membersihkan call store...");
+                                callStore.updateCallStatus("ended");
+
+                                setTimeout(() => {
+                                    callStore.clearCurrentCall();
+                                }, 2000);
+                            } catch (error) {
+                                console.error("❌ Error pada saat membersihkan panggilan yang berakhir:", error);
                                 callStore.clearCurrentCall();
                                 callStore.clearIncomingCall();
-                            }, 2000);
-                        } else if (data.call_type === "group_voice" || data.call_type === "group_video") {
-                            callStore.clearIncomingCall();
-                        } else {
-                            handleCallRejected();
-                        }
-
-                        // Hapus status dari firebase
-                        remove(statusRef);
-                        break;
-                    case "missed":
-                    case "cancelled":
-                        console.log(`❌ Firebase: Panggilan ${data.status}`);
-
-                        callStore.clearIncomingCall();
-
-                        if (data.call_type === "video") {
-                            callStore.updateCallStatus(data.status);
-                            setTimeout(() => {
+                            }
+                        })();
+                    } else if (data.call_type === "group_voice" || data.call_type === "group_video") {
+                        console.log('Panggilan grup diakhiri');
+                        handleGroupCallEnded(data);
+                    } else {
+                        // VOICE CALL
+                        console.log("🎤 Voice call ended via Firebase");
+                        callStore.updateCallStatus('ended');
+                        toast.info("Panggilan berakhir");
+                        
+                        setTimeout(async () => {
+                            try {
+                                const { leaveChannel } = useAgora();
+                                await leaveChannel();
                                 callStore.clearCurrentCall();
-                            }, 2000);
-                        } else if (data.call_type === "group_voice" || data.call_type === "group_video") {
-                            console.log('Panggilan group dibatalkan oleh caller');
-                            handleGroupCallCancelled(data);
-                        } else {
-                            // TAMBAHKAN INI UNTUK VOICE CALL
-                            console.log(
-                                "Eksekusi handleCallCancelled untuk Voice"
-                            );
-                            handleCallCancelled();
-                        }
-
-                        // Hapus status dari firebase
-                        remove(statusRef);
-                        break;
-                    case "ended":
-                        console.log("📴 Firebase: Panggilan diakhiri");
-
-                        if (data.call_type === "video") {
-                            (async () => {
-                                try {
-                                    // Cleanup agora dulu sebelum clear store
-                                    const { leaveChannel } = useAgora();
-
-                                    console.log(
-                                        "👋 Meninggalkan channel Agora (Remote diberhentikan)"
-                                    );
-                                    await leaveChannel();
-
-                                    console.log(
-                                        "🧹 Membersihkan call store..."
-                                    );
-                                    callStore.updateCallStatus("ended");
-
-                                    // Clear setelah 2 detik supaya user bisa lihat status ended
-                                    setTimeout(() => {
-                                        callStore.clearCurrentCall();
-                                    }, 2000);
-                                } catch (error) {
-                                    console.error(
-                                        "❌ Error pada saat membersihkan panggilan yang berakhir:",
-                                        error
-                                    );
-
-                                    // Cleanup secara paksa jika ada error
-                                    callStore.clearCurrentCall();
-                                    callStore.clearIncomingCall();
-                                }
-                            })();
-                        } else if (data.call_type === "group_voice" || data.call_type === "group_video") {
-                            console.log('Panggilan grup diakhiri');
-                            handleGroupCallEnded(data);
-                        } else {
-                         // VOICE CALL - Immediate response
-                         console.log("🎤 Voice call ended via Firebase");
-        
-                         // Langsung update UI tanpa delay
-                         callStore.updateCallStatus('ended');
-        
-                         // Tampilkan toast segera
-                         toast.info("Panggilan berakhir");
-        
-                         // Async cleanup (biarkan berjalan di background)
-                         setTimeout(async () => {
-                         try {
-                             const { leaveChannel } = useAgora();
-                             await leaveChannel();
-                             callStore.clearCurrentCall();
-                             callStore.clearIncomingCall();
-                           } catch (error) {
-                             console.error("Cleanup error:", error);
-                           }
-                     }, 100);
-                  }
-    
-                   remove(statusRef);
-                   break;
-      }
-      remove(statusRef);
-    }
-  });
+                                callStore.clearIncomingCall();
+                            } catch (error) {
+                                console.error("Cleanup error:", error);
+                            }
+                        }, 100);
+                    }
+                    break;
+            }
+            
+            // Hapus status dari firebase (Cukup ditulis 1 kali di akhir setelah blok switch selesai diproses)
+            remove(statusRef);
+        }
+    });
 });
 
 onUnmounted(() => {
@@ -810,6 +813,7 @@ watch(
                 :is-speaker-on="false"
                 @end-call="handleEndVoiceCall"
                 @minimize="callStore.toggleMinimize"
+                @addParticipant="showAddParticipantModal = true"
             />
 
             <VoiceFloating
@@ -857,6 +861,11 @@ watch(
 
         <VoiceGroupCallModal
             v-if="callStore.isGroupCall && callStore.callStatus === 'ongoing' && !callStore.isMinimized && (callStore.currentCall?.type === 'voice' || callStore.backendGroupCall?.call_type === 'voice')"
+        />
+
+        <AddParticipantModal 
+            v-if="showAddParticipantModal" 
+            @close="showAddParticipantModal = false" 
         />
 
     </Teleport>

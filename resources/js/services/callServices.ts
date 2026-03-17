@@ -59,6 +59,17 @@ export const getCallHistory = async (page: number = 1) => {
     return response.data;
 };
 
+// --- {BARU} Transisi ke group call
+
+// Mengubah panggilan personal menjadi panggilan grup
+export const upgradeCallToGroup = async (originalCallId: number, participantIds: number[]) => {
+    const response = await axios.post('/call/upgrade', {
+        original_call_id: originalCallId,
+        participant_ids: participantIds
+    });
+    return response.data;
+};
+
 // --- [BARU] GROUP CALL SERVICES ---
 
 // Memulai panggilan grup (oleh Host)

@@ -1,5 +1,7 @@
 import { ref, watch } from "vue";
 import axios from "axios";
+import { database } from '@/libs/firebase';
+import { ref as dbRef, set, remove, onValue, off } from 'firebase/database';
 import { useCallStore } from "@/stores/callStore";
 import { useAuthStore } from "@/stores/auth";
 import { useAgora } from "./useAgora";
@@ -409,7 +411,7 @@ export const useVoiceCall = () => {
                 autoClose: 3000,
             });
         }
-    };
+    }
 
     // --- EVENT HANDLERS ---
     
