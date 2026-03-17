@@ -835,7 +835,7 @@ watch(
      <!-- Global Call Modals -->
     <Teleport to="body">
             <VoiceIncomingModal
-                v-if="callStore.incomingCall && callStore.incomingCall.type === 'voice'"
+                v-if="!callStore.isGroupCall && callStore.incomingCall && callStore.incomingCall.type === 'voice'"
                 :callerName="callStore.incomingCall.caller?.name || 'Seseorang'"
                 :callerPhoto="callStore.incomingCall.caller?.photo || callStore.incomingCall.caller?.avatar || ''"
                 :callStatus="callStore.incomingCall.isGroup ? 'Mengundang Anda ke Panggilan Grup...' : 'Panggilan Suara Masuk...'"
