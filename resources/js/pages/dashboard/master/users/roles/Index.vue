@@ -311,10 +311,7 @@ const formatTime = (dateString: string | null | undefined): string => {
 
 const formatLastSeen = (user: any): string => {
     if (!user) return "offline";
-    if (onlineUsers.value.has(user.id)) {
-        return "Online";
-    }
-    if (user.is_online) {
+    if (onlineUsers.value.has(user.id) || user.is_online) {
         return "Online";
     }
 
@@ -323,20 +320,22 @@ const formatLastSeen = (user: any): string => {
 
     try {
         const date = new Date(dateInput);
+        if (isNaN(date.getTime())) return "offline";
+
         if (isToday(date)) {
-            return `terakhir dilihat pukul ${format(date, "HH:mm", {
-                locale: id,
-            })}`;
+            // Hari ini → "terakhir dilihat 14:30"
+            return `terakhir dilihat ${format(date, "HH:mm", { locale: id })}`;
         }
         if (isYesterday(date)) {
-            return `terakhir dilihat kemarin pukul ${format(date, "HH:mm", {
-                locale: id,
-            })}`;
+            // Kemarin → "terakhir dilihat kemarin"
+            return "terakhir dilihat kemarin";
         }
-        return `terakhir dilihat ${format(date, "d MMM yyyy, HH:mm", {
-            locale: id,
-        })}`;
-    } catch (error) {
+        // Lebih lama → "terakhir dilihat 3 Jan" atau "terakhir dilihat 3 Jan 2024"
+        const isThisYear = date.getFullYear() === new Date().getFullYear();
+        return isThisYear
+            ? `terakhir dilihat ${format(date, "d MMM", { locale: id })}`
+            : `terakhir dilihat ${format(date, "d MMM yyyy", { locale: id })}`;
+    } catch {
         return "offline";
     }
 };

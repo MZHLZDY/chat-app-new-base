@@ -344,6 +344,14 @@ import { blockBtn, unblockBtn } from "@/libs/utils";
 import router from "@/router";
 import { useSetting } from "@/services";
 
+// Interface untuk setting aplikasi (logo, nama, dll)
+interface AppSetting {
+    logo_depan?: string;
+    logo_belakang?: string;
+    app_name?: string;
+    [key: string]: string | undefined;
+}
+
 interface ICredential {
     nama?: string;
     email?: string;
@@ -364,7 +372,7 @@ export default defineComponent({
         Password,
     },
     setup() {
-        const { data: setting = {} } = useSetting();
+        const { data: setting = {} as AppSetting } = useSetting();
         const _stepperObj = ref<StepperComponent | null>(null);
         const horizontalWizardRef = ref<HTMLElement | null>(null);
         const currentStepIndex = ref(0);
@@ -448,6 +456,116 @@ export default defineComponent({
             }
         };
 
+        // ─── HELPER: parse error dari Laravel ke pesan yang ramah ──────────────
+        const parseRegisterError = (err: any): string => {
+            const status = err.response?.status as number | undefined;
+            const data = err.response?.data as
+                | {
+                      message?: string;
+                      errors?: Record<string, string[]>;
+                  }
+                | undefined;
+
+            // Helper: ambil pesan pertama dari array field, fallback ke default
+            const firstMsg = (arr?: string[]): string =>
+                arr?.[0] ?? "Terjadi kesalahan.";
+
+            // 422 Validation Error — ambil error per field
+            if (status === 422 && data?.errors) {
+                const errors = data.errors;
+
+                if (errors.phone?.length) {
+                    const msg = firstMsg(errors.phone).toLowerCase();
+                    if (
+                        msg.includes("taken") ||
+                        msg.includes("unique") ||
+                        msg.includes("sudah")
+                    ) {
+                        return "Nomor telepon ini sudah terdaftar. Gunakan nomor lain atau masuk.";
+                    }
+                    if (msg.includes("valid") || msg.includes("format")) {
+                        return "Format nomor telepon tidak valid. Gunakan format 08xxxxxxxx.";
+                    }
+                    return firstMsg(errors.phone);
+                }
+
+                if (errors.email?.length) {
+                    const msg = firstMsg(errors.email).toLowerCase();
+                    if (
+                        msg.includes("taken") ||
+                        msg.includes("unique") ||
+                        msg.includes("sudah")
+                    ) {
+                        return "Email ini sudah terdaftar. Gunakan email lain atau masuk.";
+                    }
+                    if (msg.includes("valid") || msg.includes("format")) {
+                        return "Format email tidak valid.";
+                    }
+                    return firstMsg(errors.email);
+                }
+
+                if (errors.nama?.length) return firstMsg(errors.nama);
+                if (errors.name?.length) return firstMsg(errors.name);
+
+                if (errors.password?.length) {
+                    const msg = firstMsg(errors.password).toLowerCase();
+                    if (msg.includes("min") || msg.includes("8")) {
+                        return "Password minimal 8 karakter.";
+                    }
+                    if (
+                        msg.includes("confirmed") ||
+                        msg.includes("confirmation")
+                    ) {
+                        return "Konfirmasi password tidak cocok.";
+                    }
+                    return firstMsg(errors.password);
+                }
+
+                if (errors.password_confirmation?.length) {
+                    return "Konfirmasi password tidak cocok dengan password.";
+                }
+
+                // Ambil error pertama yang ditemukan dari field manapun
+                const firstKey = Object.keys(errors).find(
+                    (k) => errors[k]?.length
+                );
+                if (firstKey) return firstMsg(errors[firstKey]);
+            }
+
+            // Pesan langsung dari server (field message)
+            if (data?.message) {
+                const msg = data.message.toLowerCase();
+                if (
+                    msg.includes("phone") &&
+                    (msg.includes("taken") || msg.includes("unique"))
+                ) {
+                    return "Nomor telepon sudah terdaftar.";
+                }
+                if (
+                    msg.includes("email") &&
+                    (msg.includes("taken") || msg.includes("unique"))
+                ) {
+                    return "Email sudah terdaftar.";
+                }
+                if (msg.includes("duplicate") || msg.includes("integrity")) {
+                    return "Data sudah terdaftar di sistem.";
+                }
+                return data.message;
+            }
+
+            // HTTP status fallback
+            if (status === 429)
+                return "Terlalu banyak percobaan. Coba lagi beberapa menit.";
+            if (status === 500)
+                return "Server sedang bermasalah. Coba beberapa saat lagi.";
+            if (status === 503)
+                return "Layanan sedang tidak tersedia. Coba lagi nanti.";
+            if (!err.response)
+                return "Tidak ada koneksi internet. Periksa jaringan Anda.";
+
+            return "Terjadi kesalahan. Silakan coba lagi.";
+        };
+
         const formSubmit = (values: CreateAccount) => {
             if (submitButton.value) {
                 submitButton.value.disabled = true;
@@ -459,14 +577,17 @@ export default defineComponent({
             axios
                 .post("/auth/register", values)
                 .then((res) => {
-                    toast.success(res.data.message);
+                    toast.success(
+                        res.data.message ||
+                            "Akun berhasil dibuat! Silakan verifikasi email Anda."
+                    );
                     showEmailVerificationAlert.value = true;
                     window.scrollTo({ top: 0, behavior: "smooth" });
                 })
                 .catch((err) => {
-                    toast.error(
-                        err.response?.data?.message || "Terjadi kesalahan"
-                    );
+                    toast.error(parseRegisterError(err), {
+                        autoClose: 5000,
+                    });
                 })
                 .finally(() => {
                     if (submitButton.value) {

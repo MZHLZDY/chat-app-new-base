@@ -2828,10 +2828,7 @@ onUnmounted(() => {
     color: #a5b4fc !important;
 }
 
-/* ══════════════════════════════════════════════
-   GROUP CHAT — ROOM REDESIGN
-══════════════════════════════════════════════ */
-
+/* GROUP CHAT ROOM REDESIGN */
 .gc-bubble {
     max-width: 340px;
     min-width: 80px;
