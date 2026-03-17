@@ -117,7 +117,7 @@ const handleToggleSpeaker = () => {
         </center>
       </div>
 
-      <div class="flex-grow-1 w-100 d-flex align-items-center justify-content-center p-6 overflow-y-auto custom-scrollbar relative z-10">
+      <div class="flex-grow-1 w-200 d-flex align-items-center justify-content-center p-6 overflow-y-auto custom-scrollbar relative z-10">
         
         <div class="d-flex flex-row flex-wrap justify-content-center align-items-center w-100 mx-auto" style="gap: 1.5rem; max-width: 1000px;">
             
@@ -157,16 +157,13 @@ const handleToggleSpeaker = () => {
                 </div>
 
                 <div v-if="user.status !== 'joined'" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20" style="backdrop-filter: blur(2px); border-radius: 2rem;">
-                    <div v-if="user.status !== 'joined'" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20" style="backdrop-filter: blur(2px); border-radius: 2rem;">
                     <button 
-        v-if="isUserHost && user.status === 'left'" 
-        @click="handleRecall(user.id)"
-        class="btn btn-sm btn-primary mt-2"
-    >
-        <PhoneCall class="w-4 h-4 mr-1" /> Recall
-    </button>    
-
-</div>
+                      v-if="isUserHost && user.status === 'left'" 
+                      @click="handleRecall(user.id)"
+                      class="btn btn-sm btn-primary mt-2"
+                    >
+                      <PhoneCall class="w-4 h-4 mr-1" /> Recall
+                    </button>    
                 </div>
 
               </div>
