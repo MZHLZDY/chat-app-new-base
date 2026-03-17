@@ -824,10 +824,8 @@ watch(
             <!-- Video call modals tetap sama -->
             <VideoCallingModal v-if="showVideoCallingModal" />
             <VideoIncomingModal v-if="showVideoIncomingModal" />
-            <VideoGroupIncomingModal />
-            <VideoGroupCallingModal
-                v-if="callStore.isGroupCall && (callStore.currentCall?.type === 'video' || callStore.backendGroupCall?.call_type === 'video') && (callStore.currentCall || callStore.backendGroupCall) && callStore.callStatus === 'calling' && !callStore.isMinimized"
-            />
+            <VideoGroupIncomingModal/>
+            <VideoGroupCallingModal v-if="callStore.isGroupCall && callStore.currentCall?.type === 'video' && !callStore.isMinimized" />
             <VideoCallModal v-if="callStore.currentCall && callStore.currentCall.type === 'video' && callStore.callStatus === 'ongoing' && !callStore.isGroupCall && !callStore.isMinimized" 
               @minimize="callStore.toggleMinimize" 
             />

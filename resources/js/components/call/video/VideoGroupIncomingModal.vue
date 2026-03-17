@@ -9,14 +9,15 @@ const store = useCallStore();
 const { answerGroupVideoCall, rejectGroupVideoCall } = useVideoGroupCall();
 
 // Tampilkan kalau ada panggilan masuk, dan it's group, dan masih 'ringing'
-const isIncomingGroup = computed(() => 
-    !!store.incomingCall && 
-    store.incomingCall?.type === 'video' && 
-    store.incomingCall?.isGroup === true &&
-    store.incomingCall?.status === 'ringing'
-);
+const isIncomingGroup = computed(() => {
+    const call = store.incomingCall as any;
+    return !!call && 
+           call.type === 'video' && 
+           (call.isGroup === true || !!call.groupName) &&
+           (call.status === 'ringing' || call.status === 'incoming' || store.callStatus === 'ringing'); // Pengecekan status yang lebih aman
+});
 
-const incomingCall = computed(() => store.incomingCall);
+const incomingCall = computed(() => store.incomingCall as any);
 const callerInfo = computed(() => incomingCall.value?.caller);
 
 const handleAccept = async () => {
@@ -38,19 +39,28 @@ const handleReject = async () => {
         <div v-if="isIncomingGroup" class="incoming-call-overlay">
             <div class="incoming-card glass-effect pulse-animation">
                 
-                <h6 class="mb-4 text-white-50">✨ Panggilan Grup Masuk</h6>
-
                 <div class="mb-5 d-flex justify-content-center">
+                    <!-- Ganti data ke group_photo dan group_name/groupName -->
                     <CallAvatar
-                        :photo-url="callerInfo?.avatar || callerInfo?.profile_photo_url || callerInfo?.photo"
-                        :display-name="callerInfo?.name || 'Grup'"
+                        :photo-url="incomingCall?.groupAvatar || incomingCall?.group_avatar || incomingCall?.group_photo || incomingCall?.groupPhoto || ''"
+                        :display-name="incomingCall?.group_name || incomingCall?.groupName || 'Grup Video'"
                         size="120px"
                         :is-calling="true"
                     />
                 </div>
 
-                <h3 class="caller-name">{{ callerInfo?.name }} Memanggil</h3>
-                <p class="call-status">Panggilan video grup...</p>
+                <!-- Tampilkan Nama Grup sebagai nama utama -->
+                <h3 class="caller-name">
+                    {{ incomingCall?.group_name || incomingCall?.groupName || 'Panggilan Grup' }}
+                </h3>
+                
+                <p class="call-status" style="margin-bottom: 5px;">Panggilan video grup...</p>
+                
+                <!-- Tambah informasi pemanggil yang menginisiasi grup call -->
+                <p class="inviter-text" style="color: #a1a1aa; font-size: 0.9rem; margin-bottom: 20px;">
+                    Panggilan dimulai oleh: 
+                    <span style="font-weight: bold; color: white;">{{ callerInfo?.name || 'Seseorang' }}</span>
+                </p>
 
                 <div class="call-type-badge mb-5">
                     <Video :size="18"/>
