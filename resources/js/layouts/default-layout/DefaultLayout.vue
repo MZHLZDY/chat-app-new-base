@@ -173,6 +173,7 @@ const {
     answerGroupVoiceCall, 
     rejectGroupVoiceCall, 
     leaveGroupVoiceCall,
+    endGroupVoiceCallForAll,
     handleGroupIncomingCall,
     handleGroupVoiceCallAnswered,
     handleGroupCallCancelled,
@@ -462,6 +463,28 @@ const handleStartVoiceGroupCall = async () => {
     await startGroupVoiceCall(activeGroup.value.id, participantIds);
 };
 
+
+// 🔥 FUNGSI BARU: Logika End Call khusus Grup
+const handleEndGroupVoiceCall = async () => {
+    const callId = callStore.currentCall?.id || callStore.backendGroupCall?.id;
+    if (!callId) return;
+
+    // Deteksi apakah user yang sedang login adalah Host/Caller
+    // ✅ PERBAIKAN: Ubah caller_id menjadi host_id
+    const isHost = callStore.currentCall?.caller?.id === authStore.user?.id || 
+                   callStore.backendGroupCall?.host_id === authStore.user?.id; 
+
+    if (isHost) {
+        // Jika Host yang mematikan, bubarkan untuk semua
+        console.log("👑 Host membubarkan panggilan grup");
+        await endGroupVoiceCallForAll(callId);
+    } else {
+        // Jika peserta biasa, sekadar keluar dari panggilan
+        console.log("🚶‍♂️ Peserta keluar dari panggilan grup");
+        await leaveGroupVoiceCall(callId);
+    }
+};
+
 // Fungsi video call group
 const handleStartVideoGroupCall = async () => {
     if (!activeGroup.value) {
@@ -551,6 +574,27 @@ onMounted(() => {
     nextTick(() => {
         reinitializeComponents();
     });
+
+    const callId = callStore.backendGroupCall?.id || callStore.currentCall?.id;
+    if (callId) {
+        // 🔥 Dengarkan perubahan data seluruh peserta di Firebase
+        const participantsRef = dbRef(database, `group_calls/${callId}/participants`);
+        
+        onValue(participantsRef, (snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                
+                // Looping data Firebase dan update status tiap peserta di store lokal
+                Object.keys(data).forEach((key) => {
+                    const userId = Number(key);
+                    const newStatus = data[key].status;
+                    
+                    // Pastikan kamu punya fungsi ini di callStore untuk mengubah status peserta
+                    callStore.updateGroupParticipantStatus(userId, newStatus);
+                });
+            }
+        });
+    }
 
     if (import.meta.env.DEV) {
         (window as any).authStore = authStore;
@@ -874,6 +918,10 @@ watch(
 
         <VoiceGroupCallModal
             v-if="callStore.isGroupCall && callStore.callStatus === 'ongoing' && !callStore.isMinimized && (callStore.currentCall?.type === 'voice' || callStore.backendGroupCall?.call_type === 'voice')"
+            @end-call="handleEndGroupVoiceCall"
+            @leave="() => leaveGroupVoiceCall(callStore.currentCall?.id || callStore.backendGroupCall?.id || 0)"
+            @end-all="() => endGroupVoiceCallForAll(callStore.currentCall?.id || callStore.backendGroupCall?.id || 0)"
+            @minimize="callStore.toggleMinimize"
         />
 
         <AddParticipantModal 

@@ -307,39 +307,44 @@ export function useVoiceGroupCall() {
         // Jika statusnya masih 'calling', berarti Host membatalkan panggilan (Cancel)
         if (callStore.callStatus === 'calling') {
             try {
-                // (Opsional) Memanggil API backend untuk update status ke database
                 await axios.post('/group-call/cancel', { call_id: callId });
             } catch (error) {
                 console.error('Backend cancel error:', error);
             }
 
-            // =========================================================
-            // [FIX FIREBASE] Broadcast Cancel ke semua node 'status' peserta
-            // =========================================================
+            // Broadcast Cancel ke semua node 'status' peserta
             const participants = callStore.groupParticipants || [];
             participants.forEach((p: any) => {
-                // Ambil ID peserta dengan aman (tergantung array-nya isinya object atau number langsung)
                 const participantId = typeof p === 'object' ? (p.user_id || p.id) : p;
-                
                 if (participantId && participantId !== authStore.user?.id) {
-                    // 🔥 Tembak ke node yang persis didengarkan oleh listener mu
                     const statusRef = dbRef(database, `calls/${participantId}/status`);
                     set(statusRef, {
-                        status: 'cancelled', // Wajib ada agar terbaca oleh switch(data.status)
+                        status: 'cancelled', 
                         call_id: callId,
-                        call_type: 'group_voice', // Wajib sama dengan if di listener
+                        call_type: 'group_voice', 
                         timestamp: Date.now()
                     });
                 }
             });
-            // =========================================================
-            
             toast.info("Panggilan grup dibatalkan.");
         } else {
-            // Jika statusnya 'ongoing', berarti user hanya keluar dari panggilan (Leave)
+            // =========================================================
+            // 🔥 [FIX] Jika status 'ongoing', user keluar dari panggilan (Leave)
+            // =========================================================
             try {
-                // await axios.post('/group-call/leave', { call_id: callId });
-            } catch (error) {}
+                await axios.post('/group-call/leave', { call_id: callId });
+                
+                // Beritahu Firebase bahwa kita 'left' agar UI peserta lain (terutama Host) terupdate
+                const myParticipantRef = dbRef(database, `group_calls/${callId}/participants/${authStore.user?.id}`);
+                set(myParticipantRef, { 
+                    status: 'left', 
+                    timestamp: Date.now(),
+                    user_id: authStore.user?.id,
+                });
+            } catch (error) {
+                console.error('❌ Gagal leave panggilan:', error);
+            }
+            toast.info("Anda keluar dari panggilan grup.");
         }
 
         // Hapus state dan matikan Agora
@@ -348,10 +353,35 @@ export function useVoiceGroupCall() {
 
     const endGroupVoiceCallForAll = async (callId: number) => {
         try {
+            // 1. Tembak API Backend
             await axios.post('/group-call/end-all', { call_id: callId });
+
+            // =========================================================
+            // 🔥 [FIX] Broadcast 'ended' via Firebase ke semua peserta 
+            // =========================================================
+            const participants = callStore.groupParticipants || [];
+            participants.forEach((p: any) => {
+                const participantId = typeof p === 'object' ? (p.user_id || p.id) : p;
+                
+                // Jangan kirim ke diri sendiri (host)
+                if (participantId && participantId !== authStore.user?.id) {
+                    const statusRef = dbRef(database, `calls/${participantId}/status`);
+                    set(statusRef, {
+                        status: 'ended', // 👈 Ini akan memicu listener 'ended' di DefaultLayout peserta
+                        call_id: callId,
+                        call_type: 'group_voice',
+                        timestamp: Date.now()
+                    });
+                }
+            });
+            // =========================================================
+
+            // 2. Bersihkan UI Host
             await stopAndClearCall();
+            toast.info("Anda telah membubarkan panggilan grup.");
         } catch (error) {
             console.error('❌ Gagal membubarkan panggilan:', error);
+            toast.error("Terjadi kesalahan saat membubarkan panggilan.");
         }
     };
 

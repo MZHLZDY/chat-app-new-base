@@ -21,26 +21,24 @@ const isLoadingContacts = ref(false);
 const isSubmitting = ref(false);
 
 // Ambil data kontak dari backend (Sesuaikan endpoint dengan API kamu)
-// Ambil data kontak dari backend
 const fetchContacts = async () => {
   isLoadingContacts.value = true;
   try {
+    // Kita menampung balasan langsung ke dalam variabel 'data'
     const { data } = await axios.get('/master/users');
     
-    // Cek di console browser untuk melihat bentuk asli data dari backend
-    console.log('Cek isi response:', response.data); 
+    // Opsional: log ke console menggunakan variabel 'data' (bukan response)
+    // console.log('Cek isi data:', data); 
 
-    // Ambil array user-nya. 
-    // Jika bentuknya langsung array -> response.data
-    // Jika dibungkus "data" -> response.data.data
-    // Jika dibungkus "users" -> response.data.users
-    const usersArray = response.data.users || response.data.data || response.data || [];
+    // Ambil array user-nya (jika dibungkus "data", ambil data.data, jika tidak, langsung ambil data)
+    const usersArray = data.data ? data.data : data;
 
     // Filter agar user yang sedang menelepon saat ini dan diri sendiri tidak muncul di daftar
     const currentOpponentId = callStore.currentCall?.caller.id === authStore.user?.id 
       ? callStore.currentCall?.receiver.id 
       : callStore.currentCall?.caller.id;
 
+    // Masukkan data ke dalam state yang merender list kontak
     contacts.value = usersArray.filter((u: any) => 
       u.id !== authStore.user?.id && u.id !== currentOpponentId
     );

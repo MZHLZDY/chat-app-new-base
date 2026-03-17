@@ -22,7 +22,8 @@ const startTime = new Date();
 // Destructure fungsi dari composable
 const { leaveGroupVoiceCall, 
         endGroupVoiceCallForAll, 
-        toggleMute, 
+        toggleMute,
+        recallParticipant,
         handleGroupParticipantRecalled, 
         isAudioEnabled 
 } = useVoiceGroupCall();
@@ -60,6 +61,13 @@ const displayParticipants = computed(() => {
         ['joined', 'ringing', 'left', 'declined', 'missed'].includes(p.status)
     );
 });
+
+const handleRecall = async (userId: number) => {
+    const callId = callStore.currentCall?.id || callStore.backendGroupCall?.id;
+    if (callId) {
+        await recallParticipant(callId, userId);
+    }
+};
 
 // ACTION HANDLERS
 const handleLeaveCall = async () => {
@@ -149,19 +157,16 @@ const handleToggleSpeaker = () => {
                 </div>
 
                 <div v-if="user.status !== 'joined'" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20" style="backdrop-filter: blur(2px); border-radius: 2rem;">
-                    <button
-                      @click.stop="handleGroupParticipantRecalled(user.id)"
-                      class="d-flex flex-column align-items-center justify-content-center gap-1 p-2 bg-white/20 hover:bg-white/30 rounded shadow-lg text-white border-0"
-                      style="backdrop-filter: blur(10px); transition: transform 0.2s;"
-                      title="Recall Participant"
-                      onmouseover="this.style.transform='scale(1.05)'"
-                      onmouseout="this.style.transform='scale(1)'"
-                    >
-                      <div class="bg-primary p-2 rounded-circle shadow-sm">
-                         <PhoneCall :size="18" class="text-white" />
-                      </div>
-                      <span class="font-medium tracking-wide" style="font-size: 10px;">Recall</span>
-                    </button>
+                    <div v-if="user.status !== 'joined'" class="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20" style="backdrop-filter: blur(2px); border-radius: 2rem;">
+                    <button 
+        v-if="isUserHost && user.status === 'left'" 
+        @click="handleRecall(user.id)"
+        class="btn btn-sm btn-primary mt-2"
+    >
+        <PhoneCall class="w-4 h-4 mr-1" /> Recall
+    </button>    
+
+</div>
                 </div>
 
               </div>
@@ -173,7 +178,10 @@ const handleToggleSpeaker = () => {
         
         <div class="w-1/3 flex justify-start">
            <div class="w-full max-w-[320px]">
-             <ParticipantUsers :participants="formattedParticipants" />
+             <ParticipantUsers 
+                :participants="formattedParticipants" 
+                :isHost="isUserHost" 
+              />
            </div>
         </div>
 
